@@ -11,7 +11,10 @@ import {
   X,
   Bell,
   Search,
-  User
+  User,
+  Layers,
+  MapPin,
+  Gauge
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,6 +40,9 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+    { icon: Layers, label: "Groups", href: "/groups" },
+    { icon: MapPin, label: "Sites", href: "/sites" },
+    { icon: Gauge, label: "Meters", href: "/meters" },
     { icon: BarChart3, label: "Analysis", href: "/analysis" },
     { icon: FileText, label: "Reports", href: "/reports" },
     { icon: Upload, label: "Import Data", href: "/import" },

@@ -8,12 +8,16 @@ import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import ImportPage from "@/pages/import-page";
 import AdminPage from "@/pages/admin-page";
+import MetersPage from "@/pages/meters-page";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={AuthPage} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/groups" component={Dashboard} /> {/* Placeholder */}
+      <Route path="/sites" component={Dashboard} /> {/* Placeholder */}
+      <Route path="/meters" component={MetersPage} />
       <Route path="/import" component={ImportPage} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/analysis" component={Dashboard} /> {/* Placeholder */}

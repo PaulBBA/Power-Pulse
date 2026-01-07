@@ -35,6 +35,10 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+  // location and setLocation might be null if not used within a Router context
+  // but Layout is used in Dashboard, ImportPage etc which ARE in the Router
+  // The issue is likely that AuthPage might have been wrapped in Layout accidentally
+  // or some other component is using Layout outside of the Router.
   const [location, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 

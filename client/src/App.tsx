@@ -10,13 +10,14 @@ import ImportPage from "@/pages/import-page";
 import AdminPage from "@/pages/admin-page";
 import MetersPage from "@/pages/meters-page";
 import SitesPage from "@/pages/sites-page";
+import GroupsPage from "@/pages/groups-page";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={AuthPage} />
       <Route path="/dashboard" component={Dashboard} />
-      <Route path="/groups" component={Dashboard} /> {/* Placeholder */}
+      <Route path="/groups" component={GroupsPage} />
       <Route path="/sites" component={SitesPage} />
       <Route path="/meters" component={MetersPage} />
       <Route path="/import" component={ImportPage} />

@@ -21,6 +21,8 @@ const usageData = [
   { name: "Jul", kwh: 3490, cost: 4300 },
 ];
 
+const formatCurrency = (value: number) => `£${value.toLocaleString()}`;
+
 export default function Dashboard() {
   return (
     <Layout>
@@ -54,7 +56,7 @@ export default function Dashboard() {
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$3,240.00</div>
+            <div className="text-2xl font-bold">£3,240.00</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
               <span className="text-rose-500 flex items-center mr-1">
                 <ArrowUpRight className="h-3 w-3 mr-0.5" /> 

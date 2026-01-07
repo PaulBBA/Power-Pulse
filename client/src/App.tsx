@@ -9,6 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import ImportPage from "@/pages/import-page";
 import AdminPage from "@/pages/admin-page";
 import MetersPage from "@/pages/meters-page";
+import SitesPage from "@/pages/sites-page";
 
 function Router() {
   return (
@@ -16,7 +17,7 @@ function Router() {
       <Route path="/" component={AuthPage} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/groups" component={Dashboard} /> {/* Placeholder */}
-      <Route path="/sites" component={Dashboard} /> {/* Placeholder */}
+      <Route path="/sites" component={SitesPage} />
       <Route path="/meters" component={MetersPage} />
       <Route path="/import" component={ImportPage} />
       <Route path="/admin" component={AdminPage} />

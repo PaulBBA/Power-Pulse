@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, FileDown, ArrowUpDown } from "lucide-react";
+import * as XLSX from 'xlsx';
 
 const groups = [
   { name: "{All Sites}" },
@@ -19,6 +20,13 @@ const groups = [
 ];
 
 export default function GroupsPage() {
+  const handleExport = () => {
+    const worksheet = XLSX.utils.json_to_sheet(groups);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Groups");
+    XLSX.writeFile(workbook, "BBA_Energy_Groups.xlsx");
+  };
+
   return (
     <Layout>
       <div className="flex flex-col gap-2">
@@ -41,7 +49,11 @@ export default function GroupsPage() {
             </div>
 
             <div className="ml-auto flex gap-2">
-              <Button size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm">
+              <Button 
+                size="sm" 
+                className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
+                onClick={handleExport}
+              >
                 <FileDown className="mr-2 h-4 w-4" />
                 Excel
               </Button>

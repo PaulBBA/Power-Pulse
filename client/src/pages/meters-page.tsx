@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, FileDown, Settings2, ArrowUpDown } from "lucide-react";
+import * as XLSX from 'xlsx';
 
 const meters = [
   { code: "BBA1096-0515", site: "SAT : Bedford (16)", mpan: "1012345711844", serial: "L73E004122", location: "COT'd JULY 2018 - no long SATCOL meter", supplier: "Haven", utility: "Electricity" },
@@ -22,6 +23,13 @@ const meters = [
 ];
 
 export default function MetersPage() {
+  const handleExport = () => {
+    const worksheet = XLSX.utils.json_to_sheet(meters);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Meters");
+    XLSX.writeFile(workbook, "BBA_Energy_Meters.xlsx");
+  };
+
   return (
     <Layout>
       <div className="flex flex-col gap-2">
@@ -59,7 +67,11 @@ export default function MetersPage() {
             </div>
 
             <div className="ml-auto flex gap-2">
-              <Button size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm">
+              <Button 
+                size="sm" 
+                className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
+                onClick={handleExport}
+              >
                 <FileDown className="mr-2 h-4 w-4" />
                 Excel
               </Button>

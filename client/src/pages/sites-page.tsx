@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, FileDown, Settings2, ArrowUpDown } from "lucide-react";
+import * as XLSX from 'xlsx';
 
 const sites = [
   { code: "BBA0871-0007", name: "APS : Atwood Primary Academy", address: "Atwood Primary School", town: "Sanderstead, South Croydon", telephone: "020 8657 7374", email: "" },
@@ -16,6 +17,13 @@ const sites = [
 ];
 
 export default function SitesPage() {
+  const handleExport = () => {
+    const worksheet = XLSX.utils.json_to_sheet(sites);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Sites");
+    XLSX.writeFile(workbook, "BBA_Energy_Sites.xlsx");
+  };
+
   return (
     <Layout>
       <div className="flex flex-col gap-2">
@@ -38,7 +46,11 @@ export default function SitesPage() {
             </div>
 
             <div className="ml-auto flex gap-2">
-              <Button size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm">
+              <Button 
+                size="sm" 
+                className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
+                onClick={handleExport}
+              >
                 <FileDown className="mr-2 h-4 w-4" />
                 Excel
               </Button>

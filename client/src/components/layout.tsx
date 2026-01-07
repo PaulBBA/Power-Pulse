@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import logo from "@assets/generated_images/modern_abstract_green_infinity_link_logo.png";
+import logo from "@assets/generated_images/modern_abstract_teal_infinity_link_logo.png";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
@@ -44,7 +44,7 @@ export function Layout({ children }: LayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex text-foreground">
       {/* Sidebar */}
       <aside 
         className={cn(
@@ -52,10 +52,10 @@ export function Layout({ children }: LayoutProps) {
           !sidebarOpen && "-translate-x-full lg:hidden"
         )}
       >
-        <div className="h-16 flex items-center px-6 border-b border-sidebar-border/50">
+        <div className="h-16 flex items-center px-6 border-b border-sidebar-border/30">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="Logo" className="h-8 w-8 object-contain" />
-            <span className="font-bold text-lg tracking-tight">SystemsLink</span>
+            <img src={logo} alt="BBA Energy" className="h-8 w-8 object-contain" />
+            <span className="font-bold text-lg tracking-tight uppercase">BBA Energy</span>
           </div>
           <Button 
             variant="ghost" 
@@ -74,9 +74,9 @@ export function Layout({ children }: LayoutProps) {
               <Link key={item.href} href={item.href}>
                 <div 
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer",
+                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 cursor-pointer",
                     isActive 
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm" 
+                      ? "bg-primary text-primary-foreground shadow-md scale-[1.02]" 
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
@@ -89,10 +89,10 @@ export function Layout({ children }: LayoutProps) {
         </nav>
 
         <div className="absolute bottom-4 left-0 right-0 px-4">
-          <div className="bg-sidebar-accent/50 rounded-lg p-4 mb-2">
+          <div className="bg-white/5 rounded-lg p-4 mb-2 border border-white/10">
             <h4 className="text-xs font-semibold text-sidebar-foreground/80 mb-1">Need Help?</h4>
-            <p className="text-xs text-sidebar-foreground/60 mb-3">Contact your energy representative for support.</p>
-            <Button size="sm" variant="outline" className="w-full text-xs h-7 bg-sidebar text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent">Support</Button>
+            <p className="text-xs text-sidebar-foreground/60 mb-3">Contact your BBA Energy representative for support.</p>
+            <Button size="sm" variant="outline" className="w-full text-xs h-7 bg-transparent text-sidebar-foreground border-sidebar-border hover:bg-primary/20 hover:border-primary">Support</Button>
           </div>
         </div>
       </aside>
@@ -110,9 +110,9 @@ export function Layout({ children }: LayoutProps) {
               <Menu className="h-5 w-5" />
             </Button>
             <div className="hidden md:flex items-center text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Overview</span>
+              <span className="font-medium text-primary">BBA Energy</span>
               <span className="mx-2">/</span>
-              <span>Dashboard</span>
+              <span className="text-foreground capitalize">{location.substring(1) || 'Overview'}</span>
             </div>
           </div>
 

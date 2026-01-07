@@ -14,7 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import logo from "@assets/generated_images/modern_abstract_green_infinity_link_logo.png";
+import logo from "@assets/generated_images/modern_abstract_teal_infinity_link_logo.png";
 import { Lock, User } from "lucide-react";
 
 const formSchema = z.object({
@@ -47,24 +47,24 @@ export default function AuthPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-background relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100 via-background to-background dark:from-blue-900/20 dark:via-background dark:to-background"></div>
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-green-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50 via-background to-background dark:from-teal-900/10 dark:via-background dark:to-background"></div>
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl"></div>
       </div>
 
       <div className="w-full max-w-md px-4 z-10">
         <div className="flex justify-center mb-8">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="SystemsLink" className="h-12 w-12 object-contain" />
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">SystemsLink</h1>
+            <img src={logo} alt="BBA Energy" className="h-12 w-12 object-contain" />
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">BBA Energy</h1>
           </div>
         </div>
 
         <Card className="border-border/50 shadow-xl backdrop-blur-sm bg-card/95">
           <CardHeader className="space-y-1 pb-2 text-center">
-            <CardTitle className="text-xl">Sign in to your account</CardTitle>
+            <CardTitle className="text-xl text-primary font-bold">Sign in to your account</CardTitle>
             <CardDescription>
-              Welcome to the web reporting system. This system helps you to analyse your energy usage and help reduce costs.
+              Welcome to the BBA Energy web reporting system. This system helps you to analyse your energy usage and help reduce costs.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
@@ -109,7 +109,7 @@ export default function AuthPage() {
                   Please see your Energy Representative to obtain a log in.
                 </div>
 
-                <Button type="submit" className="w-full h-11 text-base shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]" data-testid="button-submit">
+                <Button type="submit" className="w-full h-11 text-base shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] bg-primary hover:bg-primary/90" data-testid="button-submit">
                   Sign Me In
                 </Button>
               </form>
@@ -126,7 +126,7 @@ export default function AuthPage() {
         </Card>
         
         <div className="mt-8 text-center text-xs text-muted-foreground">
-          &copy; 2024 SystemsLink. All rights reserved.
+          &copy; 2024 BBA Energy. All rights reserved.
         </div>
       </div>
     </div>

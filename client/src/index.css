@@ -52,9 +52,9 @@
 }
 
 :root {
-  /* Corporate Clean Theme */
-  --background: 210 20% 98%; /* Light cool grey */
-  --foreground: 222 47% 11%; /* Dark slate */
+  /* BBA Energy Corporate Theme - Teal and Grey */
+  --background: 210 20% 98%; /* Light cool grey background */
+  --foreground: 222 47% 11%; /* Dark slate for text */
 
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
@@ -62,42 +62,42 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
 
-  --primary: 217 91% 60%; /* Bright tech blue */
+  --primary: 174 100% 29%; /* Teal (BBA Energy Primary) */
   --primary-foreground: 210 40% 98%;
 
-  --secondary: 210 40% 96.1%;
+  --secondary: 210 20% 90%; /* Grey (BBA Energy Secondary) */
   --secondary-foreground: 222 47% 11.2%;
 
-  --muted: 210 40% 96.1%;
+  --muted: 210 20% 94%;
   --muted-foreground: 215.4 16.3% 46.9%;
 
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222 47% 11.2%;
+  --accent: 174 100% 35%; /* Lighter teal for accents */
+  --accent-foreground: 210 40% 98%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
+  --border: 214.3 20% 85%;
+  --input: 214.3 20% 85%;
+  --ring: 174 100% 29%;
 
   --radius: 0.5rem;
   
-  /* Chart colors */
-  --chart-1: 142 76% 36%; /* Green */
-  --chart-2: 217 91% 60%; /* Blue */
-  --chart-3: 43 96% 64%; /* Yellow */
-  --chart-4: 262 83% 58%; /* Purple */
-  --chart-5: 12 76% 61%; /* Orange */
+  /* Chart colors - Teal focused */
+  --chart-1: 174 100% 29%; /* Teal */
+  --chart-2: 210 20% 40%; /* Grey */
+  --chart-3: 174 70% 45%; /* Light Teal */
+  --chart-4: 210 15% 60%; /* Light Grey */
+  --chart-5: 160 50% 50%; /* Mint */
 
-  --sidebar: 222 47% 11%;
+  --sidebar: 210 20% 15%; /* Dark Grey Sidebar */
   --sidebar-foreground: 210 40% 98%;
-  --sidebar-primary: 217 91% 60%;
+  --sidebar-primary: 174 100% 29%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 217 30% 20%;
+  --sidebar-accent: 210 20% 25%;
   --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-border: 217 30% 20%;
-  --sidebar-ring: 217 91% 60%;
+  --sidebar-border: 210 20% 25%;
+  --sidebar-ring: 174 100% 29%;
   
   --font-sans: 'Inter', sans-serif;
 }
@@ -112,7 +112,7 @@
   --popover: 222.2 84% 4.9%;
   --popover-foreground: 210 40% 98%;
 
-  --primary: 217 91% 60%;
+  --primary: 174 100% 35%;
   --primary-foreground: 222.2 47.4% 11.2%;
 
   --secondary: 217.2 32.6% 17.5%;
@@ -129,16 +129,16 @@
 
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
-  --ring: 212.7 26.8% 83.9%;
+  --ring: 174 100% 35%;
   
   --sidebar: 222.2 84% 4.9%;
   --sidebar-foreground: 210 40% 98%;
-  --sidebar-primary: 217 91% 60%;
+  --sidebar-primary: 174 100% 35%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 217 30% 20%;
+  --sidebar-accent: 217.3 32.6% 17.5%;
   --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-border: 217 30% 20%;
-  --sidebar-ring: 217 91% 60%;
+  --sidebar-border: 217.2 32.6% 17.5%;
+  --sidebar-ring: 174 100% 35%;
 }
 
 @layer base {

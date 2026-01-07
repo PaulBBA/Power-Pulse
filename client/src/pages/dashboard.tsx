@@ -107,18 +107,18 @@ export default function Dashboard() {
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                   />
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <Area type="monotone" dataKey="kwh" stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#colorKwh)" />
+                  <Area type="monotone" dataKey="kwh" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorKwh)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-3 shadow-sm">
+        <Card className="col-span-3 shadow-sm border-l-4 border-l-primary">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle className="text-primary font-bold">BBA Energy Insights</CardTitle>
             <CardDescription>
-              Latest system events and alerts.
+              Latest system events and energy alerts.
             </CardDescription>
           </CardHeader>
           <CardContent>

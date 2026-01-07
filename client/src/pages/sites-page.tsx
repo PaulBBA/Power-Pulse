@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, FileDown, Settings2, ArrowUpDown } from "lucide-react";
 import * as XLSX from 'xlsx';
+import { useState } from "react";
 
 const sites = [
   { code: "BBA0871-0007", name: "APS : Atwood Primary Academy", address: "Atwood Primary School", town: "Sanderstead, South Croydon", telephone: "020 8657 7374", email: "" },
@@ -17,12 +18,18 @@ const sites = [
 ];
 
 export default function SitesPage() {
+  const [search, setSearch] = useState("");
+
   const handleExport = () => {
     const worksheet = XLSX.utils.json_to_sheet(sites);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Sites");
     XLSX.writeFile(workbook, "BBA_Energy_Sites.xlsx");
   };
+
+  const filteredSites = sites.filter(site => 
+    site.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Layout>
@@ -41,7 +48,12 @@ export default function SitesPage() {
               <span className="text-sm font-medium">Search:</span>
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9 h-9" placeholder="Search sites..." />
+                <Input 
+                  className="pl-9 h-9" 
+                  placeholder="Search sites..." 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
             </div>
 
@@ -73,7 +85,7 @@ export default function SitesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sites.map((site, i) => (
+                {filteredSites.map((site, i) => (
                   <TableRow key={site.code} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
                     <TableCell className="text-xs font-mono text-muted-foreground">{site.code}</TableCell>
                     <TableCell className="text-sm">{site.name}</TableCell>

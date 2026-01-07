@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Search, FileDown, Settings2, ArrowUpDown } from "lucide-react";
 import * as XLSX from 'xlsx';
+import { useState } from "react";
 
 const meters = [
   { code: "BBA1096-0515", site: "SAT : Bedford (16)", mpan: "1012345711844", serial: "L73E004122", location: "COT'd JULY 2018 - no long SATCOL meter", supplier: "Haven", utility: "Electricity" },
@@ -23,12 +24,18 @@ const meters = [
 ];
 
 export default function MetersPage() {
+  const [search, setSearch] = useState("");
+
   const handleExport = () => {
     const worksheet = XLSX.utils.json_to_sheet(meters);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Meters");
     XLSX.writeFile(workbook, "BBA_Energy_Meters.xlsx");
   };
+
+  const filteredMeters = meters.filter(meter => 
+    meter.site.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Layout>
@@ -62,7 +69,12 @@ export default function MetersPage() {
               <span className="text-sm font-medium">Search:</span>
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9 h-9" placeholder="Search meters..." />
+                <Input 
+                  className="pl-9 h-9" 
+                  placeholder="Search meters..." 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
             </div>
 

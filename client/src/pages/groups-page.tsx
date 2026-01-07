@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, FileDown, ArrowUpDown } from "lucide-react";
 import * as XLSX from 'xlsx';
+import { useState } from "react";
 
 const groups = [
   { name: "{All Sites}" },
@@ -20,12 +21,18 @@ const groups = [
 ];
 
 export default function GroupsPage() {
+  const [search, setSearch] = useState("");
+
   const handleExport = () => {
     const worksheet = XLSX.utils.json_to_sheet(groups);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Groups");
     XLSX.writeFile(workbook, "BBA_Energy_Groups.xlsx");
   };
+
+  const filteredGroups = groups.filter(group => 
+    group.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Layout>
@@ -44,7 +51,12 @@ export default function GroupsPage() {
               <span className="text-sm font-medium">Search:</span>
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9 h-9" placeholder="Search groups..." />
+                <Input 
+                  className="pl-9 h-9" 
+                  placeholder="Search groups..." 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
             </div>
 
@@ -68,7 +80,7 @@ export default function GroupsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {groups.map((group, i) => (
+                {filteredGroups.map((group, i) => (
                   <TableRow key={group.name} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
                     <TableCell className="text-sm py-3">{group.name}</TableCell>
                   </TableRow>

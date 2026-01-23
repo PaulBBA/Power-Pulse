@@ -76,7 +76,22 @@ export default function MetersPage() {
       form.reset();
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      let message = error.message;
+      if (typeof error.json === 'function') {
+        error.json().then((data: any) => {
+          toast({ 
+            title: "Error", 
+            description: data.message || "Failed to create meter", 
+            variant: "destructive" 
+          });
+        });
+      } else {
+        toast({ 
+          title: "Error", 
+          description: message || "Failed to create meter", 
+          variant: "destructive" 
+        });
+      }
     },
   });
 

@@ -92,7 +92,7 @@ export class DatabaseStorage implements IStorage {
         const queryResult = await db.select().from(dataSets).where(
           eq(dataSets.mpanCoreMprn, dataSet.mpanCoreMprn)
         );
-        if (queryResult && queryResult.length > 0) {
+        if (queryResult && Array.isArray(queryResult) && queryResult.length > 0) {
           throw new Error(`A meter with MPAN Core/MPRN ${dataSet.mpanCoreMprn} already exists.`);
         }
       }
@@ -106,14 +106,26 @@ export class DatabaseStorage implements IStorage {
 
       const results = await db.insert(dataSets).values(dataSet).returning();
       
-      if (!results || results.length === 0) {
+      if (!results || !Array.isArray(results) || results.length === 0) {
+        // Fallback: The insert might have worked but returning() failed
+        // This is a common issue with Neon HTTP driver
+        if (dataSet.mpanCoreMprn) {
+          const fallback = await db.select().from(dataSets).where(
+            eq(dataSets.mpanCoreMprn, dataSet.mpanCoreMprn)
+          );
+          if (fallback && Array.isArray(fallback) && fallback.length > 0) {
+            return fallback[0];
+          }
+        }
         throw new Error("Failed to insert data set: No result returned from database");
       }
       return results[0];
     } catch (error: any) {
       console.error("Database error in createDataSet:", error);
-      if (error.message && error.message.includes("reading 'map'")) {
-        throw new Error("Database error: The operation failed. Please check the site and meter details and try again.");
+      // If it's the specific map error, it's a driver issue. We try to provide a better message
+      // or even a retry logic if needed, but for now we'll just throw a more descriptive error.
+      if (error instanceof TypeError && error.message.includes("reading 'map'")) {
+         throw new Error("Database communication error. The record might have been created; please refresh the page.");
       }
       throw error;
     }

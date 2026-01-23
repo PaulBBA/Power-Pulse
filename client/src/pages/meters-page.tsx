@@ -171,6 +171,17 @@ export default function MetersPage() {
                           />
                           <FormField
                             control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Meter Name</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
                             name="supplier"
                             render={({ field }) => (
                               <FormItem>

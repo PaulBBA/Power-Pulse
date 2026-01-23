@@ -19,8 +19,9 @@ export async function registerRoutes(
   app.post("/api/sites", async (req, res) => {
     try {
       const site = await storage.createSite(req.body);
-      res.json(site);
+      res.status(200).json(site);
     } catch (error: any) {
+      console.error("Error creating site:", error);
       res.status(400).json({ message: error.message });
     }
   });

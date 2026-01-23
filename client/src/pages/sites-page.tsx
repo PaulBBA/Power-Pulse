@@ -50,10 +50,11 @@ export default function SitesPage() {
         floorArea: values.floorArea ? parseFloat(values.floorArea) : null,
       };
       const res = await apiRequest("POST", "/api/sites", formattedValues);
+      // Wait for json parsing to verify it's valid, but apiRequest already handles throwing on non-ok
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
       toast({ title: "Success", description: "Site created successfully" });
       setIsDialogOpen(false);
       form.reset();

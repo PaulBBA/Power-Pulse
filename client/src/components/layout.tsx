@@ -29,18 +29,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import logo from "@assets/generated_images/modern_abstract_teal_infinity_link_logo.png";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 export function Layout({ children }: LayoutProps) {
-  // location and setLocation might be null if not used within a Router context
-  // but Layout is used in Dashboard, ImportPage etc which ARE in the Router
-  // The issue is likely that AuthPage might have been wrapped in Layout accidentally
-  // or some other component is using Layout outside of the Router.
   const [location, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { user, logoutMutation } = useAuth();
 
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -50,8 +48,15 @@ export function Layout({ children }: LayoutProps) {
     { icon: BarChart3, label: "Analysis", href: "/analysis" },
     { icon: FileText, label: "Reports", href: "/reports" },
     { icon: Upload, label: "Import Data", href: "/import" },
-    { icon: Settings, label: "Admin", href: "/admin" },
   ];
+
+  if (user?.role === "admin") {
+    navItems.push({ icon: Settings, label: "Admin", href: "/admin" });
+  }
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   return (
     <div className="min-h-screen bg-background flex text-foreground">
@@ -153,9 +158,9 @@ export function Layout({ children }: LayoutProps) {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">John Doe</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      john.doe@example.com
+                    <p className="text-sm font-medium leading-none">{user?.username}</p>
+                    <p className="text-xs leading-none text-muted-foreground uppercase">
+                      {user?.role}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -169,7 +174,7 @@ export function Layout({ children }: LayoutProps) {
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setLocation("/")} className="text-destructive focus:text-destructive">
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>

@@ -30,8 +30,8 @@ export default function MetersPage() {
     queryKey: ["/api/data-sets"],
   });
 
-  const { data: sites } = useQuery<Site[]>({
-    queryKey: ["/api/sites"],
+  const { data: utilities } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/utilities"],
   });
 
   const form = useForm({
@@ -39,7 +39,7 @@ export default function MetersPage() {
     defaultValues: {
       siteId: undefined as any,
       name: "",
-      utilityTypeId: 1, 
+      utilityTypeId: undefined as any, 
       referenceNumber: "",
       supplier: "",
       frequency: "",
@@ -149,11 +149,22 @@ export default function MetersPage() {
                           />
                           <FormField
                             control={form.control}
-                            name="name"
+                            name="utilityTypeId"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Meter Name</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
+                                <FormLabel>Utility Type</FormLabel>
+                                <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select utility" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {utilities?.map(u => (
+                                      <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <FormMessage />
                               </FormItem>
                             )}

@@ -2,13 +2,22 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { db } from "./db.js";
-import { users, sites, dataSets } from "@shared/schema.js";
+import { users, sites, dataSets, utilities } from "@shared/schema.js";
 import { eq } from "drizzle-orm";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.get("/api/utilities", async (_req, res) => {
+    try {
+      const allUtilities = await db.select().from(utilities);
+      res.json(allUtilities);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/groups", async (_req, res) => {
     const groups = await storage.getGroups();
     res.json(groups);

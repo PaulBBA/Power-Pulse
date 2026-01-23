@@ -42,9 +42,13 @@ export async function registerRoutes(
   app.post("/api/admin/users", async (req, res) => {
     try {
       const newUser = await storage.createUser(req.body);
+      if (!newUser) {
+        return res.status(400).json({ message: "Failed to create user" });
+      }
       const { password, ...safeUser } = newUser;
       res.status(201).json(safeUser);
     } catch (error: any) {
+      console.error("Error creating user:", error);
       res.status(400).json({ message: error.message });
     }
   });

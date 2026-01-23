@@ -3,17 +3,63 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, FileDown, Settings2, ArrowUpDown, Loader2 } from "lucide-react";
+import { Search, FileDown, Settings2, ArrowUpDown, Loader2, Plus } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Site } from "@shared/schema";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Site, insertSiteSchema } from "@shared/schema";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl,FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SitesPage() {
   const [search, setSearch] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: sites, isLoading } = useQuery<Site[]>({
     queryKey: ["/api/sites"],
+  });
+
+  const form = useForm({
+    resolver: zodResolver(insertSiteSchema),
+    defaultValues: {
+      name: "",
+      code: "",
+      address: "",
+      address2: "",
+      town: "",
+      county: "",
+      postcode: "",
+      telephone: "",
+      floorArea: "",
+      degreeDayArea: "",
+      comments: "",
+    },
+  });
+
+  const createSiteMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await apiRequest("POST", "/api/sites", values);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
+      toast({ title: "Success", description: "Site created successfully" });
+      setIsDialogOpen(false);
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to create site",
+        variant: "destructive"
+      });
+    },
   });
 
   const handleExport = () => {
@@ -25,7 +71,8 @@ export default function SitesPage() {
   };
 
   const filteredSites = sites?.filter(site => 
-    site.name.toLowerCase().includes(search.toLowerCase())
+    site.name.toLowerCase().includes(search.toLowerCase()) ||
+    site.code.toLowerCase().includes(search.toLowerCase())
   ) || [];
 
   return (
@@ -55,6 +102,150 @@ export default function SitesPage() {
             </div>
 
             <div className="ml-auto flex gap-2">
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-9 bg-primary text-white">
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Site
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Add New Site</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit((data) => createSiteMutation.mutate(data))} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="code"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Site Code</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Site Name</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="address"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Address 1</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="address2"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Address 2</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="town"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Town</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="county"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>County</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="postcode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Post Code</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="telephone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Telephone</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="floorArea"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Floor Area</FormLabel>
+                              <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="degreeDayArea"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Degree Day Area</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="comments"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Comments</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full" disabled={createSiteMutation.isPending}>
+                        {createSiteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Site
+                      </Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
               <Button 
                 size="sm" 
                 className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"

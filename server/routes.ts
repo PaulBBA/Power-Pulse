@@ -16,6 +16,15 @@ export async function registerRoutes(
     res.json(sites);
   });
 
+  app.post("/api/sites", async (req, res) => {
+    try {
+      const site = await storage.createSite(req.body);
+      res.json(site);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.get("/api/data-sets", async (_req, res) => {
     const dataSets = await storage.getDataSets();
     res.json(dataSets);

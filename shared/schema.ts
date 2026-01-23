@@ -30,6 +30,7 @@ export const sites = pgTable("sites", {
   name: text("name").notNull().unique(),
   code: text("code").notNull().unique(), // UPRN
   address: text("address"),
+  address2: text("address2"),
   town: text("town"),
   county: text("county"),
   postcode: text("postcode"),
@@ -40,6 +41,8 @@ export const sites = pgTable("sites", {
   statusId: integer("status_id").references(() => siteStatus.id),
   photoUrl: text("photo_url"),
   comments: text("comments"),
+  floorArea: decimal("floor_area", { precision: 12, scale: 2 }),
+  degreeDayArea: text("degree_day_area"),
   lastUpdate: timestamp("last_update").defaultNow(),
 });
 

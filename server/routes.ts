@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { db } from "./db.js";
-import { users } from "@shared/schema";
+import { users } from "@shared/schema.js";
 
 export async function registerRoutes(
   httpServer: Server,

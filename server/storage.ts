@@ -4,7 +4,7 @@ import {
   groups, type Group,
   dataSets, type DataSet,
   dataInvoices, type Invoice
-} from "@shared/schema";
+} from "@shared/schema.js";
 import { db } from "./db.js";
 import { eq } from "drizzle-orm";
 
@@ -44,16 +44,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    try {
-      const results = await db.insert(users).values(insertUser).returning();
-      if (!results || results.length === 0) {
-        throw new Error("No record returned after insertion (results is empty)");
-      }
-      return results[0];
-    } catch (error: any) {
-      console.error("Database insert error:", error);
-      throw error;
+    const [user] = await db.insert(users).values(insertUser).returning();
+    if (!user) {
+      throw new Error("Failed to insert user into database");
     }
+    return user;
   }
 
   async getGroups(): Promise<Group[]> {

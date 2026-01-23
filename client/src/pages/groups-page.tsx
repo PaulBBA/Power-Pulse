@@ -3,36 +3,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, FileDown, ArrowUpDown } from "lucide-react";
+import { Search, FileDown, ArrowUpDown, Loader2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useState } from "react";
-
-const groups = [
-  { name: "{All Sites}" },
-  { name: "{Hidden Sites}" },
-  { name: "_ArchiveKFS" },
-  { name: "_ArchiveMPX" },
-  { name: "_ArchiveSAT" },
-  { name: "1st Potton Scouts Hall Group" },
-  { name: "Aiden Jones Ltd" },
-  { name: "Amble Electrical" },
-  { name: "Archer Academy" },
-  { name: "ASK Electronics Ltd" },
-];
+import { useQuery } from "@tanstack/react-query";
+import { Group } from "@shared/schema";
 
 export default function GroupsPage() {
   const [search, setSearch] = useState("");
 
+  const { data: groups, isLoading } = useQuery<Group[]>({
+    queryKey: ["/api/groups"],
+  });
+
   const handleExport = () => {
+    if (!groups) return;
     const worksheet = XLSX.utils.json_to_sheet(groups);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Groups");
     XLSX.writeFile(workbook, "BBA_Energy_Groups.xlsx");
   };
 
-  const filteredGroups = groups.filter(group => 
+  const filteredGroups = groups?.filter(group => 
     group.name.toLowerCase().includes(search.toLowerCase())
-  );
+  ) || [];
 
   return (
     <Layout>
@@ -65,6 +59,7 @@ export default function GroupsPage() {
                 size="sm" 
                 className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
                 onClick={handleExport}
+                disabled={!groups || groups.length === 0}
               >
                 <FileDown className="mr-2 h-4 w-4" />
                 Excel
@@ -72,21 +67,33 @@ export default function GroupsPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-secondary/50">
-                <TableRow>
-                  <TableHead className="font-bold">Name <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredGroups.map((group, i) => (
-                  <TableRow key={group.name} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
-                    <TableCell className="text-sm py-3">{group.name}</TableCell>
+          <div className="overflow-x-auto min-h-[200px] flex flex-col">
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-secondary/50">
+                  <TableRow>
+                    <TableHead className="font-bold">Name <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredGroups.length > 0 ? (
+                    filteredGroups.map((group, i) => (
+                      <TableRow key={group.id} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
+                        <TableCell className="text-sm py-3">{group.name}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell className="text-center py-8 text-muted-foreground">No groups found</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </CardContent>
       </Card>

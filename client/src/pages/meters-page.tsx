@@ -3,39 +3,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, FileDown, Settings2, ArrowUpDown } from "lucide-react";
+import { Search, FileDown, Settings2, ArrowUpDown, Loader2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useState } from "react";
-
-const meters = [
-  { code: "BBA1096-0515", site: "SAT : Bedford (16)", mpan: "1012345711844", serial: "L73E004122", location: "COT'd JULY 2018 - no long SATCOL meter", supplier: "Haven", utility: "Electricity" },
-  { code: "BBA1096-1112", site: "SAT : Brownhills (797)", mpan: "1417941440008", serial: "S72G06102", location: "REMOVED", supplier: "", utility: "Electricity" },
-  { code: "BBA1096-0434", site: "SAT : Parkstone (418) SITE CLOSED NOV 2014", mpan: "2000021408121", serial: "L67C09861", location: "", supplier: "SSE", utility: "Electricity" },
-  { code: "BBA1096-0738", site: "SAT : Tunbridge Wells (691) SITE CLOSED JUNE 2015", mpan: "1900032278239", serial: "P9910485", location: "", supplier: "SSE", utility: "Electricity" },
-  { code: "BBA1596-0008", site: "MPX : Chelsea Barracks Phase 4", mpan: "2700006186284", serial: "E21BG02069", location: "EXPORT Energy Centre 2 Services - COT 08/12/21", supplier: "Ecotricity", utility: "Electricity" },
-  { code: "BBA1589-0001", site: "SPC : St Mary Church", mpan: "1012357707721", serial: "D12C12152", location: "The Church", supplier: "Npower", utility: "Electricity" },
-];
+import { useQuery } from "@tanstack/react-query";
+import { Meter } from "@shared/schema";
 
 export default function MetersPage() {
   const [search, setSearch] = useState("");
 
+  const { data: meters, isLoading } = useQuery<Meter[]>({
+    queryKey: ["/api/meters"],
+  });
+
   const handleExport = () => {
+    if (!meters) return;
     const worksheet = XLSX.utils.json_to_sheet(meters);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Meters");
     XLSX.writeFile(workbook, "BBA_Energy_Meters.xlsx");
   };
 
-  const filteredMeters = meters.filter(meter => 
-    meter.site.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredMeters = meters?.filter(meter => 
+    meter.code.toLowerCase().includes(search.toLowerCase()) ||
+    (meter.mpan && meter.mpan.toLowerCase().includes(search.toLowerCase())) ||
+    (meter.serial && meter.serial.toLowerCase().includes(search.toLowerCase()))
+  ) || [];
 
   return (
     <Layout>
@@ -83,6 +83,7 @@ export default function MetersPage() {
                 size="sm" 
                 className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
                 onClick={handleExport}
+                disabled={!meters || meters.length === 0}
               >
                 <FileDown className="mr-2 h-4 w-4" />
                 Excel
@@ -93,35 +94,43 @@ export default function MetersPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-secondary/50">
-                <TableRow>
-                  <TableHead className="font-bold">Code <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                  <TableHead className="font-bold">Site Name <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                  <TableHead className="font-bold">MPAN / MPRN <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                  <TableHead className="font-bold">Meter Serial Number <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                  <TableHead className="font-bold">Location <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                  <TableHead className="font-bold">Supplier <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                  <TableHead className="font-bold">Utility <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {meters.map((meter, i) => (
-                  <TableRow key={meter.code} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
-                    <TableCell className="text-xs font-mono text-muted-foreground">{meter.code}</TableCell>
-                    <TableCell className="text-sm">{meter.site}</TableCell>
-                    <TableCell className="text-xs font-mono">{meter.mpan}</TableCell>
-                    <TableCell className="text-xs font-mono">{meter.serial}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={meter.location}>
-                      {meter.location}
-                    </TableCell>
-                    <TableCell className="text-sm">{meter.supplier}</TableCell>
-                    <TableCell className="text-sm">{meter.utility}</TableCell>
+          <div className="overflow-x-auto min-h-[200px] flex flex-col">
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-secondary/50">
+                  <TableRow>
+                    <TableHead className="font-bold">Code <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">MPAN/MPRN <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">Serial <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">Location <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">Supplier <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">Utility <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredMeters.length > 0 ? (
+                    filteredMeters.map((meter, i) => (
+                      <TableRow key={meter.id} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{meter.code}</TableCell>
+                        <TableCell className="text-sm">{meter.mpan}</TableCell>
+                        <TableCell className="text-sm">{meter.serial}</TableCell>
+                        <TableCell className="text-sm">{meter.location}</TableCell>
+                        <TableCell className="text-sm">{meter.supplier}</TableCell>
+                        <TableCell className="text-sm">{meter.utility}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No meters found</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </CardContent>
       </Card>

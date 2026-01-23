@@ -88,19 +88,22 @@ export class DatabaseStorage implements IStorage {
 
   async createDataSet(dataSet: any): Promise<DataSet> {
     try {
-      const [existingByMpan] = await db.select().from(dataSets).where(
+      const existingByMpan = await db.select().from(dataSets).where(
         eq(dataSets.mpanCoreMprn, dataSet.mpanCoreMprn)
       );
-      if (existingByMpan) {
+      if (existingByMpan.length > 0) {
         throw new Error(`A meter with MPAN Core/MPRN ${dataSet.mpanCoreMprn} already exists.`);
       }
 
-      const [newDataSet] = await db.insert(dataSets).values(dataSet).returning();
+      const newDataSetResults = await db.insert(dataSets).values(dataSet).returning();
+      const newDataSet = newDataSetResults[0];
+      
       if (!newDataSet) {
         // Fallback: check if it was inserted but not returned
-        const [existing] = await db.select().from(dataSets).where(
+        const existingResults = await db.select().from(dataSets).where(
           eq(dataSets.referenceNumber, dataSet.referenceNumber)
         );
+        const existing = existingResults[0];
         if (existing) return existing;
         throw new Error("Failed to insert data set");
       }

@@ -5,7 +5,7 @@ import {
   dataSets, type DataSet,
   dataInvoices, type Invoice
 } from "@shared/schema.js";
-import { db } from "./db.js";
+import { db, sql } from "./db.js";
 import { eq } from "drizzle-orm";
 
 export interface IStorage {
@@ -89,10 +89,9 @@ export class DatabaseStorage implements IStorage {
   async createDataSet(dataSet: any): Promise<DataSet> {
     try {
       if (dataSet.mpanCoreMprn) {
-        const queryResult = await db.select().from(dataSets).where(
-          eq(dataSets.mpanCoreMprn, dataSet.mpanCoreMprn)
-        );
-        if (queryResult && Array.isArray(queryResult) && queryResult.length > 0) {
+        // Use raw neon sql for checks if drizzle is failing with map error
+        const existingCheck = await sql`SELECT * FROM data_sets WHERE mpan_core_mprn = ${dataSet.mpanCoreMprn}`;
+        if (existingCheck && existingCheck.length > 0) {
           throw new Error(`A meter with MPAN Core/MPRN ${dataSet.mpanCoreMprn} already exists.`);
         }
       }
@@ -104,29 +103,29 @@ export class DatabaseStorage implements IStorage {
         throw new Error("Utility type is required");
       }
 
-      const results = await db.insert(dataSets).values(dataSet).returning();
-      
-      if (!results || !Array.isArray(results) || results.length === 0) {
-        // Fallback: The insert might have worked but returning() failed
-        // This is a common issue with Neon HTTP driver
-        if (dataSet.mpanCoreMprn) {
-          const fallback = await db.select().from(dataSets).where(
-            eq(dataSets.mpanCoreMprn, dataSet.mpanCoreMprn)
-          );
-          if (fallback && Array.isArray(fallback) && fallback.length > 0) {
-            return fallback[0];
-          }
-        }
+      // Use raw SQL for insert to bypass drizzle map error if it occurs there
+      const result = await sql`
+        INSERT INTO data_sets (
+          site_id, name, utility_type_id, reference_number, supplier, frequency, 
+          meter_serial_1, mpan_profile, location, mpan_core_mprn, 
+          import_link_direct, import_link_invoice, import_link_profile
+        ) VALUES (
+          ${dataSet.siteId}, ${dataSet.name || ""}, ${dataSet.utilityTypeId}, 
+          ${dataSet.referenceNumber || ""}, ${dataSet.supplier || ""}, ${dataSet.frequency || ""}, 
+          ${dataSet.meterSerial1 || ""}, ${dataSet.mpanProfile || ""}, ${dataSet.location || ""}, 
+          ${dataSet.mpanCoreMprn || null}, ${dataSet.importLinkDirect || ""}, 
+          ${dataSet.importLinkInvoice || ""}, ${dataSet.importLinkProfile || ""}
+        ) RETURNING *
+      `;
+
+      if (!result || result.length === 0) {
         throw new Error("Failed to insert data set: No result returned from database");
       }
-      return results[0];
+      
+      // Cast raw result back to DataSet type
+      return result[0] as unknown as DataSet;
     } catch (error: any) {
       console.error("Database error in createDataSet:", error);
-      // If it's the specific map error, it's a driver issue. We try to provide a better message
-      // or even a retry logic if needed, but for now we'll just throw a more descriptive error.
-      if (error instanceof TypeError && error.message.includes("reading 'map'")) {
-         throw new Error("Database communication error. The record might have been created; please refresh the page.");
-      }
       throw error;
     }
   }

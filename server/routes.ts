@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
+import { db } from "./db.js";
+import { users } from "@shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -22,6 +24,27 @@ export async function registerRoutes(
       res.status(200).json(site);
     } catch (error: any) {
       console.error("Error creating site:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/admin/users", async (_req, res) => {
+    try {
+      const allUsers = await db.select().from(users);
+      // Don't send passwords
+      const safeUsers = allUsers.map(({ password, ...user }) => user);
+      res.json(safeUsers);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/admin/users", async (req, res) => {
+    try {
+      const newUser = await storage.createUser(req.body);
+      const { password, ...safeUser } = newUser;
+      res.status(201).json(safeUser);
+    } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   });

@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon, neonConfig } from "@neondatabase/serverless";
-import * as schema from "@shared/schema";
+import * as schema from "@shared/schema.js";
 
 neonConfig.fetchConnectionCache = true;
 

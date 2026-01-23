@@ -16,14 +16,14 @@ export async function registerRoutes(
     res.json(sites);
   });
 
-  app.get("/api/meters", async (_req, res) => {
-    const meters = await storage.getMeters();
-    res.json(meters);
+  app.get("/api/data-sets", async (_req, res) => {
+    const dataSets = await storage.getDataSets();
+    res.json(dataSets);
   });
 
-  app.get("/api/meters/:id/readings", async (req, res) => {
-    const readings = await storage.getReadings(parseInt(req.params.id));
-    res.json(readings);
+  app.get("/api/data-sets/:id/invoices", async (req, res) => {
+    const invoices = await storage.getInvoices(parseInt(req.params.id));
+    res.json(invoices);
   });
 
   return httpServer;

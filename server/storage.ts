@@ -1,4 +1,10 @@
-import { users, type User, type InsertUser, groups, type Group, type InsertGroup, sites, type Site, type InsertSite, meters, type Meter, type InsertMeter, readings, type Reading, type InsertReading } from "@shared/schema";
+import { 
+  users, type User, type InsertUser,
+  sites, type Site, 
+  groups, type Group,
+  dataSets, type DataSet,
+  dataInvoices, type Invoice
+} from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -10,21 +16,20 @@ export interface IStorage {
 
   // Groups
   getGroups(): Promise<Group[]>;
-  createGroup(group: InsertGroup): Promise<Group>;
+  createGroup(group: { name: string }): Promise<Group>;
 
   // Sites
   getSites(): Promise<Site[]>;
-  getSitesByGroup(groupId: number): Promise<Site[]>;
-  createSite(site: InsertSite): Promise<Site>;
+  getSite(id: number): Promise<Site | undefined>;
+  createSite(site: any): Promise<Site>;
 
-  // Meters
-  getMeters(): Promise<Meter[]>;
-  getMetersBySite(siteId: number): Promise<Meter[]>;
-  createMeter(meter: InsertMeter): Promise<Meter>;
+  // Data Sets (Meters)
+  getDataSets(): Promise<DataSet[]>;
+  getDataSetsBySite(siteId: number): Promise<DataSet[]>;
+  createDataSet(dataSet: any): Promise<DataSet>;
 
-  // Readings
-  getReadings(meterId: number): Promise<Reading[]>;
-  createReading(reading: InsertReading): Promise<Reading>;
+  // Invoices (Readings)
+  getInvoices(dataSetId: number): Promise<Invoice[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -38,7 +43,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(insertUser: any): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
@@ -47,44 +52,40 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(groups);
   }
 
-  async createGroup(insertGroup: InsertGroup): Promise<Group> {
-    const [group] = await db.insert(groups).values(insertGroup).returning();
-    return group;
+  async createGroup(group: { name: string }): Promise<Group> {
+    const [newGroup] = await db.insert(groups).values(group).returning();
+    return newGroup;
   }
 
   async getSites(): Promise<Site[]> {
     return await db.select().from(sites);
   }
 
-  async getSitesByGroup(groupId: number): Promise<Site[]> {
-    return await db.select().from(sites).where(eq(sites.groupId, groupId));
-  }
-
-  async createSite(insertSite: InsertSite): Promise<Site> {
-    const [site] = await db.insert(sites).values(insertSite).returning();
+  async getSite(id: number): Promise<Site | undefined> {
+    const [site] = await db.select().from(sites).where(eq(sites.id, id));
     return site;
   }
 
-  async getMeters(): Promise<Meter[]> {
-    return await db.select().from(meters);
+  async createSite(site: any): Promise<Site> {
+    const [newSite] = await db.insert(sites).values(site).returning();
+    return newSite;
   }
 
-  async getMetersBySite(siteId: number): Promise<Meter[]> {
-    return await db.select().from(meters).where(eq(meters.siteId, siteId));
+  async getDataSets(): Promise<DataSet[]> {
+    return await db.select().from(dataSets);
   }
 
-  async createMeter(insertMeter: InsertMeter): Promise<Meter> {
-    const [meter] = await db.insert(meters).values(insertMeter).returning();
-    return meter;
+  async getDataSetsBySite(siteId: number): Promise<DataSet[]> {
+    return await db.select().from(dataSets).where(eq(dataSets.siteId, siteId));
   }
 
-  async getReadings(meterId: number): Promise<Reading[]> {
-    return await db.select().from(readings).where(eq(readings.meterId, meterId));
+  async createDataSet(dataSet: any): Promise<DataSet> {
+    const [newDataSet] = await db.insert(dataSets).values(dataSet).returning();
+    return newDataSet;
   }
 
-  async createReading(insertReading: InsertReading): Promise<Reading> {
-    const [reading] = await db.insert(readings).values(insertReading).returning();
-    return reading;
+  async getInvoices(dataSetId: number): Promise<Invoice[]> {
+    return await db.select().from(dataInvoices).where(eq(dataInvoices.dataSetId, dataSetId));
   }
 }
 

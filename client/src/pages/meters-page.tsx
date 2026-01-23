@@ -14,39 +14,38 @@ import { Search, FileDown, Settings2, ArrowUpDown, Loader2 } from "lucide-react"
 import * as XLSX from 'xlsx';
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Meter } from "@shared/schema";
+import { DataSet } from "@shared/schema";
 
 export default function MetersPage() {
   const [search, setSearch] = useState("");
 
-  const { data: meters, isLoading } = useQuery<Meter[]>({
-    queryKey: ["/api/meters"],
+  const { data: dataSets, isLoading } = useQuery<DataSet[]>({
+    queryKey: ["/api/data-sets"],
   });
 
   const handleExport = () => {
-    if (!meters) return;
-    const worksheet = XLSX.utils.json_to_sheet(meters);
+    if (!dataSets) return;
+    const worksheet = XLSX.utils.json_to_sheet(dataSets);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Meters");
-    XLSX.writeFile(workbook, "BBA_Energy_Meters.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "DataSets");
+    XLSX.writeFile(workbook, "BBA_Energy_DataSets.xlsx");
   };
 
-  const filteredMeters = meters?.filter(meter => 
-    meter.code.toLowerCase().includes(search.toLowerCase()) ||
-    (meter.mpan && meter.mpan.toLowerCase().includes(search.toLowerCase())) ||
-    (meter.serial && meter.serial.toLowerCase().includes(search.toLowerCase()))
+  const filteredDataSets = dataSets?.filter(ds => 
+    ds.name.toLowerCase().includes(search.toLowerCase()) ||
+    (ds.referenceNumber && ds.referenceNumber.toLowerCase().includes(search.toLowerCase()))
   ) || [];
 
   return (
     <Layout>
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Meters</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Data Sets (Meters)</h1>
         <p className="text-muted-foreground">Manage and view your energy meter infrastructure.</p>
       </div>
 
       <Card className="border-none shadow-lg overflow-hidden">
         <CardHeader className="bg-sidebar text-sidebar-foreground py-3">
-          <CardTitle className="text-lg font-bold uppercase tracking-wider">Meter List</CardTitle>
+          <CardTitle className="text-lg font-bold uppercase tracking-wider">Data Set List</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="p-4 bg-card border-b flex flex-wrap items-center gap-6">
@@ -71,7 +70,7 @@ export default function MetersPage() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   className="pl-9 h-9" 
-                  placeholder="Search meters..." 
+                  placeholder="Search reference or name..." 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -83,7 +82,7 @@ export default function MetersPage() {
                 size="sm" 
                 className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
                 onClick={handleExport}
-                disabled={!meters || meters.length === 0}
+                disabled={!dataSets || dataSets.length === 0}
               >
                 <FileDown className="mr-2 h-4 w-4" />
                 Excel
@@ -103,29 +102,29 @@ export default function MetersPage() {
               <Table>
                 <TableHeader className="bg-secondary/50">
                   <TableRow>
-                    <TableHead className="font-bold">Code <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">MPAN/MPRN <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">Serial <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">ID <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">Name <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">Reference <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
                     <TableHead className="font-bold">Location <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">Supplier <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">Utility <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">Tariff <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">Status <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredMeters.length > 0 ? (
-                    filteredMeters.map((meter, i) => (
-                      <TableRow key={meter.id} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{meter.code}</TableCell>
-                        <TableCell className="text-sm">{meter.mpan}</TableCell>
-                        <TableCell className="text-sm">{meter.serial}</TableCell>
-                        <TableCell className="text-sm">{meter.location}</TableCell>
-                        <TableCell className="text-sm">{meter.supplier}</TableCell>
-                        <TableCell className="text-sm">{meter.utility}</TableCell>
+                  {filteredDataSets.length > 0 ? (
+                    filteredDataSets.map((ds, i) => (
+                      <TableRow key={ds.id} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{ds.id}</TableCell>
+                        <TableCell className="text-sm">{ds.name}</TableCell>
+                        <TableCell className="text-sm">{ds.referenceNumber}</TableCell>
+                        <TableCell className="text-sm">{ds.location}</TableCell>
+                        <TableCell className="text-sm">{ds.tariffName}</TableCell>
+                        <TableCell className="text-sm">{ds.isActive ? "Active" : "Inactive"}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No meters found</TableCell>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No data sets found</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

@@ -50,8 +50,14 @@ export default function SitesPage() {
         floorArea: values.floorArea ? parseFloat(values.floorArea) : null,
       };
       const res = await apiRequest("POST", "/api/sites", formattedValues);
-      // Wait for json parsing to verify it's valid, but apiRequest already handles throwing on non-ok
-      return res.json();
+      
+      // If we got here, apiRequest already checked res.ok
+      // Let's check if there is content before calling .json()
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return res.json();
+      }
+      return null;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/sites"] });

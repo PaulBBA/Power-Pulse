@@ -5,7 +5,7 @@ import {
   dataSets, type DataSet,
   dataInvoices, type Invoice
 } from "@shared/schema";
-import { db } from "./db";
+import { db } from "./db.js";
 import { eq } from "drizzle-orm";
 
 export interface IStorage {

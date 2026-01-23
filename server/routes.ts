@@ -41,7 +41,6 @@ export async function registerRoutes(
 
   app.post("/api/admin/users", async (req, res) => {
     try {
-      console.log("Creating user with data:", { ...req.body, password: "[REDACTED]" });
       const newUser = await storage.createUser(req.body);
       const { password, ...safeUser } = newUser;
       res.status(201).json(safeUser);

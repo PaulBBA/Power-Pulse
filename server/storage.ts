@@ -44,13 +44,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const results = await db.insert(users).values(insertUser).returning();
-    console.log("Database insert results:", results);
-    const user = results[0];
-    if (!user) {
-      throw new Error("Failed to insert user into database: no record returned");
+    try {
+      const [user] = await db.insert(users).values(insertUser).returning();
+      if (!user) {
+        throw new Error("No record returned after insertion");
+      }
+      return user;
+    } catch (error: any) {
+      console.error("Database insert error:", error);
+      throw error;
     }
-    return user;
   }
 
   async getGroups(): Promise<Group[]> {

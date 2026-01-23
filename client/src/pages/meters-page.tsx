@@ -30,6 +30,10 @@ export default function MetersPage() {
     queryKey: ["/api/data-sets"],
   });
 
+  const { data: sites } = useQuery<Site[]>({
+    queryKey: ["/api/sites"],
+  });
+
   const { data: utilities } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/utilities"],
   });

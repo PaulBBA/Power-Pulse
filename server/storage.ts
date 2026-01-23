@@ -45,11 +45,11 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
-      const [user] = await db.insert(users).values(insertUser).returning();
-      if (!user) {
-        throw new Error("No record returned after insertion");
+      const results = await db.insert(users).values(insertUser).returning();
+      if (!results || results.length === 0) {
+        throw new Error("No record returned after insertion (results is empty)");
       }
-      return user;
+      return results[0];
     } catch (error: any) {
       console.error("Database insert error:", error);
       throw error;

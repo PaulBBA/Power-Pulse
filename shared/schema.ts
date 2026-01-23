@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, decimal, boolean, real, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, decimal, boolean, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -117,4 +117,5 @@ export type Site = typeof sites.$inferSelect;
 export type DataSet = typeof dataSets.$inferSelect;
 export type Invoice = typeof dataInvoices.$inferSelect;
 export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Group = typeof groups.$inferSelect;

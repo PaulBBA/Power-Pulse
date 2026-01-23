@@ -51,13 +51,16 @@ export default function SitesPage() {
       };
       const res = await apiRequest("POST", "/api/sites", formattedValues);
       
-      // If we got here, apiRequest already checked res.ok
-      // Let's check if there is content before calling .json()
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        return res.json();
+      // Try to parse as text first to avoid 'Unexpected end of JSON input'
+      const text = await res.text();
+      if (!text) return null;
+      
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse JSON response:", text);
+        return null;
       }
-      return null;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/sites"] });

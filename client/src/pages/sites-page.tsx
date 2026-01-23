@@ -44,7 +44,12 @@ export default function SitesPage() {
 
   const createSiteMutation = useMutation({
     mutationFn: async (values: any) => {
-      const res = await apiRequest("POST", "/api/sites", values);
+      // Ensure numeric fields are correctly typed
+      const formattedValues = {
+        ...values,
+        floorArea: values.floorArea ? parseFloat(values.floorArea) : null,
+      };
+      const res = await apiRequest("POST", "/api/sites", formattedValues);
       return res.json();
     },
     onSuccess: () => {

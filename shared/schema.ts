@@ -68,7 +68,7 @@ export const dataSets = pgTable("data_sets", {
   meterSerial1: text("meter_serial_1"),
   mpanProfile: text("mpan_profile"),
   location: text("location"),
-  mpanCoreMprn: text("mpan_core_mprn"),
+  mpanCoreMprn: text("mpan_core_mprn").unique(),
   importLinkDirect: text("import_link_direct"),
   importLinkInvoice: text("import_link_invoice"),
   importLinkProfile: text("import_link_profile"),

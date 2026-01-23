@@ -78,8 +78,11 @@ export async function registerRoutes(
         importLinkInvoice: dataSets.importLinkInvoice,
         importLinkProfile: dataSets.importLinkProfile,
       }).from(dataSets).leftJoin(sites, eq(dataSets.siteId, sites.id));
-      res.json(allDataSets);
+      
+      // Filter out any results that might be problematic or ensure it's always an array
+      res.json(allDataSets || []);
     } catch (error: any) {
+      console.error("Error fetching data sets:", error);
       res.status(500).json({ message: error.message });
     }
   });

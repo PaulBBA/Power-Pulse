@@ -88,6 +88,9 @@ export class DatabaseStorage implements IStorage {
 
   async createDataSet(dataSet: any): Promise<DataSet> {
     const [newDataSet] = await db.insert(dataSets).values(dataSet).returning();
+    if (!newDataSet) {
+      throw new Error("Failed to insert data set");
+    }
     return newDataSet;
   }
 

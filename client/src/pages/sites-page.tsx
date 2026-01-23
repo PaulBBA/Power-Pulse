@@ -14,12 +14,16 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function SitesPage() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  const canCreateSite = user?.role === "admin" || user?.role === "editor";
 
   const { data: sites, isLoading } = useQuery<Site[]>({
     queryKey: ["/api/sites"],
@@ -117,150 +121,152 @@ export default function SitesPage() {
             </div>
 
             <div className="ml-auto flex gap-2">
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="h-9 bg-primary text-white">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Site
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Add New Site</DialogTitle>
-                  </DialogHeader>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit((data) => createSiteMutation.mutate(data))} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+              {canCreateSite && (
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="h-9 bg-primary text-white">
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Site
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New Site</DialogTitle>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit((data) => createSiteMutation.mutate(data))} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="code"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Site Code</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Site Name</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="address"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Address 1</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="address2"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Address 2</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="town"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Town</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="county"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>County</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="postcode"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Post Code</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="telephone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Telephone</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="floorArea"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Floor Area</FormLabel>
+                                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="degreeDayArea"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Degree Day Area</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                         <FormField
                           control={form.control}
-                          name="code"
+                          name="comments"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Site Code</FormLabel>
+                              <FormLabel>Comments</FormLabel>
                               <FormControl><Input {...field} /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Site Name</FormLabel>
-                              <FormControl><Input {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="address"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Address 1</FormLabel>
-                              <FormControl><Input {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="address2"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Address 2</FormLabel>
-                              <FormControl><Input {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="town"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Town</FormLabel>
-                              <FormControl><Input {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="county"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>County</FormLabel>
-                              <FormControl><Input {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="postcode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Post Code</FormLabel>
-                              <FormControl><Input {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="telephone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Telephone</FormLabel>
-                              <FormControl><Input {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="floorArea"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Floor Area</FormLabel>
-                              <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="degreeDayArea"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Degree Day Area</FormLabel>
-                              <FormControl><Input {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <FormField
-                        control={form.control}
-                        name="comments"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Comments</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button type="submit" className="w-full" disabled={createSiteMutation.isPending}>
-                        {createSiteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Save Site
-                      </Button>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
+                        <Button type="submit" className="w-full" disabled={createSiteMutation.isPending}>
+                          {createSiteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Save Site
+                        </Button>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              )}
               <Button 
                 size="sm" 
                 className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"

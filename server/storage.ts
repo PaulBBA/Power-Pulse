@@ -87,11 +87,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDataSet(dataSet: any): Promise<DataSet> {
-    const [newDataSet] = await db.insert(dataSets).values(dataSet).returning();
-    if (!newDataSet) {
-      throw new Error("Failed to insert data set");
+    try {
+      const [newDataSet] = await db.insert(dataSets).values(dataSet).returning();
+      if (!newDataSet) {
+        // Fallback: check if it was inserted but not returned
+        const [existing] = await db.select().from(dataSets).where(
+          eq(dataSets.referenceNumber, dataSet.referenceNumber)
+        );
+        if (existing) return existing;
+        throw new Error("Failed to insert data set");
+      }
+      return newDataSet;
+    } catch (error: any) {
+      console.error("Database error in createDataSet:", error);
+      throw error;
     }
-    return newDataSet;
   }
 
   async getInvoices(dataSetId: number): Promise<Invoice[]> {

@@ -88,32 +88,33 @@ export class DatabaseStorage implements IStorage {
 
   async createDataSet(dataSet: any): Promise<DataSet> {
     try {
-      console.log("Creating data set with data:", JSON.stringify(dataSet));
-      
       if (dataSet.mpanCoreMprn) {
-        const query = db.select().from(dataSets).where(
+        const queryResult = await db.select().from(dataSets).where(
           eq(dataSets.mpanCoreMprn, dataSet.mpanCoreMprn)
         );
-        const existingResults = await query;
-        
-        console.log("Existing check results:", JSON.stringify(existingResults));
-        if (existingResults && Array.isArray(existingResults) && existingResults.length > 0) {
+        if (queryResult && queryResult.length > 0) {
           throw new Error(`A meter with MPAN Core/MPRN ${dataSet.mpanCoreMprn} already exists.`);
         }
       }
 
-      console.log("About to insert...");
+      if (!dataSet.siteId) {
+        throw new Error("Site is required");
+      }
+      if (!dataSet.utilityTypeId) {
+        throw new Error("Utility type is required");
+      }
+
       const results = await db.insert(dataSets).values(dataSet).returning();
       
-      console.log("Insert results:", JSON.stringify(results));
-      
-      if (!results || !Array.isArray(results) || results.length === 0) {
+      if (!results || results.length === 0) {
         throw new Error("Failed to insert data set: No result returned from database");
       }
       return results[0];
     } catch (error: any) {
       console.error("Database error in createDataSet:", error);
-      console.error("Error stack:", error.stack);
+      if (error.message && error.message.includes("reading 'map'")) {
+        throw new Error("Database error: The operation failed. Please check the site and meter details and try again.");
+      }
       throw error;
     }
   }

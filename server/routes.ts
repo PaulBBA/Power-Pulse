@@ -89,11 +89,16 @@ export async function registerRoutes(
 
   app.post("/api/data-sets", async (req, res) => {
     try {
-      const dataSet = await storage.createDataSet(req.body);
+      const data = {
+        ...req.body,
+        siteId: parseInt(req.body.siteId),
+        utilityTypeId: parseInt(req.body.utilityTypeId),
+      };
+      const dataSet = await storage.createDataSet(data);
       res.status(200).json(dataSet);
     } catch (error: any) {
       console.error("Error creating data set:", error);
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error.message || "Failed to create data set" });
     }
   });
 

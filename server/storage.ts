@@ -88,26 +88,24 @@ export class DatabaseStorage implements IStorage {
 
   async createDataSet(dataSet: any): Promise<DataSet> {
     try {
-      const existingByMpan = await db.select().from(dataSets).where(
-        eq(dataSets.mpanCoreMprn, dataSet.mpanCoreMprn)
-      );
-      if (existingByMpan.length > 0) {
-        throw new Error(`A meter with MPAN Core/MPRN ${dataSet.mpanCoreMprn} already exists.`);
+      console.log("Creating data set with data:", JSON.stringify(dataSet));
+      
+      if (dataSet.mpanCoreMprn) {
+        const existingResults = await db.select().from(dataSets).where(
+          eq(dataSets.mpanCoreMprn, dataSet.mpanCoreMprn)
+        );
+        if (existingResults && existingResults.length > 0) {
+          throw new Error(`A meter with MPAN Core/MPRN ${dataSet.mpanCoreMprn} already exists.`);
+        }
       }
 
-      const newDataSetResults = await db.insert(dataSets).values(dataSet).returning();
-      const newDataSet = newDataSetResults[0];
+      const results = await db.insert(dataSets).values(dataSet).returning();
+      console.log("Insert results:", JSON.stringify(results));
       
-      if (!newDataSet) {
-        // Fallback: check if it was inserted but not returned
-        const existingResults = await db.select().from(dataSets).where(
-          eq(dataSets.referenceNumber, dataSet.referenceNumber)
-        );
-        const existing = existingResults[0];
-        if (existing) return existing;
-        throw new Error("Failed to insert data set");
+      if (!results || results.length === 0) {
+        throw new Error("Failed to insert data set: No result returned from database");
       }
-      return newDataSet;
+      return results[0];
     } catch (error: any) {
       console.error("Database error in createDataSet:", error);
       throw error;

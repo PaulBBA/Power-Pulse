@@ -91,9 +91,11 @@ export class DatabaseStorage implements IStorage {
       console.log("Creating data set with data:", JSON.stringify(dataSet));
       
       if (dataSet.mpanCoreMprn) {
-        const existingResults = await db.select().from(dataSets).where(
+        const query = db.select().from(dataSets).where(
           eq(dataSets.mpanCoreMprn, dataSet.mpanCoreMprn)
         );
+        const existingResults = await query;
+        
         console.log("Existing check results:", JSON.stringify(existingResults));
         if (existingResults && Array.isArray(existingResults) && existingResults.length > 0) {
           throw new Error(`A meter with MPAN Core/MPRN ${dataSet.mpanCoreMprn} already exists.`);
@@ -102,6 +104,7 @@ export class DatabaseStorage implements IStorage {
 
       console.log("About to insert...");
       const results = await db.insert(dataSets).values(dataSet).returning();
+      
       console.log("Insert results:", JSON.stringify(results));
       
       if (!results || !Array.isArray(results) || results.length === 0) {

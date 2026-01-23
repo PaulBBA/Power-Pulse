@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon, neonConfig } from "@neondatabase/serverless";
 import * as schema from "@shared/schema.js";
 
+// Ensure fetch is used correctly
 neonConfig.fetchConnectionCache = true;
 
 if (!process.env.DATABASE_URL) {

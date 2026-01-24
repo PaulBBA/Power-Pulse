@@ -58,15 +58,19 @@ export default function MetersPage() {
 
   const createMeterMutation = useMutation({
     mutationFn: async (values: any) => {
-      // Ensure numeric IDs are actually numbers, and empty strings for optional fields are null or excluded
-      const formattedValues = {
-        ...values,
+      // Clean values: ensure numeric IDs are numbers, and optional text fields are null if empty
+      const cleanedValues: any = {
+        name: values.name || "",
         siteId: Number(values.siteId),
         utilityTypeId: Number(values.utilityTypeId),
+        mpanProfile: values.mpanProfile || null,
+        mpanCoreMprn: values.mpanCoreMprn || null,
+        meterSerial1: values.meterSerial1 || null,
+        location: values.location || null,
         supplierId: values.supplierId ? Number(values.supplierId) : null,
       };
 
-      const res = await apiRequest("POST", "/api/data-sets", formattedValues);
+      const res = await apiRequest("POST", "/api/data-sets", cleanedValues);
       const text = await res.text();
       if (!text) return null;
       try {

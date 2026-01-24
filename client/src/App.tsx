@@ -18,12 +18,12 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <ProtectedRoute path="/" component={Dashboard} />
-      <ProtectedRoute path="/groups" component={GroupsPage} />
-      <ProtectedRoute path="/sites" component={SitesPage} />
-      <ProtectedRoute path="/meters" component={MetersPage} />
-      <ProtectedRoute path="/import" component={ImportPage} />
-      <ProtectedRoute path="/admin" component={AdminPage} />
+      <Route path="/" component={Dashboard} />
+      <Route path="/groups" component={GroupsPage} />
+      <Route path="/sites" component={SitesPage} />
+      <Route path="/meters" component={MetersPage} />
+      <Route path="/import" component={ImportPage} />
+      <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
   );

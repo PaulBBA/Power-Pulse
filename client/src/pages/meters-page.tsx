@@ -71,6 +71,12 @@ export default function MetersPage() {
       };
 
       const res = await apiRequest("POST", "/api/data-sets", cleanedValues);
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create meter");
+      }
+
       const text = await res.text();
       if (!text) return null;
       try {
@@ -86,6 +92,19 @@ export default function MetersPage() {
       form.reset();
     },
     onError: (error: any) => {
+      // Check for common database errors and map them to fields
+      const message = error.message || "";
+      
+      if (message.includes("mpan_core_mprn") || message.includes("parameter $5")) {
+        form.setError("mpanCoreMprn", { message: "Invalid input syntax for integer" });
+      } else if (message.includes("mpan_profile") || message.includes("parameter $4")) {
+        form.setError("mpanProfile", { message: "Invalid input syntax for integer" });
+      } else if (message.includes("meter_serial_1") || message.includes("parameter $6")) {
+        form.setError("meterSerial1", { message: "Invalid input syntax for integer" });
+      } else if (message.includes("supplier_id") || message.includes("parameter $8")) {
+        form.setError("supplierId", { message: "Invalid input syntax for integer" });
+      }
+
       toast({ 
         title: "Error", 
         description: error.message || "Failed to create meter",

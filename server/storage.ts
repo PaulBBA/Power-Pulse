@@ -88,9 +88,11 @@ export class DatabaseStorage implements IStorage {
 
   async createDataSet(dataSet: any): Promise<DataSet> {
     try {
+      console.log("createDataSet: starting with", dataSet);
       if (dataSet.mpanCoreMprn) {
-        // Use raw neon sql for checks if drizzle is failing with map error
+        console.log("createDataSet: checking mpan uniqueness for", dataSet.mpanCoreMprn);
         const existingCheck = await sql`SELECT * FROM data_sets WHERE mpan_core_mprn = ${dataSet.mpanCoreMprn}`;
+        console.log("createDataSet: mpan uniqueness check result", existingCheck);
         if (existingCheck && existingCheck.length > 0) {
           throw new Error(`A meter with MPAN Core/MPRN ${dataSet.mpanCoreMprn} already exists.`);
         }
@@ -103,29 +105,40 @@ export class DatabaseStorage implements IStorage {
         throw new Error("Utility type is required");
       }
 
-      // Use raw SQL for insert to bypass drizzle map error if it occurs there
+      console.log("createDataSet: performing insert");
       const result = await sql`
         INSERT INTO data_sets (
           site_id, name, utility_type_id, reference_number, supplier, frequency, 
           meter_serial_1, mpan_profile, location, mpan_core_mprn, 
-          import_link_direct, import_link_invoice, import_link_profile
+          import_link_direct, import_link_invoice, import_link_profile, units
         ) VALUES (
           ${dataSet.siteId}, ${dataSet.name || ""}, ${dataSet.utilityTypeId}, 
           ${dataSet.referenceNumber || ""}, ${dataSet.supplier || ""}, ${dataSet.frequency || ""}, 
           ${dataSet.meterSerial1 || ""}, ${dataSet.mpanProfile || ""}, ${dataSet.location || ""}, 
           ${dataSet.mpanCoreMprn || null}, ${dataSet.importLinkDirect || ""}, 
-          ${dataSet.importLinkInvoice || ""}, ${dataSet.importLinkProfile || ""}
+          ${dataSet.importLinkInvoice || ""}, ${dataSet.importLinkProfile || ""},
+          ${dataSet.units || "kWh"}
         ) RETURNING *
       `;
 
+      console.log("createDataSet: insert result", result);
       if (!result || result.length === 0) {
+        // Fallback: The insert might have worked but RETURNING failed
+        if (dataSet.mpanCoreMprn) {
+          const fallback = await sql`SELECT * FROM data_sets WHERE mpan_core_mprn = ${dataSet.mpanCoreMprn}`;
+          if (fallback && fallback.length > 0) {
+            return fallback[0] as unknown as DataSet;
+          }
+        }
         throw new Error("Failed to insert data set: No result returned from database");
       }
       
-      // Cast raw result back to DataSet type
       return result[0] as unknown as DataSet;
     } catch (error: any) {
       console.error("Database error in createDataSet:", error);
+      if (error instanceof TypeError && error.message.includes("reading 'map'")) {
+        throw new Error("Database communication error. The record might have been created; please check the list.");
+      }
       throw error;
     }
   }

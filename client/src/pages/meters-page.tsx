@@ -100,6 +100,15 @@ export default function MetersPage() {
     return matchesSearch && ds.utilityTypeId === utilityMap[utilityFilter];
   }) || [];
 
+  const getUtilityName = (id: number) => {
+    const names: Record<number, string> = {
+      1: "Electricity",
+      2: "Gas",
+      3: "Water"
+    };
+    return names[id] || `Unknown (${id})`;
+  };
+
   return (
     <Layout>
       <div className="flex flex-col gap-2">
@@ -290,7 +299,7 @@ export default function MetersPage() {
               <Table>
                 <TableHeader className="bg-secondary/50">
                   <TableRow>
-                    <TableHead className="font-bold">Utility Type ID</TableHead>
+                    <TableHead className="font-bold">Utility Type</TableHead>
                     <TableHead className="font-bold">MPAN Profile</TableHead>
                     <TableHead className="font-bold">MPAN Core / MPRN</TableHead>
                     <TableHead className="font-bold">Meter Serial 1</TableHead>
@@ -302,7 +311,7 @@ export default function MetersPage() {
                   {filteredDataSets.length > 0 ? (
                     filteredDataSets.map((ds, i) => (
                       <TableRow key={ds.id} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
-                        <TableCell className="text-sm">{ds.utilityTypeId}</TableCell>
+                        <TableCell className="text-sm">{getUtilityName(ds.utilityTypeId)}</TableCell>
                         <TableCell className="text-sm">{ds.mpanProfile}</TableCell>
                         <TableCell className="text-sm">{ds.mpanCoreMprn}</TableCell>
                         <TableCell className="text-sm">{ds.meterSerial1}</TableCell>

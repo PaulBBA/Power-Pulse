@@ -50,6 +50,16 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/data-sets", async (req, res) => {
+    try {
+      const dataSet = await storage.createDataSet(req.body);
+      res.status(200).json(dataSet);
+    } catch (error: any) {
+      console.error("Error creating data set:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.get("/api/data-sets", async (_req, res) => {
     const dataSets = await storage.getDataSets();
     res.json(dataSets);

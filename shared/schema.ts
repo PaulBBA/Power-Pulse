@@ -62,9 +62,10 @@ export const dataSets = pgTable("data_sets", {
   siteId: integer("site_id").references(() => sites.id).notNull(),
   name: text("name").notNull(),
   utilityTypeId: integer("utility_type_id").references(() => utilities.id).notNull(),
-  referenceNumber: text("reference_number"), // MPAN/MPRN/SPID
+  mpanProfile: text("mpan_profile"),
+  mpanCoreMprn: text("mpan_core_mprn"),
+  meterSerial1: text("meter_serial_1"),
   location: text("location"),
-  units: text("units"),
   supplierId: integer("supplier_id").references(() => suppliers.id),
   tariffName: text("tariff_name"),
   meterType: text("meter_type"), // Main, Sub-meter

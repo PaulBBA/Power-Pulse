@@ -47,11 +47,11 @@ export default function MetersPage() {
       name: "",
       siteId: 0,
       utilityTypeId: 1,
-      referenceNumber: "",
+      mpanProfile: "",
+      mpanCoreMprn: "",
+      meterSerial1: "",
       location: "",
-      units: "kWh",
-      tariffName: "",
-      meterType: "Main",
+      supplierId: null,
       isActive: true,
     },
   });
@@ -59,15 +59,11 @@ export default function MetersPage() {
   const createMeterMutation = useMutation({
     mutationFn: async (values: any) => {
       const res = await apiRequest("POST", "/api/data-sets", values);
-      
-      // Handle potential empty responses like in sites-page.tsx
       const text = await res.text();
       if (!text) return null;
-      
       try {
         return JSON.parse(text);
       } catch (e) {
-        console.error("Failed to parse JSON response:", text);
         return null;
       }
     },
@@ -91,12 +87,13 @@ export default function MetersPage() {
     const worksheet = XLSX.utils.json_to_sheet(dataSets);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "DataSets");
-    XLSX.writeFile(workbook, "BBA_Energy_DataSets.xlsx");
+    XLSX.writeFile(workbook, "BBA_Energy_Meters.xlsx");
   };
 
   const filteredDataSets = dataSets?.filter(ds => {
     const matchesSearch = ds.name.toLowerCase().includes(search.toLowerCase()) ||
-      (ds.referenceNumber && ds.referenceNumber.toLowerCase().includes(search.toLowerCase()));
+      (ds.mpanCoreMprn && ds.mpanCoreMprn.toLowerCase().includes(search.toLowerCase())) ||
+      (ds.meterSerial1 && ds.meterSerial1.toLowerCase().includes(search.toLowerCase()));
     
     if (utilityFilter === "all") return matchesSearch;
     const utilityMap: Record<string, number> = { "elec": 1, "gas": 2, "water": 3 };
@@ -112,7 +109,7 @@ export default function MetersPage() {
 
       <Card className="border-none shadow-lg overflow-hidden">
         <CardHeader className="bg-sidebar text-sidebar-foreground py-3">
-          <CardTitle className="text-lg font-bold uppercase tracking-wider">Data Set List</CardTitle>
+          <CardTitle className="text-lg font-bold uppercase tracking-wider">Meter List</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="p-4 bg-card border-b flex flex-wrap items-center gap-6">
@@ -131,13 +128,13 @@ export default function MetersPage() {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 flex-1 max-w-sm">
-              <span className="text-sm font-medium">Search:</span>
+            <div className="flex items-center gap-2 flex-1 max-sm:max-w-none max-w-sm">
+              <span className="text-sm font-medium text-nowrap">Search:</span>
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   className="pl-9 h-9" 
-                  placeholder="Search reference or name..." 
+                  placeholder="Search MPAN/Serial/Name..." 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -155,7 +152,7 @@ export default function MetersPage() {
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Add New Meter / Data Set</DialogTitle>
+                      <DialogTitle>Add New Meter</DialogTitle>
                     </DialogHeader>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit((data) => createMeterMutation.mutate(data))} className="space-y-4">
@@ -217,10 +214,32 @@ export default function MetersPage() {
                           />
                           <FormField
                             control={form.control}
-                            name="referenceNumber"
+                            name="mpanProfile"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Reference (MPAN/MPRN)</FormLabel>
+                                <FormLabel>MPAN Profile</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="mpanCoreMprn"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>MPAN Core / MPRN</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="meterSerial1"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Meter Serial 1</FormLabel>
                                 <FormControl><Input {...field} /></FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -232,17 +251,6 @@ export default function MetersPage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Location</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="units"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Units</FormLabel>
                                 <FormControl><Input {...field} /></FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -282,29 +290,29 @@ export default function MetersPage() {
               <Table>
                 <TableHeader className="bg-secondary/50">
                   <TableRow>
-                    <TableHead className="font-bold">ID <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">Name <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">Reference <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">Location <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">Tariff <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">Status <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">Utility Type ID</TableHead>
+                    <TableHead className="font-bold">MPAN Profile</TableHead>
+                    <TableHead className="font-bold">MPAN Core / MPRN</TableHead>
+                    <TableHead className="font-bold">Meter Serial 1</TableHead>
+                    <TableHead className="font-bold">Location</TableHead>
+                    <TableHead className="font-bold">Supplier ID</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredDataSets.length > 0 ? (
                     filteredDataSets.map((ds, i) => (
                       <TableRow key={ds.id} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{ds.id}</TableCell>
-                        <TableCell className="text-sm">{ds.name}</TableCell>
-                        <TableCell className="text-sm">{ds.referenceNumber}</TableCell>
+                        <TableCell className="text-sm">{ds.utilityTypeId}</TableCell>
+                        <TableCell className="text-sm">{ds.mpanProfile}</TableCell>
+                        <TableCell className="text-sm">{ds.mpanCoreMprn}</TableCell>
+                        <TableCell className="text-sm">{ds.meterSerial1}</TableCell>
                         <TableCell className="text-sm">{ds.location}</TableCell>
-                        <TableCell className="text-sm">{ds.tariffName}</TableCell>
-                        <TableCell className="text-sm">{ds.isActive ? "Active" : "Inactive"}</TableCell>
+                        <TableCell className="text-sm">{ds.supplierId || '-'}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No data sets found</TableCell>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No meters found</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

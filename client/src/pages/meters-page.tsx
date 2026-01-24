@@ -59,7 +59,17 @@ export default function MetersPage() {
   const createMeterMutation = useMutation({
     mutationFn: async (values: any) => {
       const res = await apiRequest("POST", "/api/data-sets", values);
-      return res.json();
+      
+      // Handle potential empty responses like in sites-page.tsx
+      const text = await res.text();
+      if (!text) return null;
+      
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse JSON response:", text);
+        return null;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/data-sets"] });

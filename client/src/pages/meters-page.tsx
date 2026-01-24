@@ -220,7 +220,7 @@ export default function MetersPage() {
                             name="referenceNumber"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Reference (MPAN/MPRN)</FormLabel>
+                                <FormLabel>MPAN Core/MPRN</FormLabel>
                                 <FormControl><Input {...field} /></FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -284,7 +284,7 @@ export default function MetersPage() {
                   <TableRow>
                     <TableHead className="font-bold">ID <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
                     <TableHead className="font-bold">Name <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
-                    <TableHead className="font-bold">Reference <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
+                    <TableHead className="font-bold">MPAN Core/MPRN <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
                     <TableHead className="font-bold">Location <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
                     <TableHead className="font-bold">Tariff <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>
                     <TableHead className="font-bold">Status <ArrowUpDown className="inline ml-1 h-3 w-3" /></TableHead>

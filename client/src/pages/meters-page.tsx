@@ -60,7 +60,7 @@ export default function MetersPage() {
     mutationFn: async (values: any) => {
       // Clean values: ensure numeric IDs are numbers, and optional text fields are null if empty
       const cleanedValues: any = {
-        name: values.name || "",
+        name: values.name || null,
         siteId: values.siteId ? Number(values.siteId) : null,
         utilityTypeId: values.utilityTypeId ? Number(values.utilityTypeId) : null,
         mpanProfile: values.mpanProfile || null,

@@ -60,7 +60,7 @@ export const siteGroups = pgTable("site_groups", {
 export const dataSets = pgTable("data_sets", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").references(() => sites.id).notNull(),
-  name: text("name").notNull(),
+  name: text("name"),
   utilityTypeId: integer("utility_type_id").references(() => utilities.id).notNull(),
   mpanProfile: text("mpan_profile"),
   mpanCoreMprn: text("mpan_core_mprn"),

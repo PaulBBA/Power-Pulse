@@ -61,8 +61,8 @@ export default function MetersPage() {
       // Clean values: ensure numeric IDs are numbers, and optional text fields are null if empty
       const cleanedValues: any = {
         name: values.name || "",
-        siteId: Number(values.siteId),
-        utilityTypeId: Number(values.utilityTypeId),
+        siteId: values.siteId ? Number(values.siteId) : null,
+        utilityTypeId: values.utilityTypeId ? Number(values.utilityTypeId) : null,
         mpanProfile: values.mpanProfile || null,
         mpanCoreMprn: values.mpanCoreMprn || null,
         meterSerial1: values.meterSerial1 || null,
@@ -70,7 +70,12 @@ export default function MetersPage() {
         supplierId: values.supplierId ? Number(values.supplierId) : null,
       };
 
-      const res = await apiRequest("POST", "/api/data-sets", cleanedValues);
+      // Filter out null values for required fields or fields that might cause issues if empty string is sent as parameter
+      const finalValues = Object.fromEntries(
+        Object.entries(cleanedValues).filter(([_, v]) => v !== null && v !== "")
+      );
+
+      const res = await apiRequest("POST", "/api/data-sets", finalValues);
       
       if (!res.ok) {
         const errorData = await res.json();

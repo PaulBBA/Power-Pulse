@@ -2,7 +2,8 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon, neonConfig } from "@neondatabase/serverless";
 import * as schema from "@shared/schema.js";
 
-neonConfig.fetchConnectionCache = true;
+// The `fetchConnectionCache` option is deprecated (now always `true`)
+// neonConfig.fetchConnectionCache = true;
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set");

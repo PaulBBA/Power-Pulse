@@ -19,6 +19,7 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <Route path="/" component={Dashboard} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/groups" component={GroupsPage} />
       <Route path="/sites" component={SitesPage} />
       <Route path="/meters" component={MetersPage} />

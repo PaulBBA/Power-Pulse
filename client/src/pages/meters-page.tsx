@@ -92,6 +92,7 @@ export default function MetersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/data-sets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups/hierarchy"] });
       toast({ title: "Success", description: "Meter created successfully" });
       setIsDialogOpen(false);
       form.reset();

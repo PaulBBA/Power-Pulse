@@ -167,6 +167,8 @@ export default function GroupsPage() {
 
   const { data: hierarchy, isLoading } = useQuery<HierarchyData>({
     queryKey: ["/api/groups/hierarchy"],
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const createGroupMutation = useMutation({

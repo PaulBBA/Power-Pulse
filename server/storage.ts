@@ -2,11 +2,13 @@ import {
   users, type User, type InsertUser,
   sites, type Site, 
   groups, type Group,
+  siteGroups,
   dataSets, type DataSet,
-  dataInvoices, type Invoice
+  dataInvoices, type Invoice,
+  utilities
 } from "@shared/schema.js";
 import { db } from "./db.js";
-import { eq } from "drizzle-orm";
+import { eq, inArray, notInArray, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -17,6 +19,11 @@ export interface IStorage {
   // Groups
   getGroups(): Promise<Group[]>;
   createGroup(group: { name: string }): Promise<Group>;
+  getGroupsHierarchy(): Promise<any>;
+
+  // Site-Group assignments
+  assignSiteToGroup(siteId: number, groupId: number): Promise<void>;
+  removeSiteFromGroup(siteId: number, groupId: number): Promise<void>;
 
   // Sites
   getSites(): Promise<Site[]>;
@@ -30,6 +37,9 @@ export interface IStorage {
 
   // Invoices (Readings)
   getInvoices(dataSetId: number): Promise<Invoice[]>;
+
+  // Utilities
+  getUtilities(): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -64,6 +74,59 @@ export class DatabaseStorage implements IStorage {
     return newGroup;
   }
 
+  async getGroupsHierarchy(): Promise<any> {
+    const allGroups = await db.select().from(groups);
+    const allSites = await db.select().from(sites);
+    const allDataSets = await db.select().from(dataSets);
+    const allSiteGroups = await db.select().from(siteGroups);
+    const allUtilities = await db.select().from(utilities);
+
+    const utilityMap = new Map(allUtilities.map(u => [u.id, u]));
+    const metersBySite = new Map<number, any[]>();
+    for (const ds of allDataSets) {
+      const list = metersBySite.get(ds.siteId) || [];
+      list.push({
+        ...ds,
+        utilityName: utilityMap.get(ds.utilityTypeId)?.name || "Unknown",
+        utilityCode: utilityMap.get(ds.utilityTypeId)?.code || "",
+      });
+      metersBySite.set(ds.siteId, list);
+    }
+
+    const assignedSiteIds = new Set(allSiteGroups.map(sg => sg.siteId));
+
+    const groupsWithSites = allGroups.map(g => {
+      const groupSiteIds = allSiteGroups
+        .filter(sg => sg.groupId === g.id)
+        .map(sg => sg.siteId);
+      const groupSites = allSites
+        .filter(s => groupSiteIds.includes(s.id))
+        .map(s => ({
+          ...s,
+          meters: metersBySite.get(s.id) || [],
+        }));
+      return { ...g, sites: groupSites };
+    });
+
+    const unassignedSites = allSites
+      .filter(s => !assignedSiteIds.has(s.id))
+      .map(s => ({
+        ...s,
+        meters: metersBySite.get(s.id) || [],
+      }));
+
+    return { groups: groupsWithSites, unassigned: unassignedSites };
+  }
+
+  async assignSiteToGroup(siteId: number, groupId: number): Promise<void> {
+    await db.insert(siteGroups).values({ siteId, groupId });
+  }
+
+  async removeSiteFromGroup(siteId: number, groupId: number): Promise<void> {
+    await db.delete(siteGroups)
+      .where(sql`${siteGroups.siteId} = ${siteId} AND ${siteGroups.groupId} = ${groupId}`);
+  }
+
   async getSites(): Promise<Site[]> {
     return await db.select().from(sites);
   }
@@ -93,6 +156,10 @@ export class DatabaseStorage implements IStorage {
 
   async getInvoices(dataSetId: number): Promise<Invoice[]> {
     return await db.select().from(dataInvoices).where(eq(dataInvoices.dataSetId, dataSetId));
+  }
+
+  async getUtilities(): Promise<any[]> {
+    return await db.select().from(utilities);
   }
 }
 

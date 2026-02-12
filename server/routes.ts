@@ -13,6 +13,53 @@ export async function registerRoutes(
     res.json(groups);
   });
 
+  app.get("/api/groups/hierarchy", async (_req, res) => {
+    try {
+      const hierarchy = await storage.getGroupsHierarchy();
+      res.json(hierarchy);
+    } catch (error: any) {
+      console.error("Error fetching hierarchy:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/groups", async (req, res) => {
+    try {
+      const group = await storage.createGroup(req.body);
+      res.status(201).json(group);
+    } catch (error: any) {
+      console.error("Error creating group:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/site-groups", async (req, res) => {
+    try {
+      const { siteId, groupId } = req.body;
+      await storage.assignSiteToGroup(siteId, groupId);
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("Error assigning site to group:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/site-groups", async (req, res) => {
+    try {
+      const { siteId, groupId } = req.body;
+      await storage.removeSiteFromGroup(siteId, groupId);
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("Error removing site from group:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/utilities", async (_req, res) => {
+    const utils = await storage.getUtilities();
+    res.json(utils);
+  });
+
   app.get("/api/sites", async (_req, res) => {
     const sites = await storage.getSites();
     res.json(sites);

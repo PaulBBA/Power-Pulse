@@ -207,7 +207,7 @@ export default function MetersPage() {
   const cleanValues = (values: any) => {
     const cleaned: any = {
       name: values.name || null,
-      siteId: values.siteId ? Number(values.siteId) : null,
+      siteId: values.siteId && Number(values.siteId) > 0 ? Number(values.siteId) : null,
       utilityTypeId: values.utilityTypeId ? Number(values.utilityTypeId) : null,
       mpanProfile: values.mpanProfile || null,
       mpanCoreMprn: values.mpanCoreMprn || null,
@@ -276,6 +276,9 @@ export default function MetersPage() {
 
   const createMeterMutation = useMutation({
     mutationFn: async (values: any) => {
+      if (!values.siteId || Number(values.siteId) === 0) {
+        throw new Error("Please select a site");
+      }
       const res = await apiRequest("POST", "/api/data-sets", cleanValues(values));
       if (!res.ok) {
         const errorData = await res.json();

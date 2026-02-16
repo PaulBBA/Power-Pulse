@@ -107,7 +107,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="bg-white/5 rounded-lg p-4 mb-2 border border-white/10">
             <h4 className="text-xs font-semibold text-sidebar-foreground/80 mb-1">Need Help?</h4>
             <p className="text-xs text-sidebar-foreground/60 mb-3">Contact your BBA Energy representative for support.</p>
-            <Button size="sm" variant="outline" className="w-full text-xs h-7 bg-transparent text-sidebar-foreground border-sidebar-border hover:bg-primary/20 hover:border-primary">Support</Button>
+            <Button size="sm" variant="outline" className="w-full text-xs h-7 bg-transparent text-sidebar-foreground border-sidebar-border hover:bg-primary/20 hover:border-primary" asChild><a href="mailto:support@bbaenergy.co.uk">Support</a></Button>
           </div>
         </div>
       </aside>

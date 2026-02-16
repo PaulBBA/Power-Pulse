@@ -29,11 +29,13 @@ export interface IStorage {
   getSites(): Promise<Site[]>;
   getSite(id: number): Promise<Site | undefined>;
   createSite(site: any): Promise<Site>;
+  updateSite(id: number, data: Partial<Site>): Promise<Site>;
 
   // Data Sets (Meters)
   getDataSets(): Promise<DataSet[]>;
   getDataSetsBySite(siteId: number): Promise<DataSet[]>;
   createDataSet(dataSet: any): Promise<DataSet>;
+  updateDataSet(id: number, data: Partial<DataSet>): Promise<DataSet>;
 
   // Invoices (Readings)
   getInvoices(dataSetId: number): Promise<Invoice[]>;
@@ -143,6 +145,11 @@ export class DatabaseStorage implements IStorage {
 
   async updateSiteName(id: number, name: string): Promise<Site> {
     const [updated] = await db.update(sites).set({ name }).where(eq(sites.id, id)).returning();
+    return updated;
+  }
+
+  async updateSite(id: number, data: Partial<Site>): Promise<Site> {
+    const [updated] = await db.update(sites).set(data).where(eq(sites.id, id)).returning();
     return updated;
   }
 

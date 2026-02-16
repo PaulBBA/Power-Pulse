@@ -68,8 +68,7 @@ export async function registerRoutes(
   app.patch("/api/sites/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { name } = req.body;
-      const site = await storage.updateSiteName(id, name);
+      const site = await storage.updateSite(id, req.body);
       res.json(site);
     } catch (error: any) {
       console.error("Error updating site:", error);

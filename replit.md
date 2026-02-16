@@ -34,10 +34,15 @@ The server handles API routes and serves the built frontend in production. Devel
 The core hierarchy consists of:
 1. **Groups** - Organizational groupings for sites
 2. **Sites** - Physical locations/buildings with address, coordinates, contact info
-3. **Data Sets** - Individual meters/utility accounts within sites
-4. **Invoices** - Billing records and meter readings per data set
+3. **Data Sets** - Individual meters/utility accounts within sites (with utility-specific fields for electricity, gas, water)
+4. **Contracts** - Supply contracts linked to meters (dataSetId), with rates, kWh splits, reactive power, VAT, and flags from old EMSQL Contracts table
+5. **Contract Charges** - Additional charge lines linked to contracts, with charge type, rate, and tolerance fields
+6. **Invoices** - Billing records and meter readings per data set
 
-Supporting lookup tables include site status, utilities, and suppliers.
+Supporting lookup tables include site status, utilities, suppliers, and charge types.
+
+Future considerations:
+- Parent-child hierarchy (parentId on sites, data_sets, groups) for sub-sites and sub-meters — to be added later
 
 ### Build and Development
 - Development: `npm run dev` starts the Express server with Vite middleware

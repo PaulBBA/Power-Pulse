@@ -5,6 +5,9 @@ import {
   siteGroups,
   dataSets, type DataSet,
   dataInvoices, type Invoice,
+  contracts, type Contract, type InsertContract,
+  contractCharges, type ContractCharge, type InsertContractCharge,
+  chargeTypes, type ChargeType,
   utilities,
   todoItems, type TodoItem, type InsertTodo
 } from "@shared/schema.js";
@@ -43,6 +46,24 @@ export interface IStorage {
 
   // Utilities
   getUtilities(): Promise<any[]>;
+
+  // Contracts
+  getContracts(): Promise<Contract[]>;
+  getContractsByDataSet(dataSetId: number): Promise<Contract[]>;
+  getContract(id: number): Promise<Contract | undefined>;
+  createContract(contract: InsertContract): Promise<Contract>;
+  updateContract(id: number, data: Partial<Contract>): Promise<Contract>;
+  deleteContract(id: number): Promise<void>;
+
+  // Contract Charges
+  getContractCharges(contractId: number): Promise<ContractCharge[]>;
+  createContractCharge(charge: InsertContractCharge): Promise<ContractCharge>;
+  updateContractCharge(id: number, data: Partial<ContractCharge>): Promise<ContractCharge>;
+  deleteContractCharge(id: number): Promise<void>;
+
+  // Charge Types
+  getChargeTypes(): Promise<ChargeType[]>;
+  createChargeType(name: string): Promise<ChargeType>;
 
   // Todo Items
   getTodoItems(): Promise<TodoItem[]>;
@@ -184,6 +205,61 @@ export class DatabaseStorage implements IStorage {
 
   async getUtilities(): Promise<any[]> {
     return await db.select().from(utilities);
+  }
+
+  async getContracts(): Promise<Contract[]> {
+    return await db.select().from(contracts);
+  }
+
+  async getContractsByDataSet(dataSetId: number): Promise<Contract[]> {
+    return await db.select().from(contracts).where(eq(contracts.dataSetId, dataSetId));
+  }
+
+  async getContract(id: number): Promise<Contract | undefined> {
+    const [contract] = await db.select().from(contracts).where(eq(contracts.id, id));
+    return contract;
+  }
+
+  async createContract(contract: InsertContract): Promise<Contract> {
+    const [newContract] = await db.insert(contracts).values(contract).returning();
+    return newContract;
+  }
+
+  async updateContract(id: number, data: Partial<Contract>): Promise<Contract> {
+    const [updated] = await db.update(contracts).set({ ...data }).where(eq(contracts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteContract(id: number): Promise<void> {
+    await db.delete(contractCharges).where(eq(contractCharges.contractId, id));
+    await db.delete(contracts).where(eq(contracts.id, id));
+  }
+
+  async getContractCharges(contractId: number): Promise<ContractCharge[]> {
+    return await db.select().from(contractCharges).where(eq(contractCharges.contractId, contractId));
+  }
+
+  async createContractCharge(charge: InsertContractCharge): Promise<ContractCharge> {
+    const [newCharge] = await db.insert(contractCharges).values(charge).returning();
+    return newCharge;
+  }
+
+  async updateContractCharge(id: number, data: Partial<ContractCharge>): Promise<ContractCharge> {
+    const [updated] = await db.update(contractCharges).set({ ...data }).where(eq(contractCharges.id, id)).returning();
+    return updated;
+  }
+
+  async deleteContractCharge(id: number): Promise<void> {
+    await db.delete(contractCharges).where(eq(contractCharges.id, id));
+  }
+
+  async getChargeTypes(): Promise<ChargeType[]> {
+    return await db.select().from(chargeTypes);
+  }
+
+  async createChargeType(name: string): Promise<ChargeType> {
+    const [newType] = await db.insert(chargeTypes).values({ name }).returning();
+    return newType;
   }
 
   async getTodoItems(): Promise<TodoItem[]> {

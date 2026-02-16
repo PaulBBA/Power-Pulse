@@ -139,6 +139,142 @@ export async function registerRoutes(
     res.json(invoices);
   });
 
+  // --- Contracts ---
+
+  app.get("/api/contracts", async (_req, res) => {
+    try {
+      const allContracts = await storage.getContracts();
+      res.json(allContracts);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/data-sets/:id/contracts", async (req, res) => {
+    try {
+      const dataSetId = parseInt(req.params.id);
+      const dataSetContracts = await storage.getContractsByDataSet(dataSetId);
+      res.json(dataSetContracts);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/contracts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const contract = await storage.getContract(id);
+      if (!contract) return res.status(404).json({ message: "Contract not found" });
+      res.json(contract);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/contracts", async (req, res) => {
+    try {
+      const data = { ...req.body };
+      if (data.dateStart) data.dateStart = new Date(data.dateStart);
+      if (data.dateEnd) data.dateEnd = new Date(data.dateEnd);
+      const contract = await storage.createContract(data);
+      res.status(201).json(contract);
+    } catch (error: any) {
+      console.error("Error creating contract:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/contracts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = { ...req.body };
+      if (data.dateStart) data.dateStart = new Date(data.dateStart);
+      if (data.dateEnd) data.dateEnd = new Date(data.dateEnd);
+      const contract = await storage.updateContract(id, data);
+      res.json(contract);
+    } catch (error: any) {
+      console.error("Error updating contract:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/contracts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteContract(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting contract:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // --- Contract Charges ---
+
+  app.get("/api/contracts/:id/charges", async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.id);
+      const charges = await storage.getContractCharges(contractId);
+      res.json(charges);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/contract-charges", async (req, res) => {
+    try {
+      const charge = await storage.createContractCharge(req.body);
+      res.status(201).json(charge);
+    } catch (error: any) {
+      console.error("Error creating contract charge:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/contract-charges/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const charge = await storage.updateContractCharge(id, req.body);
+      res.json(charge);
+    } catch (error: any) {
+      console.error("Error updating contract charge:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/contract-charges/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteContractCharge(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting contract charge:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // --- Charge Types ---
+
+  app.get("/api/charge-types", async (_req, res) => {
+    try {
+      const types = await storage.getChargeTypes();
+      res.json(types);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/charge-types", async (req, res) => {
+    try {
+      const type = await storage.createChargeType(req.body.name);
+      res.status(201).json(type);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // --- Todos ---
+
   app.get("/api/todos", async (_req, res) => {
     const items = await storage.getTodoItems();
     res.json(items);

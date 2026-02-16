@@ -126,6 +126,89 @@ export const dataSets = pgTable("data_sets", {
   waterWholesaleTariff: text("water_wholesale_tariff"),
 });
 
+// --- Contracts ---
+
+export const contracts = pgTable("contracts", {
+  id: serial("id").primaryKey(),
+  dataSetId: integer("data_set_id").references(() => dataSets.id).notNull(),
+  groupId: integer("group_id").references(() => groups.id),
+  supplier: text("supplier"),
+  referenceNumber: text("reference_number"),
+  type: text("type"),
+  dateStart: timestamp("date_start"),
+  dateEnd: timestamp("date_end"),
+  kva: real("kva"),
+  maximumInputCapacity: real("maximum_input_capacity"),
+  climateChangeLevy: real("climate_change_levy"),
+  fossilFuelLevy: real("fossil_fuel_levy"),
+  rateUnits: real("rate_units"),
+  rateUnits1Split: real("rate_units_1_split"),
+  rateFixed: real("rate_fixed"),
+  rateFixedPerDay: boolean("rate_fixed_per_day").default(false),
+  rateKva: real("rate_kva"),
+  rateKva2: real("rate_kva_2"),
+  rateKvaPerDay: boolean("rate_kva_per_day").default(false),
+  rateKvaSplit: real("rate_kva_split"),
+  rateMd: real("rate_md"),
+  rateMd2: real("rate_md_2"),
+  rateMdSplit: real("rate_md_split"),
+  rateTransportation: real("rate_transportation"),
+  rateTransportationPerKwh: boolean("rate_transportation_per_kwh").default(false),
+  rateMetering: real("rate_metering"),
+  rateMeteringPerDay: boolean("rate_metering_per_day").default(false),
+  rateSettlements: real("rate_settlements"),
+  rateSettlementsPerDay: boolean("rate_settlements_per_day").default(false),
+  rateTriad: real("rate_triad"),
+  rateGreen: real("rate_green"),
+  rateGreenPercent: real("rate_green_percent"),
+  rateFit: real("rate_fit"),
+  rateRoc: real("rate_roc"),
+  kwhSplit1: real("kwh_split_1"),
+  kwhSplit1CostRate: real("kwh_split_1_cost_rate"),
+  kwhSplit2: real("kwh_split_2"),
+  kwhSplit2CostRate: real("kwh_split_2_cost_rate"),
+  kwhSplit3: real("kwh_split_3"),
+  kwhSplit3CostRate: real("kwh_split_3_cost_rate"),
+  kwhSplit4: real("kwh_split_4"),
+  kwhSplit4CostRate: real("kwh_split_4_cost_rate"),
+  kwhSplit5: real("kwh_split_5"),
+  kwhSplit5CostRate: real("kwh_split_5_cost_rate"),
+  kwhSplit6: real("kwh_split_6"),
+  kwhSplit6CostRate: real("kwh_split_6_cost_rate"),
+  reactivePower1Rate: real("reactive_power_1_rate"),
+  reactivePower1Split: real("reactive_power_1_split"),
+  reactivePower2Rate: real("reactive_power_2_rate"),
+  reactivePower2Split: real("reactive_power_2_split"),
+  kvarhDefault: real("kvarh_default"),
+  vat1Rate: real("vat_1_rate"),
+  vat2Rate: real("vat_2_rate"),
+  vatSplit: real("vat_split"),
+  lossAdjustment: boolean("loss_adjustment").default(false),
+  tuos: boolean("tuos").default(false),
+  useOfSystem: boolean("use_of_system").default(false),
+  useDistributorCapacity: boolean("use_distributor_capacity").default(false),
+  useDistributorReactivePower: boolean("use_distributor_reactive_power").default(false),
+  bankHolidays: integer("bank_holidays"),
+  billingPoint: integer("billing_point"),
+  clock: boolean("clock").default(false),
+  batch: integer("batch"),
+});
+
+export const chargeTypes = pgTable("config_charge_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+});
+
+export const contractCharges = pgTable("contract_charges", {
+  id: serial("id").primaryKey(),
+  contractId: integer("contract_id").references(() => contracts.id).notNull(),
+  chargeTypeId: integer("charge_type_id").references(() => chargeTypes.id),
+  rate: real("rate"),
+  tolerance: real("tolerance"),
+  toleranceRate: real("tolerance_rate"),
+  toleranceUnits: real("tolerance_units"),
+});
+
 // --- Data Tables ---
 
 export const dataInvoices = pgTable("data_invoices", {
@@ -173,6 +256,8 @@ export const users = pgTable("users", {
 export const insertSiteSchema = createInsertSchema(sites).omit({ id: true, lastUpdate: true });
 export const insertDataSetSchema = createInsertSchema(dataSets).omit({ id: true, lastUpdate: true });
 export const insertInvoiceSchema = createInsertSchema(dataInvoices).omit({ id: true, lastUpdate: true });
+export const insertContractSchema = createInsertSchema(contracts).omit({ id: true });
+export const insertContractChargeSchema = createInsertSchema(contractCharges).omit({ id: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 
 export const insertTodoSchema = createInsertSchema(todoItems).omit({ id: true, createdAt: true });
@@ -182,8 +267,13 @@ export const insertTodoSchema = createInsertSchema(todoItems).omit({ id: true, c
 export type Site = typeof sites.$inferSelect;
 export type DataSet = typeof dataSets.$inferSelect;
 export type Invoice = typeof dataInvoices.$inferSelect;
+export type Contract = typeof contracts.$inferSelect;
+export type ContractCharge = typeof contractCharges.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Group = typeof groups.$inferSelect;
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type InsertContractCharge = z.infer<typeof insertContractChargeSchema>;
+export type ChargeType = typeof chargeTypes.$inferSelect;
 export type TodoItem = typeof todoItems.$inferSelect;
 export type InsertTodo = z.infer<typeof insertTodoSchema>;

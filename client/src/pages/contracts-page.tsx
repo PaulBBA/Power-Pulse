@@ -509,53 +509,53 @@ export default function ContractsPage() {
       {sectionHeader("Capacity & Levies")}
       {numberField("kva", "kVA")}
       {numberField("maximumInputCapacity", "Maximum Input Capacity")}
-      {numberField("climateChangeLevy", "Climate Change Levy (£)")}
-      {numberField("fossilFuelLevy", "Fossil Fuel Levy (£)")}
+      {numberField("climateChangeLevy", "Climate Change Levy (p)")}
+      {numberField("fossilFuelLevy", "Fossil Fuel Levy (p)")}
 
       {sectionHeader("Rates")}
-      {numberField("rateUnits", "Unit Rate (£)")}
+      {numberField("rateUnits", "Unit Rate (p)")}
       {numberField("rateUnits1Split", "Unit Rate Split")}
       <div className="flex items-end gap-3">
-        {numberField("rateFixed", "Fixed Rate (£)")}
+        {numberField("rateFixed", "Fixed Rate (p)")}
       </div>
       {switchField("rateFixedPerDay", "Fixed Rate Per Day")}
-      {numberField("rateKva", "kVA Rate (£)")}
-      {numberField("rateKva2", "kVA Rate 2 (£)")}
+      {numberField("rateKva", "kVA Rate (p)")}
+      {numberField("rateKva2", "kVA Rate 2 (p)")}
       {switchField("rateKvaPerDay", "kVA Per Day")}
       {numberField("rateKvaSplit", "kVA Split")}
-      {numberField("rateMd", "MD Rate (£)")}
-      {numberField("rateMd2", "MD Rate 2 (£)")}
+      {numberField("rateMd", "MD Rate (p)")}
+      {numberField("rateMd2", "MD Rate 2 (p)")}
       {numberField("rateMdSplit", "MD Split")}
-      {numberField("rateTransportation", "Transportation (£)")}
+      {numberField("rateTransportation", "Transportation (p)")}
       {switchField("rateTransportationPerKwh", "Transportation Per kWh")}
-      {numberField("rateMetering", "Metering (£)")}
+      {numberField("rateMetering", "Metering (p)")}
       {switchField("rateMeteringPerDay", "Metering Per Day")}
-      {numberField("rateSettlements", "Settlements (£)")}
+      {numberField("rateSettlements", "Settlements (p)")}
       {switchField("rateSettlementsPerDay", "Settlements Per Day")}
-      {numberField("rateTriad", "TRIAD Rate (£)")}
-      {numberField("rateGreen", "Green Rate (£)")}
+      {numberField("rateTriad", "TRIAD Rate (p)")}
+      {numberField("rateGreen", "Green Rate (p)")}
       {numberField("rateGreenPercent", "Green %")}
-      {numberField("rateFit", "FIT Rate (£)")}
-      {numberField("rateRoc", "ROC Rate (£)")}
+      {numberField("rateFit", "FIT Rate (p)")}
+      {numberField("rateRoc", "ROC Rate (p)")}
 
       {sectionHeader("kWh Splits")}
       {numberField("kwhSplit1", "Split 1 kWh")}
-      {numberField("kwhSplit1CostRate", "Split 1 Cost Rate (£)")}
+      {numberField("kwhSplit1CostRate", "Split 1 Cost Rate (p)")}
       {numberField("kwhSplit2", "Split 2 kWh")}
-      {numberField("kwhSplit2CostRate", "Split 2 Cost Rate (£)")}
+      {numberField("kwhSplit2CostRate", "Split 2 Cost Rate (p)")}
       {numberField("kwhSplit3", "Split 3 kWh")}
-      {numberField("kwhSplit3CostRate", "Split 3 Cost Rate (£)")}
+      {numberField("kwhSplit3CostRate", "Split 3 Cost Rate (p)")}
       {numberField("kwhSplit4", "Split 4 kWh")}
-      {numberField("kwhSplit4CostRate", "Split 4 Cost Rate (£)")}
+      {numberField("kwhSplit4CostRate", "Split 4 Cost Rate (p)")}
       {numberField("kwhSplit5", "Split 5 kWh")}
-      {numberField("kwhSplit5CostRate", "Split 5 Cost Rate (£)")}
+      {numberField("kwhSplit5CostRate", "Split 5 Cost Rate (p)")}
       {numberField("kwhSplit6", "Split 6 kWh")}
-      {numberField("kwhSplit6CostRate", "Split 6 Cost Rate (£)")}
+      {numberField("kwhSplit6CostRate", "Split 6 Cost Rate (p)")}
 
       {sectionHeader("Reactive Power")}
-      {numberField("reactivePower1Rate", "Reactive Power 1 Rate (£)")}
+      {numberField("reactivePower1Rate", "Reactive Power 1 Rate (p)")}
       {numberField("reactivePower1Split", "Reactive Power 1 Split")}
-      {numberField("reactivePower2Rate", "Reactive Power 2 Rate (£)")}
+      {numberField("reactivePower2Rate", "Reactive Power 2 Rate (p)")}
       {numberField("reactivePower2Split", "Reactive Power 2 Split")}
       {numberField("kvarhDefault", "kVArh Default")}
 

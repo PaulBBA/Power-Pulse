@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { 
   ChevronRight, ChevronDown, Search, Loader2, Building2, Zap, 
-  Flame, Droplets, Package, FolderOpen, Plus, FolderPlus, FolderMinus
+  Flame, Droplets, Package, FolderOpen, Plus, FolderPlus, FolderMinus, Pencil
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -98,9 +98,10 @@ interface SiteItemProps {
   currentGroupId?: number;
   onAssignToGroup: (siteId: number, groupId: number) => void;
   onRemoveFromGroup: (siteId: number, groupId: number) => void;
+  onRenameSite: (siteId: number, currentName: string) => void;
 }
 
-function SiteItem({ site, defaultExpanded = false, allGroups, currentGroupId, onAssignToGroup, onRemoveFromGroup }: SiteItemProps) {
+function SiteItem({ site, defaultExpanded = false, allGroups, currentGroupId, onAssignToGroup, onRemoveFromGroup, onRenameSite }: SiteItemProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const addressParts = [site.address, site.town, site.postcode].filter(Boolean);
   const displayAddress = addressParts.length > 0 ? addressParts.join(", ") : "";
@@ -137,6 +138,13 @@ function SiteItem({ site, defaultExpanded = false, allGroups, currentGroupId, on
           {site.name}
         </ContextMenuLabel>
         <ContextMenuSeparator />
+        <ContextMenuItem
+          onClick={() => onRenameSite(site.id, site.name)}
+          data-testid={`context-rename-${site.id}`}
+        >
+          <Pencil className="mr-2 h-4 w-4" />
+          Rename
+        </ContextMenuItem>
         {allGroups.length > 0 && (
           <ContextMenuSub>
             <ContextMenuSubTrigger>
@@ -178,9 +186,10 @@ interface GroupItemProps {
   allGroups: GroupNode[];
   onAssignToGroup: (siteId: number, groupId: number) => void;
   onRemoveFromGroup: (siteId: number, groupId: number) => void;
+  onRenameSite: (siteId: number, currentName: string) => void;
 }
 
-function GroupItem({ group, defaultExpanded = false, allGroups, onAssignToGroup, onRemoveFromGroup }: GroupItemProps) {
+function GroupItem({ group, defaultExpanded = false, allGroups, onAssignToGroup, onRemoveFromGroup, onRenameSite }: GroupItemProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
@@ -204,6 +213,7 @@ function GroupItem({ group, defaultExpanded = false, allGroups, onAssignToGroup,
           currentGroupId={group.id}
           onAssignToGroup={onAssignToGroup}
           onRemoveFromGroup={onRemoveFromGroup}
+          onRenameSite={onRenameSite}
         />
       ))}
     </div>
@@ -216,9 +226,10 @@ interface UnassignedSectionProps {
   allGroups: GroupNode[];
   onAssignToGroup: (siteId: number, groupId: number) => void;
   onRemoveFromGroup: (siteId: number, groupId: number) => void;
+  onRenameSite: (siteId: number, currentName: string) => void;
 }
 
-function UnassignedSection({ sites, defaultExpanded = true, allGroups, onAssignToGroup, onRemoveFromGroup }: UnassignedSectionProps) {
+function UnassignedSection({ sites, defaultExpanded = true, allGroups, onAssignToGroup, onRemoveFromGroup, onRenameSite }: UnassignedSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
@@ -242,6 +253,7 @@ function UnassignedSection({ sites, defaultExpanded = true, allGroups, onAssignT
           allGroups={allGroups}
           onAssignToGroup={onAssignToGroup}
           onRemoveFromGroup={onRemoveFromGroup}
+          onRenameSite={onRenameSite}
         />
       ))}
     </div>
@@ -253,6 +265,8 @@ export default function GroupsPage() {
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
   const [showNewGroupDialog, setShowNewGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [renameSite, setRenameSite] = useState<{ id: number; name: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -305,12 +319,33 @@ export default function GroupsPage() {
     },
   });
 
+  const renameSiteMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const res = await apiRequest("PATCH", `/api/sites/${id}`, { name });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups/hierarchy"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sites"] });
+      setRenameSite(null);
+      toast({ title: "Site renamed" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleAssignToGroup = (siteId: number, groupId: number) => {
     assignSiteMutation.mutate({ siteId, groupId });
   };
 
   const handleRemoveFromGroup = (siteId: number, groupId: number) => {
     removeSiteMutation.mutate({ siteId, groupId });
+  };
+
+  const handleRenameSite = (siteId: number, currentName: string) => {
+    setRenameSite({ id: siteId, name: currentName });
+    setRenameValue(currentName);
   };
 
   const allGroups = hierarchy?.groups || [];
@@ -425,6 +460,7 @@ export default function GroupsPage() {
                     allGroups={allGroups}
                     onAssignToGroup={handleAssignToGroup}
                     onRemoveFromGroup={handleRemoveFromGroup}
+                    onRenameSite={handleRenameSite}
                   />
                 ))}
                 {filteredHierarchy.unassigned.length > 0 && (
@@ -433,6 +469,7 @@ export default function GroupsPage() {
                     allGroups={allGroups}
                     onAssignToGroup={handleAssignToGroup}
                     onRemoveFromGroup={handleRemoveFromGroup}
+                    onRenameSite={handleRenameSite}
                   />
                 )}
                 {filteredHierarchy.groups.length === 0 && filteredHierarchy.unassigned.length === 0 && (
@@ -470,6 +507,35 @@ export default function GroupsPage() {
             >
               {createGroupMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Create Group
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={renameSite !== null} onOpenChange={(open) => { if (!open) setRenameSite(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Site</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Site name"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              data-testid="input-rename-site"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameSite(null)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => renameSite && renameSiteMutation.mutate({ id: renameSite.id, name: renameValue })}
+              disabled={!renameValue.trim() || renameSiteMutation.isPending}
+              data-testid="button-save-rename"
+            >
+              {renameSiteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -65,6 +65,18 @@ export async function registerRoutes(
     res.json(sites);
   });
 
+  app.patch("/api/sites/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name } = req.body;
+      const site = await storage.updateSiteName(id, name);
+      res.json(site);
+    } catch (error: any) {
+      console.error("Error updating site:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.post("/api/sites", async (req, res) => {
     try {
       const site = await storage.createSite(req.body);

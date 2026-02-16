@@ -141,6 +141,11 @@ export class DatabaseStorage implements IStorage {
     return newSite;
   }
 
+  async updateSiteName(id: number, name: string): Promise<Site> {
+    const [updated] = await db.update(sites).set({ name }).where(eq(sites.id, id)).returning();
+    return updated;
+  }
+
   async getDataSets(): Promise<DataSet[]> {
     return await db.select().from(dataSets);
   }

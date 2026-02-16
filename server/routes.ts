@@ -109,6 +109,17 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/data-sets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const dataSet = await storage.updateDataSet(id, req.body);
+      res.json(dataSet);
+    } catch (error: any) {
+      console.error("Error updating data set:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   app.post("/api/data-sets", async (req, res) => {
     try {
       const dataSet = await storage.createDataSet(req.body);

@@ -10,23 +10,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, FileDown, Settings2, ArrowUpDown, Loader2, Plus } from "lucide-react";
+import { Search, FileDown, Settings2, ArrowUpDown, Loader2, Plus, Pencil, ArrowRightLeft } from "lucide-react";
 import * as XLSX from 'xlsx';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DataSet, Site, insertDataSetSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+  ContextMenuLabel,
+} from "@/components/ui/context-menu";
 
 export default function MetersPage() {
   const [search, setSearch] = useState("");
   const [utilityFilter, setUtilityFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingMeter, setEditingMeter] = useState<DataSet | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -56,39 +68,63 @@ export default function MetersPage() {
     },
   });
 
+  const editForm = useForm({
+    resolver: zodResolver(insertDataSetSchema),
+    defaultValues: {
+      name: "",
+      siteId: 0,
+      utilityTypeId: 1,
+      mpanProfile: "",
+      mpanCoreMprn: "",
+      meterSerial1: "",
+      location: "",
+      supplierId: null,
+      isActive: true,
+    },
+  });
+
+  useEffect(() => {
+    if (editingMeter) {
+      editForm.reset({
+        name: editingMeter.name || "",
+        siteId: editingMeter.siteId,
+        utilityTypeId: editingMeter.utilityTypeId,
+        mpanProfile: editingMeter.mpanProfile || "",
+        mpanCoreMprn: editingMeter.mpanCoreMprn || "",
+        meterSerial1: editingMeter.meterSerial1 || "",
+        location: editingMeter.location || "",
+        supplierId: editingMeter.supplierId || undefined,
+        isActive: editingMeter.isActive ?? true,
+      });
+    }
+  }, [editingMeter, editForm]);
+
+  const cleanValues = (values: any) => {
+    const cleaned: any = {
+      name: values.name || null,
+      siteId: values.siteId ? Number(values.siteId) : null,
+      utilityTypeId: values.utilityTypeId ? Number(values.utilityTypeId) : null,
+      mpanProfile: values.mpanProfile || null,
+      mpanCoreMprn: values.mpanCoreMprn || null,
+      meterSerial1: values.meterSerial1 || null,
+      location: values.location || null,
+      supplierId: values.supplierId ? Number(values.supplierId) : null,
+    };
+    return Object.fromEntries(
+      Object.entries(cleaned).filter(([_, v]) => v !== null && v !== "")
+    );
+  };
+
   const createMeterMutation = useMutation({
     mutationFn: async (values: any) => {
-      // Clean values: ensure numeric IDs are numbers, and optional text fields are null if empty
-      const cleanedValues: any = {
-        name: values.name || null,
-        siteId: values.siteId ? Number(values.siteId) : null,
-        utilityTypeId: values.utilityTypeId ? Number(values.utilityTypeId) : null,
-        mpanProfile: values.mpanProfile || null,
-        mpanCoreMprn: values.mpanCoreMprn || null,
-        meterSerial1: values.meterSerial1 || null,
-        location: values.location || null,
-        supplierId: values.supplierId ? Number(values.supplierId) : null,
-      };
-
-      // Filter out null values for required fields or fields that might cause issues if empty string is sent as parameter
-      const finalValues = Object.fromEntries(
-        Object.entries(cleanedValues).filter(([_, v]) => v !== null && v !== "")
-      );
-
-      const res = await apiRequest("POST", "/api/data-sets", finalValues);
-      
+      const res = await apiRequest("POST", "/api/data-sets", cleanValues(values));
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to create meter");
       }
-
       const text = await res.text();
       if (!text) return null;
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        return null;
-      }
+      try { return JSON.parse(text); } catch { return null; }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/data-sets"] });
@@ -98,24 +134,48 @@ export default function MetersPage() {
       form.reset();
     },
     onError: (error: any) => {
-      // Check for common database errors and map them to fields
-      const message = error.message || "";
-      
-      if (message.includes("mpan_core_mprn") || message.includes("parameter $5")) {
-        form.setError("mpanCoreMprn", { message: "Invalid input syntax for integer" });
-      } else if (message.includes("mpan_profile") || message.includes("parameter $4")) {
-        form.setError("mpanProfile", { message: "Invalid input syntax for integer" });
-      } else if (message.includes("meter_serial_1") || message.includes("parameter $6")) {
-        form.setError("meterSerial1", { message: "Invalid input syntax for integer" });
-      } else if (message.includes("supplier_id") || message.includes("parameter $8")) {
-        form.setError("supplierId", { message: "Invalid input syntax for integer" });
-      }
+      toast({ title: "Error", description: error.message || "Failed to create meter", variant: "destructive" });
+    },
+  });
 
-      toast({ 
-        title: "Error", 
-        description: error.message || "Failed to create meter",
-        variant: "destructive"
-      });
+  const updateMeterMutation = useMutation({
+    mutationFn: async ({ id, values }: { id: number; values: any }) => {
+      const cleaned: any = {
+        name: values.name || null,
+        siteId: values.siteId ? Number(values.siteId) : undefined,
+        utilityTypeId: values.utilityTypeId ? Number(values.utilityTypeId) : undefined,
+        mpanProfile: values.mpanProfile || null,
+        mpanCoreMprn: values.mpanCoreMprn || null,
+        meterSerial1: values.meterSerial1 || null,
+        location: values.location || null,
+        supplierId: values.supplierId ? Number(values.supplierId) : null,
+      };
+      const res = await apiRequest("PATCH", `/api/data-sets/${id}`, cleaned);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/data-sets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups/hierarchy"] });
+      toast({ title: "Success", description: "Meter updated successfully" });
+      setEditingMeter(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update meter", variant: "destructive" });
+    },
+  });
+
+  const moveMeterMutation = useMutation({
+    mutationFn: async ({ id, siteId }: { id: number; siteId: number }) => {
+      const res = await apiRequest("PATCH", `/api/data-sets/${id}`, { siteId });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/data-sets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups/hierarchy"] });
+      toast({ title: "Success", description: "Meter moved to new site" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to move meter", variant: "destructive" });
     },
   });
 
@@ -128,7 +188,7 @@ export default function MetersPage() {
   };
 
   const filteredDataSets = dataSets?.filter(ds => {
-    const matchesSearch = ds.name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch = (ds.name || "").toLowerCase().includes(search.toLowerCase()) ||
       (ds.mpanCoreMprn && ds.mpanCoreMprn.toLowerCase().includes(search.toLowerCase())) ||
       (ds.meterSerial1 && ds.meterSerial1.toLowerCase().includes(search.toLowerCase()));
     
@@ -138,18 +198,123 @@ export default function MetersPage() {
   }) || [];
 
   const getUtilityName = (id: number) => {
-    const names: Record<number, string> = {
-      1: "Electricity",
-      2: "Gas",
-      3: "Water"
-    };
+    const names: Record<number, string> = { 1: "Electricity", 2: "Gas", 3: "Water" };
     return names[id] || `Unknown (${id})`;
   };
+
+  const getSiteName = (siteId: number) => {
+    const site = sites?.find(s => s.id === siteId);
+    return site?.name || `Site ${siteId}`;
+  };
+
+  const meterFormFields = (formInstance: any) => (
+    <div className="grid grid-cols-2 gap-4">
+      <FormField
+        control={formInstance.control}
+        name="siteId"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>Site</FormLabel>
+            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a site" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {sites?.map(site => (
+                  <SelectItem key={site.id} value={site.id.toString()}>{site.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={formInstance.control}
+        name="utilityTypeId"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>Utility Type</FormLabel>
+            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="1">Electricity</SelectItem>
+                <SelectItem value="2">Gas</SelectItem>
+                <SelectItem value="3">Water</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={formInstance.control}
+        name="name"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>Meter Name</FormLabel>
+            <FormControl><Input {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={formInstance.control}
+        name="mpanProfile"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>MPAN Profile</FormLabel>
+            <FormControl><Input {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={formInstance.control}
+        name="mpanCoreMprn"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>MPAN Core / MPRN</FormLabel>
+            <FormControl><Input {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={formInstance.control}
+        name="meterSerial1"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>Meter Serial 1</FormLabel>
+            <FormControl><Input {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={formInstance.control}
+        name="location"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>Location</FormLabel>
+            <FormControl><Input {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
 
   return (
     <Layout>
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Data Sets (Meters)</h1>
+        <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">Data Sets (Meters)</h1>
         <p className="text-muted-foreground">Manage and view your energy meter infrastructure.</p>
       </div>
 
@@ -162,7 +327,7 @@ export default function MetersPage() {
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Utility:</span>
               <Select value={utilityFilter} onValueChange={setUtilityFilter}>
-                <SelectTrigger className="w-32 h-9">
+                <SelectTrigger className="w-32 h-9" data-testid="select-utility-filter">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
@@ -183,6 +348,7 @@ export default function MetersPage() {
                   placeholder="Search MPAN/Serial/Name..." 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  data-testid="input-search"
                 />
               </div>
             </div>
@@ -191,7 +357,7 @@ export default function MetersPage() {
               {canCreateMeter && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-9 bg-primary text-white">
+                    <Button size="sm" className="h-9 bg-primary text-white" data-testid="button-new-meter">
                       <Plus className="mr-2 h-4 w-4" />
                       New Meter
                     </Button>
@@ -202,108 +368,8 @@ export default function MetersPage() {
                     </DialogHeader>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit((data) => createMeterMutation.mutate(data))} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="siteId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Site</FormLabel>
-                                <Select onValueChange={(v) => field.onChange(parseInt(v))} defaultValue={field.value?.toString()}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a site" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {sites?.map(site => (
-                                      <SelectItem key={site.id} value={site.id.toString()}>{site.name}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="utilityTypeId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Utility Type</FormLabel>
-                                <Select onValueChange={(v) => field.onChange(parseInt(v))} defaultValue={field.value?.toString()}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select type" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="1">Electricity</SelectItem>
-                                    <SelectItem value="2">Gas</SelectItem>
-                                    <SelectItem value="3">Water</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Meter Name</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="mpanProfile"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>MPAN Profile</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="mpanCoreMprn"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>MPAN Core / MPRN</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="meterSerial1"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Meter Serial 1</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="location"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Location</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        <Button type="submit" className="w-full" disabled={createMeterMutation.isPending}>
+                        {meterFormFields(form)}
+                        <Button type="submit" className="w-full" disabled={createMeterMutation.isPending} data-testid="button-save-meter">
                           {createMeterMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           Save Meter
                         </Button>
@@ -317,6 +383,7 @@ export default function MetersPage() {
                 className="h-9 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
                 onClick={handleExport}
                 disabled={!dataSets || dataSets.length === 0}
+                data-testid="button-export"
               >
                 <FileDown className="mr-2 h-4 w-4" />
                 Excel
@@ -342,23 +409,62 @@ export default function MetersPage() {
                     <TableHead className="font-bold">Meter Serial 1</TableHead>
                     <TableHead className="font-bold">Location</TableHead>
                     <TableHead className="font-bold">Supplier ID</TableHead>
+                    <TableHead className="font-bold">Site</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredDataSets.length > 0 ? (
                     filteredDataSets.map((ds, i) => (
-                      <TableRow key={ds.id} className={i % 2 === 1 ? "bg-secondary/20" : ""}>
-                        <TableCell className="text-sm">{getUtilityName(ds.utilityTypeId)}</TableCell>
-                        <TableCell className="text-sm">{ds.mpanProfile}</TableCell>
-                        <TableCell className="text-sm">{ds.mpanCoreMprn}</TableCell>
-                        <TableCell className="text-sm">{ds.meterSerial1}</TableCell>
-                        <TableCell className="text-sm">{ds.location}</TableCell>
-                        <TableCell className="text-sm">{ds.supplierId || '-'}</TableCell>
-                      </TableRow>
+                      <ContextMenu key={ds.id}>
+                        <ContextMenuTrigger asChild>
+                          <TableRow 
+                            className={`${i % 2 === 1 ? "bg-secondary/20" : ""} cursor-pointer`}
+                            data-testid={`row-meter-${ds.id}`}
+                          >
+                            <TableCell className="text-sm">{getUtilityName(ds.utilityTypeId)}</TableCell>
+                            <TableCell className="text-sm">{ds.mpanProfile}</TableCell>
+                            <TableCell className="text-sm">{ds.mpanCoreMprn}</TableCell>
+                            <TableCell className="text-sm">{ds.meterSerial1}</TableCell>
+                            <TableCell className="text-sm">{ds.location}</TableCell>
+                            <TableCell className="text-sm">{ds.supplierId || '-'}</TableCell>
+                            <TableCell className="text-sm">{getSiteName(ds.siteId)}</TableCell>
+                          </TableRow>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent className="w-56">
+                          <ContextMenuLabel className="text-xs text-muted-foreground truncate">
+                            {ds.mpanCoreMprn || ds.name || `Meter ${ds.id}`}
+                          </ContextMenuLabel>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem
+                            onClick={() => setEditingMeter(ds)}
+                            data-testid={`context-edit-${ds.id}`}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Meter
+                          </ContextMenuItem>
+                          <ContextMenuSub>
+                            <ContextMenuSubTrigger>
+                              <ArrowRightLeft className="mr-2 h-4 w-4" />
+                              Move to Site
+                            </ContextMenuSubTrigger>
+                            <ContextMenuSubContent className="w-56 max-h-64 overflow-y-auto">
+                              {sites?.filter(s => s.id !== ds.siteId).map(site => (
+                                <ContextMenuItem
+                                  key={site.id}
+                                  onClick={() => moveMeterMutation.mutate({ id: ds.id, siteId: site.id })}
+                                  data-testid={`context-move-${ds.id}-${site.id}`}
+                                >
+                                  {site.name}
+                                </ContextMenuItem>
+                              ))}
+                            </ContextMenuSubContent>
+                          </ContextMenuSub>
+                        </ContextMenuContent>
+                      </ContextMenu>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No meters found</TableCell>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No meters found</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -367,6 +473,23 @@ export default function MetersPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={editingMeter !== null} onOpenChange={(open) => { if (!open) setEditingMeter(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Meter</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit((data) => editingMeter && updateMeterMutation.mutate({ id: editingMeter.id, values: data }))} className="space-y-4">
+              {meterFormFields(editForm)}
+              <Button type="submit" className="w-full" disabled={updateMeterMutation.isPending} data-testid="button-update-meter">
+                {updateMeterMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Update Meter
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

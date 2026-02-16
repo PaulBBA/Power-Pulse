@@ -159,6 +159,11 @@ export class DatabaseStorage implements IStorage {
     return newDataSet;
   }
 
+  async updateDataSet(id: number, data: Partial<DataSet>): Promise<DataSet> {
+    const [updated] = await db.update(dataSets).set(data).where(eq(dataSets.id, id)).returning();
+    return updated;
+  }
+
   async getInvoices(dataSetId: number): Promise<Invoice[]> {
     return await db.select().from(dataInvoices).where(eq(dataInvoices.dataSetId, dataSetId));
   }

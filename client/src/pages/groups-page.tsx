@@ -83,6 +83,7 @@ function MeterItem({ meter }: { meter: MeterNode }) {
     <div 
       className="flex items-center gap-2 py-1.5 px-2 ml-12 rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
       data-testid={`meter-item-${meter.id}`}
+      onContextMenu={(e) => e.stopPropagation()}
     >
       {getUtilityIcon(meter.utilityCode)}
       <span className="text-sm text-foreground">{displayName}</span>

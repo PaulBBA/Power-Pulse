@@ -13,6 +13,7 @@ import AdminPage from "@/pages/admin-page";
 import MetersPage from "@/pages/meters-page";
 import SitesPage from "@/pages/sites-page";
 import GroupsPage from "@/pages/groups-page";
+import ContractsPage from "@/pages/contracts-page";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/groups" component={GroupsPage} />
       <Route path="/sites" component={SitesPage} />
       <Route path="/meters" component={MetersPage} />
+      <Route path="/contracts" component={ContractsPage} />
       <Route path="/import" component={ImportPage} />
       <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />

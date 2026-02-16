@@ -14,7 +14,8 @@ import {
   User,
   Layers,
   MapPin,
-  Gauge
+  Gauge,
+  FileSignature
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -45,6 +46,7 @@ export function Layout({ children }: LayoutProps) {
     { icon: Layers, label: "Groups", href: "/groups" },
     { icon: MapPin, label: "Sites", href: "/sites" },
     { icon: Gauge, label: "Meters", href: "/meters" },
+    { icon: FileSignature, label: "Contracts", href: "/contracts" },
     { icon: BarChart3, label: "Analysis", href: "/analysis" },
     { icon: FileText, label: "Reports", href: "/reports" },
     { icon: Upload, label: "Import Data", href: "/import" },

@@ -139,5 +139,39 @@ export async function registerRoutes(
     res.json(invoices);
   });
 
+  app.get("/api/todos", async (_req, res) => {
+    const items = await storage.getTodoItems();
+    res.json(items);
+  });
+
+  app.post("/api/todos", async (req, res) => {
+    try {
+      const item = await storage.createTodoItem(req.body);
+      res.status(201).json(item);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/todos/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.toggleTodoItem(id, req.body.isDone);
+      res.json(item);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/todos/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteTodoItem(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   return httpServer;
 }

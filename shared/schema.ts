@@ -99,6 +99,15 @@ export const dataProfiles = pgTable("data_profiles", {
   dayTotal: decimal("day_total", { precision: 12, scale: 3 }),
 });
 
+// --- Admin To Do ---
+
+export const todoItems = pgTable("todo_items", {
+  id: serial("id").primaryKey(),
+  text: text("text").notNull(),
+  isDone: boolean("is_done").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // --- Auth ---
 
 export const users = pgTable("users", {
@@ -115,6 +124,8 @@ export const insertDataSetSchema = createInsertSchema(dataSets).omit({ id: true,
 export const insertInvoiceSchema = createInsertSchema(dataInvoices).omit({ id: true, lastUpdate: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 
+export const insertTodoSchema = createInsertSchema(todoItems).omit({ id: true, createdAt: true });
+
 // --- Types ---
 
 export type Site = typeof sites.$inferSelect;
@@ -123,3 +134,5 @@ export type Invoice = typeof dataInvoices.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Group = typeof groups.$inferSelect;
+export type TodoItem = typeof todoItems.$inferSelect;
+export type InsertTodo = z.infer<typeof insertTodoSchema>;

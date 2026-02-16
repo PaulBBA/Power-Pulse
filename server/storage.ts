@@ -5,7 +5,8 @@ import {
   siteGroups,
   dataSets, type DataSet,
   dataInvoices, type Invoice,
-  utilities
+  utilities,
+  todoItems, type TodoItem, type InsertTodo
 } from "@shared/schema.js";
 import { db } from "./db.js";
 import { eq, inArray, notInArray, sql } from "drizzle-orm";
@@ -42,6 +43,12 @@ export interface IStorage {
 
   // Utilities
   getUtilities(): Promise<any[]>;
+
+  // Todo Items
+  getTodoItems(): Promise<TodoItem[]>;
+  createTodoItem(item: InsertTodo): Promise<TodoItem>;
+  toggleTodoItem(id: number, isDone: boolean): Promise<TodoItem>;
+  deleteTodoItem(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -177,6 +184,24 @@ export class DatabaseStorage implements IStorage {
 
   async getUtilities(): Promise<any[]> {
     return await db.select().from(utilities);
+  }
+
+  async getTodoItems(): Promise<TodoItem[]> {
+    return await db.select().from(todoItems).orderBy(todoItems.createdAt);
+  }
+
+  async createTodoItem(item: InsertTodo): Promise<TodoItem> {
+    const [newItem] = await db.insert(todoItems).values(item).returning();
+    return newItem;
+  }
+
+  async toggleTodoItem(id: number, isDone: boolean): Promise<TodoItem> {
+    const [updated] = await db.update(todoItems).set({ isDone }).where(eq(todoItems.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTodoItem(id: number): Promise<void> {
+    await db.delete(todoItems).where(eq(todoItems.id, id));
   }
 }
 

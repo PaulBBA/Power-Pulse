@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Search, FileDown, Settings2, ArrowUpDown, Loader2, Plus, Pencil, ArrowRightLeft } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useState, useEffect } from "react";
@@ -69,7 +70,6 @@ export default function MetersPage() {
   });
 
   const editForm = useForm({
-    resolver: zodResolver(insertDataSetSchema),
     defaultValues: {
       name: "",
       siteId: 0,
@@ -78,8 +78,12 @@ export default function MetersPage() {
       mpanCoreMprn: "",
       meterSerial1: "",
       location: "",
-      supplierId: null,
+      supplierId: "",
+      tariffName: "",
+      meterType: "",
+      isVirtual: false,
       isActive: true,
+      dateClosed: "",
     },
   });
 
@@ -93,8 +97,12 @@ export default function MetersPage() {
         mpanCoreMprn: editingMeter.mpanCoreMprn || "",
         meterSerial1: editingMeter.meterSerial1 || "",
         location: editingMeter.location || "",
-        supplierId: editingMeter.supplierId || undefined,
+        supplierId: editingMeter.supplierId?.toString() || "",
+        tariffName: editingMeter.tariffName || "",
+        meterType: editingMeter.meterType || "",
+        isVirtual: editingMeter.isVirtual ?? false,
         isActive: editingMeter.isActive ?? true,
+        dateClosed: editingMeter.dateClosed ? new Date(editingMeter.dateClosed).toISOString().split("T")[0] : "",
       });
     }
   }, [editingMeter, editForm]);
@@ -149,6 +157,11 @@ export default function MetersPage() {
         meterSerial1: values.meterSerial1 || null,
         location: values.location || null,
         supplierId: values.supplierId ? Number(values.supplierId) : null,
+        tariffName: values.tariffName || null,
+        meterType: values.meterType || null,
+        isVirtual: values.isVirtual ?? false,
+        isActive: values.isActive ?? true,
+        dateClosed: values.dateClosed ? new Date(values.dateClosed) : null,
       };
       const res = await apiRequest("PATCH", `/api/data-sets/${id}`, cleaned);
       return res.json();
@@ -309,6 +322,192 @@ export default function MetersPage() {
         )}
       />
     </div>
+  );
+
+  const editMeterFormFields = (formInstance: any) => (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={formInstance.control}
+          name="siteId"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Site</FormLabel>
+              <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a site" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {sites?.map(site => (
+                    <SelectItem key={site.id} value={site.id.toString()}>{site.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="utilityTypeId"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Utility Type</FormLabel>
+              <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="1">Electricity</SelectItem>
+                  <SelectItem value="2">Gas</SelectItem>
+                  <SelectItem value="3">Water</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="name"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Meter Name</FormLabel>
+              <FormControl><Input {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="mpanProfile"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>MPAN Profile</FormLabel>
+              <FormControl><Input {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="mpanCoreMprn"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>MPAN Core / MPRN</FormLabel>
+              <FormControl><Input {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="meterSerial1"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Meter Serial 1</FormLabel>
+              <FormControl><Input {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="location"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Location</FormLabel>
+              <FormControl><Input {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="supplierId"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Supplier ID</FormLabel>
+              <FormControl><Input {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="tariffName"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Tariff Name</FormLabel>
+              <FormControl><Input {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="meterType"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Meter Type</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || ""}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="Main">Main</SelectItem>
+                  <SelectItem value="Sub-meter">Sub-meter</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="dateClosed"
+          render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Date Closed</FormLabel>
+              <FormControl><Input type="date" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+      <div className="flex gap-8 pt-2">
+        <FormField
+          control={formInstance.control}
+          name="isActive"
+          render={({ field }: any) => (
+            <FormItem className="flex items-center gap-3 space-y-0">
+              <FormLabel>Active</FormLabel>
+              <FormControl>
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={formInstance.control}
+          name="isVirtual"
+          render={({ field }: any) => (
+            <FormItem className="flex items-center gap-3 space-y-0">
+              <FormLabel>Virtual Meter</FormLabel>
+              <FormControl>
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </div>
+    </>
   );
 
   return (
@@ -481,7 +680,7 @@ export default function MetersPage() {
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit((data) => editingMeter && updateMeterMutation.mutate({ id: editingMeter.id, values: data }))} className="space-y-4">
-              {meterFormFields(editForm)}
+              {editMeterFormFields(editForm)}
               <Button type="submit" className="w-full" disabled={updateMeterMutation.isPending} data-testid="button-update-meter">
                 {updateMeterMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Update Meter

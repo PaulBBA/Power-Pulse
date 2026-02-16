@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { 
   ChevronRight, ChevronDown, Search, Loader2, Building2, Zap, 
-  Flame, Droplets, Fuel, Package, FolderOpen, Plus
+  Flame, Droplets, Package, FolderOpen, Plus, FolderPlus, FolderMinus
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,7 +23,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+  ContextMenuLabel,
+} from "@/components/ui/context-menu";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 interface MeterNode {
   id: number;
@@ -78,39 +90,96 @@ function MeterItem({ meter }: { meter: MeterNode }) {
   );
 }
 
-function SiteItem({ site, defaultExpanded = false }: { site: SiteNode; defaultExpanded?: boolean }) {
+interface SiteItemProps {
+  site: SiteNode;
+  defaultExpanded?: boolean;
+  allGroups: GroupNode[];
+  currentGroupId?: number;
+  onAssignToGroup: (siteId: number, groupId: number) => void;
+  onRemoveFromGroup: (siteId: number, groupId: number) => void;
+}
+
+function SiteItem({ site, defaultExpanded = false, allGroups, currentGroupId, onAssignToGroup, onRemoveFromGroup }: SiteItemProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const addressParts = [site.address, site.town, site.postcode].filter(Boolean);
   const displayAddress = addressParts.length > 0 ? addressParts.join(", ") : "";
   const displayName = displayAddress ? `${site.name}, ${displayAddress}` : site.name;
 
   return (
-    <div data-testid={`site-item-${site.id}`}>
-      <div 
-        className="flex items-center gap-2 py-1.5 px-2 ml-6 rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
-        {site.meters.length > 0 ? (
-          expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-        ) : (
-          <span className="w-4 shrink-0" />
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div data-testid={`site-item-${site.id}`}>
+          <div 
+            className="flex items-center gap-2 py-1.5 px-2 ml-6 rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {site.meters.length > 0 ? (
+              expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            ) : (
+              <span className="w-4 shrink-0" />
+            )}
+            <Building2 className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm text-foreground truncate">{displayName}</span>
+            {site.meters.length > 0 && (
+              <span className="text-xs text-muted-foreground ml-auto shrink-0">
+                {site.meters.length} meter{site.meters.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+          {expanded && site.meters.map(meter => (
+            <MeterItem key={meter.id} meter={meter} />
+          ))}
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-56">
+        <ContextMenuLabel className="text-xs text-muted-foreground truncate">
+          {site.name}
+        </ContextMenuLabel>
+        <ContextMenuSeparator />
+        {allGroups.length > 0 && (
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <FolderPlus className="mr-2 h-4 w-4" />
+              Add to Group
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-48">
+              {allGroups.map(group => (
+                <ContextMenuItem
+                  key={group.id}
+                  onClick={() => onAssignToGroup(site.id, group.id)}
+                  data-testid={`context-assign-${site.id}-${group.id}`}
+                >
+                  <FolderOpen className="mr-2 h-4 w-4 text-primary" />
+                  {group.name}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
         )}
-        <Building2 className="h-4 w-4 text-primary shrink-0" />
-        <span className="text-sm text-foreground truncate">{displayName}</span>
-        {site.meters.length > 0 && (
-          <span className="text-xs text-muted-foreground ml-auto shrink-0">
-            {site.meters.length} meter{site.meters.length !== 1 ? "s" : ""}
-          </span>
+        {currentGroupId !== undefined && (
+          <ContextMenuItem
+            onClick={() => onRemoveFromGroup(site.id, currentGroupId)}
+            className="text-destructive focus:text-destructive"
+            data-testid={`context-remove-${site.id}`}
+          >
+            <FolderMinus className="mr-2 h-4 w-4" />
+            Remove from Group
+          </ContextMenuItem>
         )}
-      </div>
-      {expanded && site.meters.map(meter => (
-        <MeterItem key={meter.id} meter={meter} />
-      ))}
-    </div>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
-function GroupItem({ group, defaultExpanded = false }: { group: GroupNode; defaultExpanded?: boolean }) {
+interface GroupItemProps {
+  group: GroupNode;
+  defaultExpanded?: boolean;
+  allGroups: GroupNode[];
+  onAssignToGroup: (siteId: number, groupId: number) => void;
+  onRemoveFromGroup: (siteId: number, groupId: number) => void;
+}
+
+function GroupItem({ group, defaultExpanded = false, allGroups, onAssignToGroup, onRemoveFromGroup }: GroupItemProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
@@ -127,13 +196,28 @@ function GroupItem({ group, defaultExpanded = false }: { group: GroupNode; defau
         </span>
       </div>
       {expanded && group.sites.map(site => (
-        <SiteItem key={site.id} site={site} />
+        <SiteItem 
+          key={site.id} 
+          site={site} 
+          allGroups={allGroups}
+          currentGroupId={group.id}
+          onAssignToGroup={onAssignToGroup}
+          onRemoveFromGroup={onRemoveFromGroup}
+        />
       ))}
     </div>
   );
 }
 
-function UnassignedSection({ sites, defaultExpanded = true }: { sites: SiteNode[]; defaultExpanded?: boolean }) {
+interface UnassignedSectionProps {
+  sites: SiteNode[];
+  defaultExpanded?: boolean;
+  allGroups: GroupNode[];
+  onAssignToGroup: (siteId: number, groupId: number) => void;
+  onRemoveFromGroup: (siteId: number, groupId: number) => void;
+}
+
+function UnassignedSection({ sites, defaultExpanded = true, allGroups, onAssignToGroup, onRemoveFromGroup }: UnassignedSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
@@ -150,7 +234,14 @@ function UnassignedSection({ sites, defaultExpanded = true }: { sites: SiteNode[
         </span>
       </div>
       {expanded && sites.map(site => (
-        <SiteItem key={site.id} site={site} defaultExpanded={false} />
+        <SiteItem 
+          key={site.id} 
+          site={site} 
+          defaultExpanded={false} 
+          allGroups={allGroups}
+          onAssignToGroup={onAssignToGroup}
+          onRemoveFromGroup={onRemoveFromGroup}
+        />
       ))}
     </div>
   );
@@ -163,6 +254,7 @@ export default function GroupsPage() {
   const [newGroupName, setNewGroupName] = useState("");
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { toast } = useToast();
   const isAdmin = user?.role === "admin";
 
   const { data: hierarchy, isLoading } = useQuery<HierarchyData>({
@@ -180,8 +272,47 @@ export default function GroupsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/groups/hierarchy"] });
       setShowNewGroupDialog(false);
       setNewGroupName("");
+      toast({ title: "Group created" });
     },
   });
+
+  const assignSiteMutation = useMutation({
+    mutationFn: async ({ siteId, groupId }: { siteId: number; groupId: number }) => {
+      const res = await apiRequest("POST", "/api/site-groups", { siteId, groupId });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups/hierarchy"] });
+      toast({ title: "Site added to group" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const removeSiteMutation = useMutation({
+    mutationFn: async ({ siteId, groupId }: { siteId: number; groupId: number }) => {
+      const res = await apiRequest("DELETE", "/api/site-groups", { siteId, groupId });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups/hierarchy"] });
+      toast({ title: "Site removed from group" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleAssignToGroup = (siteId: number, groupId: number) => {
+    assignSiteMutation.mutate({ siteId, groupId });
+  };
+
+  const handleRemoveFromGroup = (siteId: number, groupId: number) => {
+    removeSiteMutation.mutate({ siteId, groupId });
+  };
+
+  const allGroups = hierarchy?.groups || [];
 
   const filteredHierarchy = useMemo(() => {
     if (!hierarchy) return null;
@@ -287,10 +418,21 @@ export default function GroupsPage() {
             ) : filteredHierarchy ? (
               <div className="space-y-1">
                 {filteredHierarchy.groups.map(group => (
-                  <GroupItem key={group.id} group={group} />
+                  <GroupItem 
+                    key={group.id} 
+                    group={group}
+                    allGroups={allGroups}
+                    onAssignToGroup={handleAssignToGroup}
+                    onRemoveFromGroup={handleRemoveFromGroup}
+                  />
                 ))}
                 {filteredHierarchy.unassigned.length > 0 && (
-                  <UnassignedSection sites={filteredHierarchy.unassigned} />
+                  <UnassignedSection 
+                    sites={filteredHierarchy.unassigned}
+                    allGroups={allGroups}
+                    onAssignToGroup={handleAssignToGroup}
+                    onRemoveFromGroup={handleRemoveFromGroup}
+                  />
                 )}
                 {filteredHierarchy.groups.length === 0 && filteredHierarchy.unassigned.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">

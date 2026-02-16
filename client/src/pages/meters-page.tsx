@@ -34,6 +34,7 @@ import {
   ContextMenuTrigger,
   ContextMenuLabel,
 } from "@/components/ui/context-menu";
+import { Separator } from "@/components/ui/separator";
 
 export default function MetersPage() {
   const [search, setSearch] = useState("");
@@ -54,38 +55,83 @@ export default function MetersPage() {
 
   const canCreateMeter = user?.role === "admin" || user?.role === "editor";
 
+  const defaultFormValues = {
+    name: "",
+    siteId: 0,
+    utilityTypeId: 1,
+    mpanProfile: "",
+    mpanCoreMprn: "",
+    meterSerial1: "",
+    location: "",
+    supplierId: null as number | null,
+    isActive: true,
+    isVirtual: false,
+    tariffName: "",
+    meterType: "",
+    dateClosed: "",
+    code: "",
+    code2: "",
+    hostSupplier: "",
+    billFrequency: "",
+    annualQuantity: "",
+    meterDigits: "",
+    meterNumber: "",
+    otherNumber: "",
+    subMeter: false,
+    aggregateMeter: false,
+    landlordBilled: false,
+    interruptible: false,
+    vatRate: "",
+    tariffCclRate: "",
+    comments: "",
+    units: "",
+    kva: "",
+    voltage: "",
+    powerFactor: "",
+    eac: "",
+    profileMeter: false,
+    profileFrequency: "",
+    profileScaleFactor: "",
+    profileKwhFactor: "",
+    profileCalorificValue: "",
+    profileCorrectionFactor: "",
+    profileCostRate: "",
+    profileMeterMax: "",
+    profileThreshold1: "",
+    profileThreshold2: "",
+    meterOperator: "",
+    meterAssetManager: "",
+    mhhsApplied: false,
+    rotaDisconnectionAlphaId: "",
+    gasMeterSize: "",
+    nominatedSoq: "",
+    soqPeak: "",
+    soqAlternative: "",
+    soqMinimum: "",
+    supplyHourlyQuantity: "",
+    kwhFactor: "",
+    meterSize: "",
+    meterSize2: "",
+    meterTypeCapacity: "",
+    returnToSewer: "",
+    highwayDrainage: false,
+    surfaceWater: false,
+    sewerageSupplier: "",
+    waterSupplier: "",
+    sewerageWholesaleTariff: "",
+    waterWholesaleTariff: "",
+  };
+
   const form = useForm({
-    resolver: zodResolver(insertDataSetSchema),
-    defaultValues: {
-      name: "",
-      siteId: 0,
-      utilityTypeId: 1,
-      mpanProfile: "",
-      mpanCoreMprn: "",
-      meterSerial1: "",
-      location: "",
-      supplierId: null,
-      isActive: true,
-    },
+    defaultValues: defaultFormValues,
   });
 
   const editForm = useForm({
-    defaultValues: {
-      name: "",
-      siteId: 0,
-      utilityTypeId: 1,
-      mpanProfile: "",
-      mpanCoreMprn: "",
-      meterSerial1: "",
-      location: "",
-      supplierId: "",
-      tariffName: "",
-      meterType: "",
-      isVirtual: false,
-      isActive: true,
-      dateClosed: "",
-    },
+    defaultValues: defaultFormValues,
   });
+
+  const watchUtilityType = form.watch("utilityTypeId");
+  const editWatchUtilityType = editForm.watch("utilityTypeId");
 
   useEffect(() => {
     if (editingMeter) {
@@ -97,12 +143,63 @@ export default function MetersPage() {
         mpanCoreMprn: editingMeter.mpanCoreMprn || "",
         meterSerial1: editingMeter.meterSerial1 || "",
         location: editingMeter.location || "",
-        supplierId: editingMeter.supplierId?.toString() || "",
+        supplierId: editingMeter.supplierId ?? null,
         tariffName: editingMeter.tariffName || "",
         meterType: editingMeter.meterType || "",
         isVirtual: editingMeter.isVirtual ?? false,
         isActive: editingMeter.isActive ?? true,
         dateClosed: editingMeter.dateClosed ? new Date(editingMeter.dateClosed).toISOString().split("T")[0] : "",
+        code: editingMeter.code || "",
+        code2: editingMeter.code2 || "",
+        hostSupplier: editingMeter.hostSupplier || "",
+        billFrequency: editingMeter.billFrequency || "",
+        annualQuantity: editingMeter.annualQuantity?.toString() || "",
+        meterDigits: editingMeter.meterDigits?.toString() || "",
+        meterNumber: editingMeter.meterNumber || "",
+        otherNumber: editingMeter.otherNumber || "",
+        subMeter: editingMeter.subMeter ?? false,
+        aggregateMeter: editingMeter.aggregateMeter ?? false,
+        landlordBilled: editingMeter.landlordBilled ?? false,
+        interruptible: editingMeter.interruptible ?? false,
+        vatRate: editingMeter.vatRate?.toString() || "",
+        tariffCclRate: editingMeter.tariffCclRate?.toString() || "",
+        comments: editingMeter.comments || "",
+        units: editingMeter.units || "",
+        kva: editingMeter.kva?.toString() || "",
+        voltage: editingMeter.voltage || "",
+        powerFactor: editingMeter.powerFactor?.toString() || "",
+        eac: editingMeter.eac?.toString() || "",
+        profileMeter: editingMeter.profileMeter ?? false,
+        profileFrequency: editingMeter.profileFrequency || "",
+        profileScaleFactor: editingMeter.profileScaleFactor?.toString() || "",
+        profileKwhFactor: editingMeter.profileKwhFactor?.toString() || "",
+        profileCalorificValue: editingMeter.profileCalorificValue?.toString() || "",
+        profileCorrectionFactor: editingMeter.profileCorrectionFactor?.toString() || "",
+        profileCostRate: editingMeter.profileCostRate?.toString() || "",
+        profileMeterMax: editingMeter.profileMeterMax?.toString() || "",
+        profileThreshold1: editingMeter.profileThreshold1?.toString() || "",
+        profileThreshold2: editingMeter.profileThreshold2?.toString() || "",
+        meterOperator: editingMeter.meterOperator || "",
+        meterAssetManager: editingMeter.meterAssetManager || "",
+        mhhsApplied: editingMeter.mhhsApplied ?? false,
+        rotaDisconnectionAlphaId: editingMeter.rotaDisconnectionAlphaId || "",
+        gasMeterSize: editingMeter.gasMeterSize || "",
+        nominatedSoq: editingMeter.nominatedSoq?.toString() || "",
+        soqPeak: editingMeter.soqPeak?.toString() || "",
+        soqAlternative: editingMeter.soqAlternative?.toString() || "",
+        soqMinimum: editingMeter.soqMinimum?.toString() || "",
+        supplyHourlyQuantity: editingMeter.supplyHourlyQuantity?.toString() || "",
+        kwhFactor: editingMeter.kwhFactor?.toString() || "",
+        meterSize: editingMeter.meterSize?.toString() || "",
+        meterSize2: editingMeter.meterSize2?.toString() || "",
+        meterTypeCapacity: editingMeter.meterTypeCapacity?.toString() || "",
+        returnToSewer: editingMeter.returnToSewer?.toString() || "",
+        highwayDrainage: editingMeter.highwayDrainage ?? false,
+        surfaceWater: editingMeter.surfaceWater ?? false,
+        sewerageSupplier: editingMeter.sewerageSupplier || "",
+        waterSupplier: editingMeter.waterSupplier || "",
+        sewerageWholesaleTariff: editingMeter.sewerageWholesaleTariff || "",
+        waterWholesaleTariff: editingMeter.waterWholesaleTariff || "",
       });
     }
   }, [editingMeter, editForm]);
@@ -117,10 +214,64 @@ export default function MetersPage() {
       meterSerial1: values.meterSerial1 || null,
       location: values.location || null,
       supplierId: values.supplierId ? Number(values.supplierId) : null,
+      tariffName: values.tariffName || null,
+      meterType: values.meterType || null,
+      isVirtual: values.isVirtual ?? false,
+      isActive: values.isActive ?? true,
+      dateClosed: values.dateClosed ? new Date(values.dateClosed) : null,
+      code: values.code || null,
+      code2: values.code2 || null,
+      hostSupplier: values.hostSupplier || null,
+      billFrequency: values.billFrequency || null,
+      annualQuantity: values.annualQuantity ? Number(values.annualQuantity) : null,
+      meterDigits: values.meterDigits ? Number(values.meterDigits) : null,
+      meterNumber: values.meterNumber || null,
+      otherNumber: values.otherNumber || null,
+      subMeter: values.subMeter ?? false,
+      aggregateMeter: values.aggregateMeter ?? false,
+      landlordBilled: values.landlordBilled ?? false,
+      interruptible: values.interruptible ?? false,
+      vatRate: values.vatRate ? Number(values.vatRate) : null,
+      tariffCclRate: values.tariffCclRate ? Number(values.tariffCclRate) : null,
+      comments: values.comments || null,
+      units: values.units || null,
+      kva: values.kva ? Number(values.kva) : null,
+      voltage: values.voltage || null,
+      powerFactor: values.powerFactor ? Number(values.powerFactor) : null,
+      eac: values.eac ? Number(values.eac) : null,
+      profileMeter: values.profileMeter ?? false,
+      profileFrequency: values.profileFrequency || null,
+      profileScaleFactor: values.profileScaleFactor ? Number(values.profileScaleFactor) : null,
+      profileKwhFactor: values.profileKwhFactor ? Number(values.profileKwhFactor) : null,
+      profileCalorificValue: values.profileCalorificValue ? Number(values.profileCalorificValue) : null,
+      profileCorrectionFactor: values.profileCorrectionFactor ? Number(values.profileCorrectionFactor) : null,
+      profileCostRate: values.profileCostRate ? Number(values.profileCostRate) : null,
+      profileMeterMax: values.profileMeterMax ? Number(values.profileMeterMax) : null,
+      profileThreshold1: values.profileThreshold1 ? Number(values.profileThreshold1) : null,
+      profileThreshold2: values.profileThreshold2 ? Number(values.profileThreshold2) : null,
+      meterOperator: values.meterOperator || null,
+      meterAssetManager: values.meterAssetManager || null,
+      mhhsApplied: values.mhhsApplied ?? false,
+      rotaDisconnectionAlphaId: values.rotaDisconnectionAlphaId || null,
+      gasMeterSize: values.gasMeterSize || null,
+      nominatedSoq: values.nominatedSoq ? Number(values.nominatedSoq) : null,
+      soqPeak: values.soqPeak ? Number(values.soqPeak) : null,
+      soqAlternative: values.soqAlternative ? Number(values.soqAlternative) : null,
+      soqMinimum: values.soqMinimum ? Number(values.soqMinimum) : null,
+      supplyHourlyQuantity: values.supplyHourlyQuantity ? Number(values.supplyHourlyQuantity) : null,
+      kwhFactor: values.kwhFactor ? Number(values.kwhFactor) : null,
+      meterSize: values.meterSize ? Number(values.meterSize) : null,
+      meterSize2: values.meterSize2 ? Number(values.meterSize2) : null,
+      meterTypeCapacity: values.meterTypeCapacity ? Number(values.meterTypeCapacity) : null,
+      returnToSewer: values.returnToSewer ? Number(values.returnToSewer) : null,
+      highwayDrainage: values.highwayDrainage ?? false,
+      surfaceWater: values.surfaceWater ?? false,
+      sewerageSupplier: values.sewerageSupplier || null,
+      waterSupplier: values.waterSupplier || null,
+      sewerageWholesaleTariff: values.sewerageWholesaleTariff || null,
+      waterWholesaleTariff: values.waterWholesaleTariff || null,
     };
-    return Object.fromEntries(
-      Object.entries(cleaned).filter(([_, v]) => v !== null && v !== "")
-    );
+    return cleaned;
   };
 
   const createMeterMutation = useMutation({
@@ -148,21 +299,7 @@ export default function MetersPage() {
 
   const updateMeterMutation = useMutation({
     mutationFn: async ({ id, values }: { id: number; values: any }) => {
-      const cleaned: any = {
-        name: values.name || null,
-        siteId: values.siteId ? Number(values.siteId) : undefined,
-        utilityTypeId: values.utilityTypeId ? Number(values.utilityTypeId) : undefined,
-        mpanProfile: values.mpanProfile || null,
-        mpanCoreMprn: values.mpanCoreMprn || null,
-        meterSerial1: values.meterSerial1 || null,
-        location: values.location || null,
-        supplierId: values.supplierId ? Number(values.supplierId) : null,
-        tariffName: values.tariffName || null,
-        meterType: values.meterType || null,
-        isVirtual: values.isVirtual ?? false,
-        isActive: values.isActive ?? true,
-        dateClosed: values.dateClosed ? new Date(values.dateClosed) : null,
-      };
+      const cleaned = cleanValues(values);
       const res = await apiRequest("PATCH", `/api/data-sets/${id}`, cleaned);
       return res.json();
     },
@@ -220,8 +357,58 @@ export default function MetersPage() {
     return site?.name || `Site ${siteId}`;
   };
 
-  const meterFormFields = (formInstance: any) => (
-    <div className="grid grid-cols-2 gap-4">
+  const textField = (formInstance: any, name: string, label: string, placeholder?: string) => (
+    <FormField
+      control={formInstance.control}
+      name={name}
+      render={({ field }: any) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <FormControl><Input {...field} placeholder={placeholder} data-testid={`input-${name}`} /></FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+
+  const numberField = (formInstance: any, name: string, label: string) => (
+    <FormField
+      control={formInstance.control}
+      name={name}
+      render={({ field }: any) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <FormControl><Input {...field} type="number" step="any" data-testid={`input-${name}`} /></FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+
+  const switchField = (formInstance: any, name: string, label: string) => (
+    <FormField
+      control={formInstance.control}
+      name={name}
+      render={({ field }: any) => (
+        <FormItem className="flex items-center gap-3 space-y-0">
+          <FormLabel>{label}</FormLabel>
+          <FormControl>
+            <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-${name}`} />
+          </FormControl>
+        </FormItem>
+      )}
+    />
+  );
+
+  const sectionHeader = (title: string) => (
+    <div className="col-span-2 pt-2">
+      <Separator className="mb-2" />
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{title}</h3>
+    </div>
+  );
+
+  const commonTopFields = (formInstance: any) => (
+    <>
       <FormField
         control={formInstance.control}
         name="siteId"
@@ -230,7 +417,7 @@ export default function MetersPage() {
             <FormLabel>Site</FormLabel>
             <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger data-testid="select-siteId">
                   <SelectValue placeholder="Select a site" />
                 </SelectTrigger>
               </FormControl>
@@ -252,7 +439,7 @@ export default function MetersPage() {
             <FormLabel>Utility Type</FormLabel>
             <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
               <FormControl>
-                <SelectTrigger>
+                <SelectTrigger data-testid="select-utilityTypeId">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
               </FormControl>
@@ -266,248 +453,162 @@ export default function MetersPage() {
           </FormItem>
         )}
       />
-      <FormField
-        control={formInstance.control}
-        name="name"
-        render={({ field }: any) => (
-          <FormItem>
-            <FormLabel>Meter Name</FormLabel>
-            <FormControl><Input {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={formInstance.control}
-        name="mpanProfile"
-        render={({ field }: any) => (
-          <FormItem>
-            <FormLabel>MPAN Profile</FormLabel>
-            <FormControl><Input {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={formInstance.control}
-        name="mpanCoreMprn"
-        render={({ field }: any) => (
-          <FormItem>
-            <FormLabel>MPAN Core / MPRN</FormLabel>
-            <FormControl><Input {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={formInstance.control}
-        name="meterSerial1"
-        render={({ field }: any) => (
-          <FormItem>
-            <FormLabel>Meter Serial 1</FormLabel>
-            <FormControl><Input {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={formInstance.control}
-        name="location"
-        render={({ field }: any) => (
-          <FormItem>
-            <FormLabel>Location</FormLabel>
-            <FormControl><Input {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
+      {textField(formInstance, "name", "Meter Name")}
+      {textField(formInstance, "mpanCoreMprn", "MPAN Core / MPRN")}
+      {textField(formInstance, "mpanProfile", "MPAN Profile")}
+      {textField(formInstance, "meterSerial1", "Meter Serial")}
+      {textField(formInstance, "location", "Location")}
+      {textField(formInstance, "meterNumber", "Meter Number")}
+    </>
   );
 
-  const editMeterFormFields = (formInstance: any) => (
+  const generalFields = (formInstance: any) => (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      {sectionHeader("General")}
+      {textField(formInstance, "code", "Code")}
+      {textField(formInstance, "code2", "Code 2")}
+      {textField(formInstance, "hostSupplier", "Host Supplier")}
+      {textField(formInstance, "billFrequency", "Bill Frequency")}
+      {numberField(formInstance, "annualQuantity", "Annual Quantity")}
+      {numberField(formInstance, "meterDigits", "Meter Digits")}
+      {textField(formInstance, "otherNumber", "Other Number")}
+      {textField(formInstance, "units", "Units")}
+      {numberField(formInstance, "vatRate", "VAT Rate")}
+      {numberField(formInstance, "tariffCclRate", "CCL Rate")}
+      <FormField
+        control={formInstance.control}
+        name="supplierId"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>Supplier ID</FormLabel>
+            <FormControl><Input {...field} value={field.value ?? ""} data-testid="input-supplierId" /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      {textField(formInstance, "tariffName", "Tariff Name")}
+      <FormField
+        control={formInstance.control}
+        name="meterType"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>Meter Type</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value || ""}>
+              <FormControl>
+                <SelectTrigger data-testid="select-meterType">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="Main">Main</SelectItem>
+                <SelectItem value="Sub-meter">Sub-meter</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={formInstance.control}
+        name="dateClosed"
+        render={({ field }: any) => (
+          <FormItem>
+            <FormLabel>Date Closed</FormLabel>
+            <FormControl><Input type="date" {...field} data-testid="input-dateClosed" /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <div className="col-span-2">
         <FormField
           control={formInstance.control}
-          name="siteId"
+          name="comments"
           render={({ field }: any) => (
             <FormItem>
-              <FormLabel>Site</FormLabel>
-              <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a site" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {sites?.map(site => (
-                    <SelectItem key={site.id} value={site.id.toString()}>{site.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="utilityTypeId"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>Utility Type</FormLabel>
-              <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="1">Electricity</SelectItem>
-                  <SelectItem value="2">Gas</SelectItem>
-                  <SelectItem value="3">Water</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="name"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>Meter Name</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="mpanProfile"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>MPAN Profile</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="mpanCoreMprn"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>MPAN Core / MPRN</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="meterSerial1"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>Meter Serial 1</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="location"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>Location</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="supplierId"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>Supplier ID</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="tariffName"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>Tariff Name</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="meterType"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>Meter Type</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || ""}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="Main">Main</SelectItem>
-                  <SelectItem value="Sub-meter">Sub-meter</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="dateClosed"
-          render={({ field }: any) => (
-            <FormItem>
-              <FormLabel>Date Closed</FormLabel>
-              <FormControl><Input type="date" {...field} /></FormControl>
+              <FormLabel>Comments</FormLabel>
+              <FormControl><Input {...field} data-testid="input-comments" /></FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
       </div>
-      <div className="flex gap-8 pt-2">
-        <FormField
-          control={formInstance.control}
-          name="isActive"
-          render={({ field }: any) => (
-            <FormItem className="flex items-center gap-3 space-y-0">
-              <FormLabel>Active</FormLabel>
-              <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={formInstance.control}
-          name="isVirtual"
-          render={({ field }: any) => (
-            <FormItem className="flex items-center gap-3 space-y-0">
-              <FormLabel>Virtual Meter</FormLabel>
-              <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
-            </FormItem>
-          )}
-        />
+      <div className="col-span-2 flex flex-wrap gap-6 pt-1">
+        {switchField(formInstance, "isActive", "Active")}
+        {switchField(formInstance, "isVirtual", "Virtual Meter")}
+        {switchField(formInstance, "subMeter", "Sub Meter")}
+        {switchField(formInstance, "aggregateMeter", "Aggregate Meter")}
+        {switchField(formInstance, "landlordBilled", "Landlord Billed")}
+        {switchField(formInstance, "interruptible", "Interruptible")}
       </div>
     </>
+  );
+
+  const electricityFields = (formInstance: any) => (
+    <>
+      {sectionHeader("Electricity")}
+      {numberField(formInstance, "kva", "kVA")}
+      {textField(formInstance, "voltage", "Voltage")}
+      {numberField(formInstance, "powerFactor", "Power Factor")}
+      {numberField(formInstance, "eac", "EAC")}
+      {textField(formInstance, "meterOperator", "Meter Operator")}
+      {textField(formInstance, "meterAssetManager", "Meter Asset Manager")}
+      {textField(formInstance, "rotaDisconnectionAlphaId", "Rota Disconnection Alpha ID")}
+      {sectionHeader("Profile Settings")}
+      {textField(formInstance, "profileFrequency", "Profile Frequency")}
+      {numberField(formInstance, "profileScaleFactor", "Profile Scale Factor")}
+      {numberField(formInstance, "profileKwhFactor", "Profile kWh Factor")}
+      {numberField(formInstance, "profileCalorificValue", "Profile Calorific Value")}
+      {numberField(formInstance, "profileCorrectionFactor", "Profile Correction Factor")}
+      {numberField(formInstance, "profileCostRate", "Profile Cost Rate")}
+      {numberField(formInstance, "profileMeterMax", "Profile Meter Max")}
+      {numberField(formInstance, "profileThreshold1", "Profile Threshold 1")}
+      {numberField(formInstance, "profileThreshold2", "Profile Threshold 2")}
+      <div className="col-span-2 flex flex-wrap gap-6 pt-1">
+        {switchField(formInstance, "profileMeter", "Profile Meter")}
+        {switchField(formInstance, "mhhsApplied", "MHHS Applied")}
+      </div>
+    </>
+  );
+
+  const gasFields = (formInstance: any) => (
+    <>
+      {sectionHeader("Gas")}
+      {textField(formInstance, "gasMeterSize", "Gas Meter Size")}
+      {numberField(formInstance, "nominatedSoq", "Nominated SOQ")}
+      {numberField(formInstance, "soqPeak", "SOQ Peak")}
+      {numberField(formInstance, "soqAlternative", "SOQ Alternative")}
+      {numberField(formInstance, "soqMinimum", "SOQ Minimum")}
+      {numberField(formInstance, "supplyHourlyQuantity", "Supply Hourly Quantity")}
+      {numberField(formInstance, "kwhFactor", "kWh Factor")}
+    </>
+  );
+
+  const waterFields = (formInstance: any) => (
+    <>
+      {sectionHeader("Water")}
+      {numberField(formInstance, "meterSize", "Meter Size")}
+      {numberField(formInstance, "meterSize2", "Meter Size 2")}
+      {numberField(formInstance, "meterTypeCapacity", "Meter Type Capacity")}
+      {numberField(formInstance, "returnToSewer", "Return to Sewer %")}
+      {textField(formInstance, "sewerageSupplier", "Sewerage Supplier")}
+      {textField(formInstance, "waterSupplier", "Water Supplier")}
+      {textField(formInstance, "sewerageWholesaleTariff", "Sewerage Wholesale Tariff")}
+      {textField(formInstance, "waterWholesaleTariff", "Water Wholesale Tariff")}
+      <div className="col-span-2 flex flex-wrap gap-6 pt-1">
+        {switchField(formInstance, "highwayDrainage", "Highway Drainage")}
+        {switchField(formInstance, "surfaceWater", "Surface Water")}
+      </div>
+    </>
+  );
+
+  const meterFormFields = (formInstance: any, utilityType: number) => (
+    <div className="grid grid-cols-2 gap-4">
+      {commonTopFields(formInstance)}
+      {generalFields(formInstance)}
+      {utilityType === 1 && electricityFields(formInstance)}
+      {utilityType === 2 && gasFields(formInstance)}
+      {utilityType === 3 && waterFields(formInstance)}
+    </div>
   );
 
   return (
@@ -567,7 +668,7 @@ export default function MetersPage() {
                     </DialogHeader>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit((data) => createMeterMutation.mutate(data))} className="space-y-4">
-                        {meterFormFields(form)}
+                        {meterFormFields(form, watchUtilityType)}
                         <Button type="submit" className="w-full" disabled={createMeterMutation.isPending} data-testid="button-save-meter">
                           {createMeterMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           Save Meter
@@ -680,7 +781,7 @@ export default function MetersPage() {
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit((data) => editingMeter && updateMeterMutation.mutate({ id: editingMeter.id, values: data }))} className="space-y-4">
-              {editMeterFormFields(editForm)}
+              {meterFormFields(editForm, editWatchUtilityType)}
               <Button type="submit" className="w-full" disabled={updateMeterMutation.isPending} data-testid="button-update-meter">
                 {updateMeterMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Update Meter

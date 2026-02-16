@@ -151,12 +151,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSiteName(id: number, name: string): Promise<Site> {
-    const [updated] = await db.update(sites).set({ name }).where(eq(sites.id, id)).returning();
+    const [updated] = await db.update(sites).set({ name, lastUpdate: new Date() }).where(eq(sites.id, id)).returning();
     return updated;
   }
 
   async updateSite(id: number, data: Partial<Site>): Promise<Site> {
-    const [updated] = await db.update(sites).set(data).where(eq(sites.id, id)).returning();
+    const [updated] = await db.update(sites).set({ ...data, lastUpdate: new Date() }).where(eq(sites.id, id)).returning();
     return updated;
   }
 
@@ -174,7 +174,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateDataSet(id: number, data: Partial<DataSet>): Promise<DataSet> {
-    const [updated] = await db.update(dataSets).set(data).where(eq(dataSets.id, id)).returning();
+    const [updated] = await db.update(dataSets).set({ ...data, lastUpdate: new Date() }).where(eq(dataSets.id, id)).returning();
     return updated;
   }
 

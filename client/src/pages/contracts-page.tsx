@@ -1,19 +1,101 @@
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Separator } from "@/components/ui/separator";
 import { ArrowUpDown, Plus, Loader2, FileSignature } from "lucide-react";
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Contract, DataSet } from "@shared/schema";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Contract, DataSet, Site } from "@shared/schema";
+import { useForm } from "react-hook-form";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 type SortField = "dateStart" | "dateEnd" | "utility" | "supplier";
 type SortDir = "asc" | "desc";
 
+const defaultFormValues = {
+  dataSetId: 0,
+  supplier: "",
+  referenceNumber: "",
+  type: "",
+  dateStart: "",
+  dateEnd: "",
+  kva: "",
+  maximumInputCapacity: "",
+  climateChangeLevy: "",
+  fossilFuelLevy: "",
+  rateUnits: "",
+  rateUnits1Split: "",
+  rateFixed: "",
+  rateFixedPerDay: false,
+  rateKva: "",
+  rateKva2: "",
+  rateKvaPerDay: false,
+  rateKvaSplit: "",
+  rateMd: "",
+  rateMd2: "",
+  rateMdSplit: "",
+  rateTransportation: "",
+  rateTransportationPerKwh: false,
+  rateMetering: "",
+  rateMeteringPerDay: false,
+  rateSettlements: "",
+  rateSettlementsPerDay: false,
+  rateTriad: "",
+  rateGreen: "",
+  rateGreenPercent: "",
+  rateFit: "",
+  rateRoc: "",
+  kwhSplit1: "",
+  kwhSplit1CostRate: "",
+  kwhSplit2: "",
+  kwhSplit2CostRate: "",
+  kwhSplit3: "",
+  kwhSplit3CostRate: "",
+  kwhSplit4: "",
+  kwhSplit4CostRate: "",
+  kwhSplit5: "",
+  kwhSplit5CostRate: "",
+  kwhSplit6: "",
+  kwhSplit6CostRate: "",
+  reactivePower1Rate: "",
+  reactivePower1Split: "",
+  reactivePower2Rate: "",
+  reactivePower2Split: "",
+  kvarhDefault: "",
+  vat1Rate: "",
+  vat2Rate: "",
+  vatSplit: "",
+  lossAdjustment: false,
+  tuos: false,
+  useOfSystem: false,
+  useDistributorCapacity: false,
+  useDistributorReactivePower: false,
+  bankHolidays: "",
+  billingPoint: "",
+  clock: false,
+  batch: "",
+};
+
 export default function ContractsPage() {
   const [sortField, setSortField] = useState<SortField>("dateEnd");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: contracts, isLoading } = useQuery<Contract[]>({
     queryKey: ["/api/contracts"],
@@ -22,6 +104,12 @@ export default function ContractsPage() {
   const { data: dataSets } = useQuery<DataSet[]>({
     queryKey: ["/api/data-sets"],
   });
+
+  const { data: sites } = useQuery<Site[]>({
+    queryKey: ["/api/sites"],
+  });
+
+  const form = useForm({ defaultValues: defaultFormValues });
 
   const getUtilityName = (dataSetId: number) => {
     const ds = dataSets?.find(d => d.id === dataSetId);
@@ -34,6 +122,78 @@ export default function ContractsPage() {
     const ds = dataSets?.find(d => d.id === dataSetId);
     return ds?.name || ds?.mpanCoreMprn || `Meter ${dataSetId}`;
   };
+
+  const getSiteName = (dataSetId: number) => {
+    const ds = dataSets?.find(d => d.id === dataSetId);
+    if (!ds) return "";
+    const site = sites?.find(s => s.id === ds.siteId);
+    return site?.name || "";
+  };
+
+  const getUtilityForMeter = (dataSetId: number) => {
+    const ds = dataSets?.find(d => d.id === dataSetId);
+    return ds?.utilityTypeId || 0;
+  };
+
+  const cleanValues = (values: any) => {
+    const cleaned: any = {
+      dataSetId: Number(values.dataSetId),
+      supplier: values.supplier || null,
+      referenceNumber: values.referenceNumber || null,
+      type: values.type || null,
+      dateStart: values.dateStart || null,
+      dateEnd: values.dateEnd || null,
+      rateFixedPerDay: values.rateFixedPerDay ?? false,
+      rateKvaPerDay: values.rateKvaPerDay ?? false,
+      rateTransportationPerKwh: values.rateTransportationPerKwh ?? false,
+      rateMeteringPerDay: values.rateMeteringPerDay ?? false,
+      rateSettlementsPerDay: values.rateSettlementsPerDay ?? false,
+      lossAdjustment: values.lossAdjustment ?? false,
+      tuos: values.tuos ?? false,
+      useOfSystem: values.useOfSystem ?? false,
+      useDistributorCapacity: values.useDistributorCapacity ?? false,
+      useDistributorReactivePower: values.useDistributorReactivePower ?? false,
+      clock: values.clock ?? false,
+    };
+    const numericFields = [
+      "kva", "maximumInputCapacity", "climateChangeLevy", "fossilFuelLevy",
+      "rateUnits", "rateUnits1Split", "rateFixed", "rateKva", "rateKva2", "rateKvaSplit",
+      "rateMd", "rateMd2", "rateMdSplit", "rateTransportation", "rateMetering",
+      "rateSettlements", "rateTriad", "rateGreen", "rateGreenPercent", "rateFit", "rateRoc",
+      "kwhSplit1", "kwhSplit1CostRate", "kwhSplit2", "kwhSplit2CostRate",
+      "kwhSplit3", "kwhSplit3CostRate", "kwhSplit4", "kwhSplit4CostRate",
+      "kwhSplit5", "kwhSplit5CostRate", "kwhSplit6", "kwhSplit6CostRate",
+      "reactivePower1Rate", "reactivePower1Split", "reactivePower2Rate", "reactivePower2Split",
+      "kvarhDefault", "vat1Rate", "vat2Rate", "vatSplit",
+    ];
+    const intFields = ["bankHolidays", "billingPoint", "batch"];
+    numericFields.forEach(f => { cleaned[f] = values[f] ? Number(values[f]) : null; });
+    intFields.forEach(f => { cleaned[f] = values[f] ? parseInt(values[f]) : null; });
+    return cleaned;
+  };
+
+  const createContractMutation = useMutation({
+    mutationFn: async (values: any) => {
+      if (!values.dataSetId || Number(values.dataSetId) === 0) {
+        throw new Error("Please select a meter");
+      }
+      const res = await apiRequest("POST", "/api/contracts", cleanValues(values));
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create contract");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      toast({ title: "Success", description: "Contract created successfully" });
+      setIsDialogOpen(false);
+      form.reset(defaultFormValues);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to create contract", variant: "destructive" });
+    },
+  });
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -62,15 +222,11 @@ export default function ContractsPage() {
           break;
         }
         case "utility": {
-          const aVal = getUtilityName(a.dataSetId);
-          const bVal = getUtilityName(b.dataSetId);
-          cmp = aVal.localeCompare(bVal);
+          cmp = getUtilityName(a.dataSetId).localeCompare(getUtilityName(b.dataSetId));
           break;
         }
         case "supplier": {
-          const aVal = a.supplier || "";
-          const bVal = b.supplier || "";
-          cmp = aVal.localeCompare(bVal);
+          cmp = (a.supplier || "").localeCompare(b.supplier || "");
           break;
         }
       }
@@ -80,12 +236,61 @@ export default function ContractsPage() {
 
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return "—";
-    try {
-      return format(new Date(date), "dd/MM/yyyy");
-    } catch {
-      return "—";
-    }
+    try { return format(new Date(date), "dd/MM/yyyy"); } catch { return "—"; }
   };
+
+  const selectedMeterId = form.watch("dataSetId");
+  const selectedUtility = getUtilityForMeter(selectedMeterId);
+
+  const textField = (name: string, label: string, placeholder?: string) => (
+    <FormField
+      control={form.control}
+      name={name as any}
+      render={({ field }: any) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <FormControl><Input {...field} placeholder={placeholder} data-testid={`input-${name}`} /></FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+
+  const numberField = (name: string, label: string, placeholder?: string) => (
+    <FormField
+      control={form.control}
+      name={name as any}
+      render={({ field }: any) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <FormControl><Input {...field} type="number" step="any" placeholder={placeholder} data-testid={`input-${name}`} /></FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+
+  const switchField = (name: string, label: string) => (
+    <FormField
+      control={form.control}
+      name={name as any}
+      render={({ field }: any) => (
+        <FormItem className="flex items-center gap-3 space-y-0">
+          <FormLabel>{label}</FormLabel>
+          <FormControl>
+            <Switch checked={field.value} onCheckedChange={field.onChange} data-testid={`switch-${name}`} />
+          </FormControl>
+        </FormItem>
+      )}
+    />
+  );
+
+  const sectionHeader = (title: string) => (
+    <div className="col-span-2 pt-2">
+      <Separator className="mb-2" />
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{title}</h3>
+    </div>
+  );
 
   const SortHeader = ({ field, label }: { field: SortField; label: string }) => (
     <TableHead
@@ -110,7 +315,7 @@ export default function ContractsPage() {
           <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Contracts</h1>
           <p className="text-muted-foreground">Manage supply contracts across all meters</p>
         </div>
-        <Button data-testid="button-new-contract" className="gap-2">
+        <Button data-testid="button-new-contract" className="gap-2" onClick={() => setIsDialogOpen(true)}>
           <Plus className="h-4 w-4" />
           New Contract
         </Button>
@@ -169,6 +374,175 @@ export default function ContractsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New Contract</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((values) => createContractMutation.mutate(values))} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="dataSetId"
+                  render={({ field }: any) => (
+                    <FormItem>
+                      <FormLabel>Meter *</FormLabel>
+                      <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-dataSetId">
+                            <SelectValue placeholder="Select a meter" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {dataSets?.map(ds => (
+                            <SelectItem key={ds.id} value={ds.id.toString()}>
+                              {ds.name || ds.mpanCoreMprn || `Meter ${ds.id}`}
+                              {" — "}
+                              {getSiteName(ds.id)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {textField("supplier", "Supplier")}
+                {textField("referenceNumber", "Reference Number")}
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }: any) => (
+                    <FormItem>
+                      <FormLabel>Contract Type</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-type">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Fixed">Fixed</SelectItem>
+                          <SelectItem value="Variable">Variable</SelectItem>
+                          <SelectItem value="Flex">Flex</SelectItem>
+                          <SelectItem value="Deemed">Deemed</SelectItem>
+                          <SelectItem value="Out of Contract">Out of Contract</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="dateStart"
+                  render={({ field }: any) => (
+                    <FormItem>
+                      <FormLabel>Start Date</FormLabel>
+                      <FormControl><Input type="date" {...field} data-testid="input-dateStart" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="dateEnd"
+                  render={({ field }: any) => (
+                    <FormItem>
+                      <FormLabel>End Date</FormLabel>
+                      <FormControl><Input type="date" {...field} data-testid="input-dateEnd" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {sectionHeader("Capacity & Levies")}
+                {numberField("kva", "kVA")}
+                {numberField("maximumInputCapacity", "Maximum Input Capacity")}
+                {numberField("climateChangeLevy", "Climate Change Levy (£)")}
+                {numberField("fossilFuelLevy", "Fossil Fuel Levy (£)")}
+
+                {sectionHeader("Rates")}
+                {numberField("rateUnits", "Unit Rate (£)")}
+                {numberField("rateUnits1Split", "Unit Rate Split")}
+                <div className="flex items-end gap-3">
+                  {numberField("rateFixed", "Fixed Rate (£)")}
+                </div>
+                {switchField("rateFixedPerDay", "Fixed Rate Per Day")}
+                {numberField("rateKva", "kVA Rate (£)")}
+                {numberField("rateKva2", "kVA Rate 2 (£)")}
+                {switchField("rateKvaPerDay", "kVA Per Day")}
+                {numberField("rateKvaSplit", "kVA Split")}
+                {numberField("rateMd", "MD Rate (£)")}
+                {numberField("rateMd2", "MD Rate 2 (£)")}
+                {numberField("rateMdSplit", "MD Split")}
+                {numberField("rateTransportation", "Transportation (£)")}
+                {switchField("rateTransportationPerKwh", "Transportation Per kWh")}
+                {numberField("rateMetering", "Metering (£)")}
+                {switchField("rateMeteringPerDay", "Metering Per Day")}
+                {numberField("rateSettlements", "Settlements (£)")}
+                {switchField("rateSettlementsPerDay", "Settlements Per Day")}
+                {numberField("rateTriad", "TRIAD Rate (£)")}
+                {numberField("rateGreen", "Green Rate (£)")}
+                {numberField("rateGreenPercent", "Green %")}
+                {numberField("rateFit", "FIT Rate (£)")}
+                {numberField("rateRoc", "ROC Rate (£)")}
+
+                {sectionHeader("kWh Splits")}
+                {numberField("kwhSplit1", "Split 1 kWh")}
+                {numberField("kwhSplit1CostRate", "Split 1 Cost Rate (£)")}
+                {numberField("kwhSplit2", "Split 2 kWh")}
+                {numberField("kwhSplit2CostRate", "Split 2 Cost Rate (£)")}
+                {numberField("kwhSplit3", "Split 3 kWh")}
+                {numberField("kwhSplit3CostRate", "Split 3 Cost Rate (£)")}
+                {numberField("kwhSplit4", "Split 4 kWh")}
+                {numberField("kwhSplit4CostRate", "Split 4 Cost Rate (£)")}
+                {numberField("kwhSplit5", "Split 5 kWh")}
+                {numberField("kwhSplit5CostRate", "Split 5 Cost Rate (£)")}
+                {numberField("kwhSplit6", "Split 6 kWh")}
+                {numberField("kwhSplit6CostRate", "Split 6 Cost Rate (£)")}
+
+                {sectionHeader("Reactive Power")}
+                {numberField("reactivePower1Rate", "Reactive Power 1 Rate (£)")}
+                {numberField("reactivePower1Split", "Reactive Power 1 Split")}
+                {numberField("reactivePower2Rate", "Reactive Power 2 Rate (£)")}
+                {numberField("reactivePower2Split", "Reactive Power 2 Split")}
+                {numberField("kvarhDefault", "kVArh Default")}
+
+                {sectionHeader("VAT")}
+                {numberField("vat1Rate", "VAT Rate 1 (%)")}
+                {numberField("vat2Rate", "VAT Rate 2 (%)")}
+                {numberField("vatSplit", "VAT Split")}
+
+                {sectionHeader("Flags & Other")}
+                <div className="col-span-2 flex flex-wrap gap-6 pt-1">
+                  {switchField("lossAdjustment", "Loss Adjustment")}
+                  {switchField("tuos", "TUoS")}
+                  {switchField("useOfSystem", "Use of System")}
+                  {switchField("useDistributorCapacity", "Distributor Capacity")}
+                  {switchField("useDistributorReactivePower", "Distributor Reactive Power")}
+                  {switchField("clock", "Clock")}
+                </div>
+                {numberField("bankHolidays", "Bank Holidays")}
+                {numberField("billingPoint", "Billing Point")}
+                {numberField("batch", "Batch")}
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} data-testid="button-cancel">
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createContractMutation.isPending} data-testid="button-save-contract">
+                  {createContractMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Contract
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

@@ -61,6 +61,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const { runMigrations } = await import("./db.js");
+  await runMigrations();
+
   setupAuth(app);
   await registerRoutes(httpServer, app);
 

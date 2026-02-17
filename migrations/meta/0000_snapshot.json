@@ -1,0 +1,3601 @@
+{
+  "id": "68b7c2a3-b6d2-4449-b791-1ceb7bc78191",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.charge_items": {
+      "name": "charge_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "data_set_id": {
+          "name": "data_set_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_record_id": {
+          "name": "data_record_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "charge_type_id": {
+          "name": "charge_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cost": {
+          "name": "cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "units": {
+          "name": "units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate": {
+          "name": "rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "charge_items_data_set_id_data_sets_id_fk": {
+          "name": "charge_items_data_set_id_data_sets_id_fk",
+          "tableFrom": "charge_items",
+          "tableTo": "data_sets",
+          "columnsFrom": [
+            "data_set_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "charge_items_charge_type_id_config_charge_types_id_fk": {
+          "name": "charge_items_charge_type_id_config_charge_types_id_fk",
+          "tableFrom": "charge_items",
+          "tableTo": "config_charge_types",
+          "columnsFrom": [
+            "charge_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.config_charge_types": {
+      "name": "config_charge_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.contract_charges": {
+      "name": "contract_charges",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contract_id": {
+          "name": "contract_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "charge_type_id": {
+          "name": "charge_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate": {
+          "name": "rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tolerance": {
+          "name": "tolerance",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tolerance_rate": {
+          "name": "tolerance_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tolerance_units": {
+          "name": "tolerance_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contract_charges_contract_id_contracts_id_fk": {
+          "name": "contract_charges_contract_id_contracts_id_fk",
+          "tableFrom": "contract_charges",
+          "tableTo": "contracts",
+          "columnsFrom": [
+            "contract_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contract_charges_charge_type_id_config_charge_types_id_fk": {
+          "name": "contract_charges_charge_type_id_config_charge_types_id_fk",
+          "tableFrom": "contract_charges",
+          "tableTo": "config_charge_types",
+          "columnsFrom": [
+            "charge_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.contract_data": {
+      "name": "contract_data",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "contract_id": {
+          "name": "contract_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cost_rate": {
+          "name": "cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_start": {
+          "name": "time_start",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_finish": {
+          "name": "time_finish",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter": {
+          "name": "meter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sunday": {
+          "name": "sunday",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "monday": {
+          "name": "monday",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "tuesday": {
+          "name": "tuesday",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "wednesday": {
+          "name": "wednesday",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "thursday": {
+          "name": "thursday",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "friday": {
+          "name": "friday",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "saturday": {
+          "name": "saturday",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "january": {
+          "name": "january",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "february": {
+          "name": "february",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "march": {
+          "name": "march",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "april": {
+          "name": "april",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "may": {
+          "name": "may",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "june": {
+          "name": "june",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "july": {
+          "name": "july",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "august": {
+          "name": "august",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "september": {
+          "name": "september",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "october": {
+          "name": "october",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "november": {
+          "name": "november",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "december": {
+          "name": "december",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "valid_from": {
+          "name": "valid_from",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contract_data_contract_id_contracts_id_fk": {
+          "name": "contract_data_contract_id_contracts_id_fk",
+          "tableFrom": "contract_data",
+          "tableTo": "contracts",
+          "columnsFrom": [
+            "contract_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.contracts": {
+      "name": "contracts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "data_set_id": {
+          "name": "data_set_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supplier": {
+          "name": "supplier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reference_number": {
+          "name": "reference_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date_start": {
+          "name": "date_start",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date_end": {
+          "name": "date_end",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kva": {
+          "name": "kva",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "maximum_input_capacity": {
+          "name": "maximum_input_capacity",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "climate_change_levy": {
+          "name": "climate_change_levy",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fossil_fuel_levy": {
+          "name": "fossil_fuel_levy",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_units": {
+          "name": "rate_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_units_1_split": {
+          "name": "rate_units_1_split",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_fixed": {
+          "name": "rate_fixed",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_fixed_per_day": {
+          "name": "rate_fixed_per_day",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "rate_kva": {
+          "name": "rate_kva",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_kva_2": {
+          "name": "rate_kva_2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_kva_per_day": {
+          "name": "rate_kva_per_day",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "rate_kva_split": {
+          "name": "rate_kva_split",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_md": {
+          "name": "rate_md",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_md_2": {
+          "name": "rate_md_2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_md_split": {
+          "name": "rate_md_split",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_transportation": {
+          "name": "rate_transportation",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_transportation_per_kwh": {
+          "name": "rate_transportation_per_kwh",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "rate_metering": {
+          "name": "rate_metering",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_metering_per_day": {
+          "name": "rate_metering_per_day",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "rate_settlements": {
+          "name": "rate_settlements",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_settlements_per_day": {
+          "name": "rate_settlements_per_day",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "rate_triad": {
+          "name": "rate_triad",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_green": {
+          "name": "rate_green",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_green_percent": {
+          "name": "rate_green_percent",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_fit": {
+          "name": "rate_fit",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate_roc": {
+          "name": "rate_roc",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_1": {
+          "name": "kwh_split_1",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_1_cost_rate": {
+          "name": "kwh_split_1_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_2": {
+          "name": "kwh_split_2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_2_cost_rate": {
+          "name": "kwh_split_2_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_3": {
+          "name": "kwh_split_3",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_3_cost_rate": {
+          "name": "kwh_split_3_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_4": {
+          "name": "kwh_split_4",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_4_cost_rate": {
+          "name": "kwh_split_4_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_5": {
+          "name": "kwh_split_5",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_5_cost_rate": {
+          "name": "kwh_split_5_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_6": {
+          "name": "kwh_split_6",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_split_6_cost_rate": {
+          "name": "kwh_split_6_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_1_rate": {
+          "name": "reactive_power_1_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_1_split": {
+          "name": "reactive_power_1_split",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_2_rate": {
+          "name": "reactive_power_2_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_2_split": {
+          "name": "reactive_power_2_split",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kvarh_default": {
+          "name": "kvarh_default",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_1_rate": {
+          "name": "vat_1_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_2_rate": {
+          "name": "vat_2_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_split": {
+          "name": "vat_split",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loss_adjustment": {
+          "name": "loss_adjustment",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "tuos": {
+          "name": "tuos",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "use_of_system": {
+          "name": "use_of_system",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "use_distributor_capacity": {
+          "name": "use_distributor_capacity",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "use_distributor_reactive_power": {
+          "name": "use_distributor_reactive_power",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "bank_holidays": {
+          "name": "bank_holidays",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_point": {
+          "name": "billing_point",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "clock": {
+          "name": "clock",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "batch": {
+          "name": "batch",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contracts_data_set_id_data_sets_id_fk": {
+          "name": "contracts_data_set_id_data_sets_id_fk",
+          "tableFrom": "contracts",
+          "tableTo": "data_sets",
+          "columnsFrom": [
+            "data_set_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contracts_group_id_groups_id_fk": {
+          "name": "contracts_group_id_groups_id_fk",
+          "tableFrom": "contracts",
+          "tableTo": "groups",
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.data_profiles": {
+      "name": "data_profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "data_set_id": {
+          "name": "data_set_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_total": {
+          "name": "day_total",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0030": {
+          "name": "i0030",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0100": {
+          "name": "i0100",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0130": {
+          "name": "i0130",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0200": {
+          "name": "i0200",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0230": {
+          "name": "i0230",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0300": {
+          "name": "i0300",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0330": {
+          "name": "i0330",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0400": {
+          "name": "i0400",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0430": {
+          "name": "i0430",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0500": {
+          "name": "i0500",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0530": {
+          "name": "i0530",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0600": {
+          "name": "i0600",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0630": {
+          "name": "i0630",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0700": {
+          "name": "i0700",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0730": {
+          "name": "i0730",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0800": {
+          "name": "i0800",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0830": {
+          "name": "i0830",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0900": {
+          "name": "i0900",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i0930": {
+          "name": "i0930",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1000": {
+          "name": "i1000",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1030": {
+          "name": "i1030",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1100": {
+          "name": "i1100",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1130": {
+          "name": "i1130",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1200": {
+          "name": "i1200",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1230": {
+          "name": "i1230",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1300": {
+          "name": "i1300",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1330": {
+          "name": "i1330",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1400": {
+          "name": "i1400",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1430": {
+          "name": "i1430",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1500": {
+          "name": "i1500",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1530": {
+          "name": "i1530",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1600": {
+          "name": "i1600",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1630": {
+          "name": "i1630",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1700": {
+          "name": "i1700",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1730": {
+          "name": "i1730",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1800": {
+          "name": "i1800",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1830": {
+          "name": "i1830",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1900": {
+          "name": "i1900",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i1930": {
+          "name": "i1930",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i2000": {
+          "name": "i2000",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i2030": {
+          "name": "i2030",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i2100": {
+          "name": "i2100",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i2130": {
+          "name": "i2130",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i2200": {
+          "name": "i2200",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i2230": {
+          "name": "i2230",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i2300": {
+          "name": "i2300",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i2330": {
+          "name": "i2330",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "i2400": {
+          "name": "i2400",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0030": {
+          "name": "f0030",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0100": {
+          "name": "f0100",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0130": {
+          "name": "f0130",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0200": {
+          "name": "f0200",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0230": {
+          "name": "f0230",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0300": {
+          "name": "f0300",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0330": {
+          "name": "f0330",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0400": {
+          "name": "f0400",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0430": {
+          "name": "f0430",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0500": {
+          "name": "f0500",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0530": {
+          "name": "f0530",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0600": {
+          "name": "f0600",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0630": {
+          "name": "f0630",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0700": {
+          "name": "f0700",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0730": {
+          "name": "f0730",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0800": {
+          "name": "f0800",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0830": {
+          "name": "f0830",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0900": {
+          "name": "f0900",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f0930": {
+          "name": "f0930",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1000": {
+          "name": "f1000",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1030": {
+          "name": "f1030",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1100": {
+          "name": "f1100",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1130": {
+          "name": "f1130",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1200": {
+          "name": "f1200",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1230": {
+          "name": "f1230",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1300": {
+          "name": "f1300",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1330": {
+          "name": "f1330",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1400": {
+          "name": "f1400",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1430": {
+          "name": "f1430",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1500": {
+          "name": "f1500",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1530": {
+          "name": "f1530",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1600": {
+          "name": "f1600",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1630": {
+          "name": "f1630",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1700": {
+          "name": "f1700",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1730": {
+          "name": "f1730",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1800": {
+          "name": "f1800",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1830": {
+          "name": "f1830",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1900": {
+          "name": "f1900",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f1930": {
+          "name": "f1930",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f2000": {
+          "name": "f2000",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f2030": {
+          "name": "f2030",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f2100": {
+          "name": "f2100",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f2130": {
+          "name": "f2130",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f2200": {
+          "name": "f2200",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f2230": {
+          "name": "f2230",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f2300": {
+          "name": "f2300",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f2330": {
+          "name": "f2330",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "f2400": {
+          "name": "f2400",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "data_profiles_data_set_id_data_sets_id_fk": {
+          "name": "data_profiles_data_set_id_data_sets_id_fk",
+          "tableFrom": "data_profiles",
+          "tableTo": "data_sets",
+          "columnsFrom": [
+            "data_set_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.data_records": {
+      "name": "data_records",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "data_set_id": {
+          "name": "data_set_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "utility_type": {
+          "name": "utility_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_date": {
+          "name": "previous_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "direct": {
+          "name": "direct",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimate": {
+          "name": "estimate",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "units": {
+          "name": "units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cost": {
+          "name": "cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "batch": {
+          "name": "batch",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "standing_charge": {
+          "name": "standing_charge",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "other_charge": {
+          "name": "other_charge",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat": {
+          "name": "vat",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ccl": {
+          "name": "ccl",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ccl_rate": {
+          "name": "ccl_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "invoice_number": {
+          "name": "invoice_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supplier_name": {
+          "name": "supplier_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "number": {
+          "name": "number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked": {
+          "name": "locked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "passed_to_accounts": {
+          "name": "passed_to_accounts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date_paid": {
+          "name": "date_paid",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date_tax_point": {
+          "name": "date_tax_point",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exclude_from_reports": {
+          "name": "exclude_from_reports",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_update": {
+          "name": "last_update",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_user": {
+          "name": "last_user",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_present": {
+          "name": "m1_present",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_previous": {
+          "name": "m1_previous",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_factor": {
+          "name": "m1_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_units": {
+          "name": "m1_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_cost_rate": {
+          "name": "m1_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_cost": {
+          "name": "m1_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m2_present": {
+          "name": "m2_present",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m2_previous": {
+          "name": "m2_previous",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m2_factor": {
+          "name": "m2_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m2_units": {
+          "name": "m2_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m2_cost_rate": {
+          "name": "m2_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m2_cost": {
+          "name": "m2_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m3_present": {
+          "name": "m3_present",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m3_previous": {
+          "name": "m3_previous",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m3_factor": {
+          "name": "m3_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m3_units": {
+          "name": "m3_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m3_cost_rate": {
+          "name": "m3_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m3_cost": {
+          "name": "m3_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m4_present": {
+          "name": "m4_present",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m4_previous": {
+          "name": "m4_previous",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m4_factor": {
+          "name": "m4_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m4_units": {
+          "name": "m4_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m4_cost_rate": {
+          "name": "m4_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m4_cost": {
+          "name": "m4_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_split": {
+          "name": "vat_split",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_1_percent": {
+          "name": "vat_1_percent",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_1": {
+          "name": "vat_1",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_2_percent": {
+          "name": "vat_2_percent",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_2": {
+          "name": "vat_2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "standing_charge_rate": {
+          "name": "standing_charge_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "de_minimis": {
+          "name": "de_minimis",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "de_minimis_threshold": {
+          "name": "de_minimis_threshold",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "non_vatable_charges": {
+          "name": "non_vatable_charges",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "flexible_purchasing": {
+          "name": "flexible_purchasing",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "misc_cost": {
+          "name": "misc_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m5_present": {
+          "name": "m5_present",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m5_previous": {
+          "name": "m5_previous",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m5_factor": {
+          "name": "m5_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m5_units": {
+          "name": "m5_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m5_cost_rate": {
+          "name": "m5_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m5_cost": {
+          "name": "m5_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m6_present": {
+          "name": "m6_present",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m6_previous": {
+          "name": "m6_previous",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m6_factor": {
+          "name": "m6_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m6_units": {
+          "name": "m6_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m6_cost_rate": {
+          "name": "m6_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m6_cost": {
+          "name": "m6_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m7_present": {
+          "name": "m7_present",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m7_previous": {
+          "name": "m7_previous",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m7_factor": {
+          "name": "m7_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m7_units": {
+          "name": "m7_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m7_cost_rate": {
+          "name": "m7_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m7_cost": {
+          "name": "m7_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m8_present": {
+          "name": "m8_present",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m8_previous": {
+          "name": "m8_previous",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m8_factor": {
+          "name": "m8_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m8_units": {
+          "name": "m8_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m8_cost_rate": {
+          "name": "m8_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m8_cost": {
+          "name": "m8_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split1": {
+          "name": "m1_split1",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split1_cost_rate": {
+          "name": "m1_split1_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split1_cost": {
+          "name": "m1_split1_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split2": {
+          "name": "m1_split2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split2_cost_rate": {
+          "name": "m1_split2_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split2_cost": {
+          "name": "m1_split2_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split3": {
+          "name": "m1_split3",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split3_cost_rate": {
+          "name": "m1_split3_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split3_cost": {
+          "name": "m1_split3_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split4": {
+          "name": "m1_split4",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split4_cost_rate": {
+          "name": "m1_split4_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split4_cost": {
+          "name": "m1_split4_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split5": {
+          "name": "m1_split5",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split5_cost_rate": {
+          "name": "m1_split5_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split5_cost": {
+          "name": "m1_split5_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split6": {
+          "name": "m1_split6",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split6_cost_rate": {
+          "name": "m1_split6_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "m1_split6_cost": {
+          "name": "m1_split6_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kv": {
+          "name": "kv",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kv_cost_rate": {
+          "name": "kv_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kv_cost": {
+          "name": "kv_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kva": {
+          "name": "kva",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kva_cost_rate": {
+          "name": "kva_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kva_cost": {
+          "name": "kva_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kv_factor": {
+          "name": "kv_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kva_factor": {
+          "name": "kva_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kv_split1": {
+          "name": "kv_split1",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kv_split1_cost_rate": {
+          "name": "kv_split1_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kv_split1_cost": {
+          "name": "kv_split1_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kva_split1": {
+          "name": "kva_split1",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kva_split1_cost_rate": {
+          "name": "kva_split1_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kva_split1_cost": {
+          "name": "kva_split1_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fuel_adjustment_cost": {
+          "name": "fuel_adjustment_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fuel_adjustment_percent": {
+          "name": "fuel_adjustment_percent",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "power_factor": {
+          "name": "power_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power": {
+          "name": "reactive_power",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_cost_rate": {
+          "name": "reactive_power_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_cost": {
+          "name": "reactive_power_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_factor": {
+          "name": "reactive_power_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_2_factor": {
+          "name": "reactive_power_2_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_2_cost": {
+          "name": "reactive_power_2_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reactive_power_2_cost_rate": {
+          "name": "reactive_power_2_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "green_charge": {
+          "name": "green_charge",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "green_charge_rate": {
+          "name": "green_charge_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "green_percent": {
+          "name": "green_percent",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "settlements": {
+          "name": "settlements",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "settlements_rate": {
+          "name": "settlements_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tuos": {
+          "name": "tuos",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos": {
+          "name": "duos",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "triad": {
+          "name": "triad",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roc": {
+          "name": "roc",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roc_rate": {
+          "name": "roc_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feed_in_cost": {
+          "name": "feed_in_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feed_in_cost_rate": {
+          "name": "feed_in_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos_green_units": {
+          "name": "duos_green_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos_green_cost_rate": {
+          "name": "duos_green_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos_green_cost": {
+          "name": "duos_green_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos_amber_units": {
+          "name": "duos_amber_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos_amber_cost_rate": {
+          "name": "duos_amber_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos_amber_cost": {
+          "name": "duos_amber_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos_red_units": {
+          "name": "duos_red_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos_red_cost_rate": {
+          "name": "duos_red_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duos_red_cost": {
+          "name": "duos_red_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_factor": {
+          "name": "kwh_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transportation": {
+          "name": "transportation",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metering": {
+          "name": "metering",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "standing_charge_2": {
+          "name": "standing_charge_2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "standing_charge_rate_2": {
+          "name": "standing_charge_rate_2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_factor": {
+          "name": "water_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_units": {
+          "name": "water_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_cost_rate": {
+          "name": "water_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_cost": {
+          "name": "water_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sewerage_factor": {
+          "name": "sewerage_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sewerage_units": {
+          "name": "sewerage_units",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sewerage_cost_rate": {
+          "name": "sewerage_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sewerage_cost": {
+          "name": "sewerage_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rates": {
+          "name": "rates",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rates_cost_rate": {
+          "name": "rates_cost_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rates_cost": {
+          "name": "rates_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trade_effluent_cost": {
+          "name": "trade_effluent_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "surface_water_cost": {
+          "name": "surface_water_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "environmental_cost": {
+          "name": "environmental_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "highway_cost": {
+          "name": "highway_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "volume_cost": {
+          "name": "volume_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tariff_cost": {
+          "name": "tariff_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "data_records_data_set_id_data_sets_id_fk": {
+          "name": "data_records_data_set_id_data_sets_id_fk",
+          "tableFrom": "data_records",
+          "tableTo": "data_sets",
+          "columnsFrom": [
+            "data_set_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.data_sets": {
+      "name": "data_sets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utility_type_id": {
+          "name": "utility_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mpan_profile": {
+          "name": "mpan_profile",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mpan_core_mprn": {
+          "name": "mpan_core_mprn",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mpan_core_mprn_2": {
+          "name": "mpan_core_mprn_2",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mpan_core_mprn_3": {
+          "name": "mpan_core_mprn_3",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mpan_core_mprn_4": {
+          "name": "mpan_core_mprn_4",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter_serial_1": {
+          "name": "meter_serial_1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supplier_id": {
+          "name": "supplier_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tariff_name": {
+          "name": "tariff_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter_type": {
+          "name": "meter_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_virtual": {
+          "name": "is_virtual",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "date_closed": {
+          "name": "date_closed",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "last_update": {
+          "name": "last_update",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "code2": {
+          "name": "code2",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "host_supplier": {
+          "name": "host_supplier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bill_frequency": {
+          "name": "bill_frequency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "annual_quantity": {
+          "name": "annual_quantity",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter_digits": {
+          "name": "meter_digits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter_number": {
+          "name": "meter_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "other_number": {
+          "name": "other_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sub_meter": {
+          "name": "sub_meter",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "aggregate_meter": {
+          "name": "aggregate_meter",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "landlord_billed": {
+          "name": "landlord_billed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "interruptible": {
+          "name": "interruptible",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "vat_rate": {
+          "name": "vat_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tariff_ccl_rate": {
+          "name": "tariff_ccl_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comments": {
+          "name": "comments",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "units": {
+          "name": "units",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kva": {
+          "name": "kva",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "voltage": {
+          "name": "voltage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "power_factor": {
+          "name": "power_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eac": {
+          "name": "eac",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_meter": {
+          "name": "profile_meter",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "profile_frequency": {
+          "name": "profile_frequency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_scale_factor": {
+          "name": "profile_scale_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_kwh_factor": {
+          "name": "profile_kwh_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_calorific_value": {
+          "name": "profile_calorific_value",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_correction_factor": {
+          "name": "profile_correction_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_cost_rate": {
+          "name": "profile_cost_rate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_meter_max": {
+          "name": "profile_meter_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_threshold_1": {
+          "name": "profile_threshold_1",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_threshold_2": {
+          "name": "profile_threshold_2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter_operator": {
+          "name": "meter_operator",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter_asset_manager": {
+          "name": "meter_asset_manager",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mhhs_applied": {
+          "name": "mhhs_applied",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "rota_disconnection_alpha_id": {
+          "name": "rota_disconnection_alpha_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gas_meter_size": {
+          "name": "gas_meter_size",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nominated_soq": {
+          "name": "nominated_soq",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "soq_peak": {
+          "name": "soq_peak",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "soq_alternative": {
+          "name": "soq_alternative",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "soq_minimum": {
+          "name": "soq_minimum",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supply_hourly_quantity": {
+          "name": "supply_hourly_quantity",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kwh_factor": {
+          "name": "kwh_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter_size": {
+          "name": "meter_size",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter_size_2": {
+          "name": "meter_size_2",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "meter_type_capacity": {
+          "name": "meter_type_capacity",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "return_to_sewer": {
+          "name": "return_to_sewer",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "highway_drainage": {
+          "name": "highway_drainage",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "surface_water": {
+          "name": "surface_water",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "sewerage_supplier": {
+          "name": "sewerage_supplier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_supplier": {
+          "name": "water_supplier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sewerage_wholesale_tariff": {
+          "name": "sewerage_wholesale_tariff",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_wholesale_tariff": {
+          "name": "water_wholesale_tariff",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "data_sets_site_id_sites_id_fk": {
+          "name": "data_sets_site_id_sites_id_fk",
+          "tableFrom": "data_sets",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "data_sets_utility_type_id_config_utilities_id_fk": {
+          "name": "data_sets_utility_type_id_config_utilities_id_fk",
+          "tableFrom": "data_sets",
+          "tableTo": "config_utilities",
+          "columnsFrom": [
+            "utility_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "data_sets_supplier_id_config_suppliers_id_fk": {
+          "name": "data_sets_supplier_id_config_suppliers_id_fk",
+          "tableFrom": "data_sets",
+          "tableTo": "config_suppliers",
+          "columnsFrom": [
+            "supplier_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.groups": {
+      "name": "groups",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "groups_name_unique": {
+          "name": "groups_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.import_logs": {
+      "name": "import_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "filename": {
+          "name": "filename",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "format": {
+          "name": "format",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "total_rows": {
+          "name": "total_rows",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "imported_rows": {
+          "name": "imported_rows",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "skipped_rows": {
+          "name": "skipped_rows",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "error_rows": {
+          "name": "error_rows",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "error_details": {
+          "name": "error_details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.site_groups": {
+      "name": "site_groups",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "site_groups_site_id_sites_id_fk": {
+          "name": "site_groups_site_id_sites_id_fk",
+          "tableFrom": "site_groups",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "site_groups_group_id_groups_id_fk": {
+          "name": "site_groups_group_id_groups_id_fk",
+          "tableFrom": "site_groups",
+          "tableTo": "groups",
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.config_site_status": {
+      "name": "config_site_status",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "config_site_status_name_unique": {
+          "name": "config_site_status_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sites": {
+      "name": "sites",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address2": {
+          "name": "address2",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "town": {
+          "name": "town",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "county": {
+          "name": "county",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "postcode": {
+          "name": "postcode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "telephone": {
+          "name": "telephone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_id": {
+          "name": "status_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "photo_url": {
+          "name": "photo_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comments": {
+          "name": "comments",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "floor_area": {
+          "name": "floor_area",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "degree_day_area": {
+          "name": "degree_day_area",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_update": {
+          "name": "last_update",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sites_status_id_config_site_status_id_fk": {
+          "name": "sites_status_id_config_site_status_id_fk",
+          "tableFrom": "sites",
+          "tableTo": "config_site_status",
+          "columnsFrom": [
+            "status_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.config_suppliers": {
+      "name": "config_suppliers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "utility": {
+          "name": "utility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_1": {
+          "name": "address_1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_2": {
+          "name": "address_2",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "town": {
+          "name": "town",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "county": {
+          "name": "county",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "post_code": {
+          "name": "post_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "telephone": {
+          "name": "telephone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fax": {
+          "name": "fax",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emergency_telephone": {
+          "name": "emergency_telephone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_1": {
+          "name": "email_1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_2": {
+          "name": "email_2",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.todo_items": {
+      "name": "todo_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_done": {
+          "name": "is_done",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.config_utilities": {
+      "name": "config_utilities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "standard_units": {
+          "name": "standard_units",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "config_utilities_name_unique": {
+          "name": "config_utilities_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

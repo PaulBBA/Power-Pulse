@@ -19,7 +19,19 @@ export const utilities = pgTable("config_utilities", {
 export const suppliers = pgTable("config_suppliers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  utility: text("utility"),
+  address1: text("address_1"),
+  address2: text("address_2"),
+  town: text("town"),
+  county: text("county"),
+  postCode: text("post_code"),
+  telephone: text("telephone"),
+  fax: text("fax"),
+  emergencyTelephone: text("emergency_telephone"),
+  notes: text("notes"),
   code: text("code"),
+  email1: text("email_1"),
+  email2: text("email_2"),
   isActive: boolean("is_active").default(true),
 });
 

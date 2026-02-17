@@ -343,8 +343,8 @@ function ContractsTab({ meterId }: { meterId: number }) {
                 <td className="p-2">{c.type || "-"}</td>
                 <td className="p-2">{formatDate(c.dateStart)}</td>
                 <td className="p-2">{formatDate(c.dateEnd)}</td>
-                <td className="p-2 text-right">{c.rateUnits != null ? c.rateUnits.toFixed(4) : "-"}</td>
-                <td className="p-2 text-right">{c.rateFixed != null ? c.rateFixed.toFixed(2) : "-"}</td>
+                <td className="p-2 text-right">{c.rateUnits ? Number(c.rateUnits).toFixed(4) : "-"}</td>
+                <td className="p-2 text-right">{c.rateFixed ? Number(c.rateFixed).toFixed(2) : "-"}</td>
               </tr>
             ))}
           </tbody>

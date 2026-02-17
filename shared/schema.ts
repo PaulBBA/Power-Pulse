@@ -224,6 +224,47 @@ export const contractCharges = pgTable("contract_charges", {
   toleranceUnits: real("tolerance_units"),
 });
 
+export const contractData = pgTable("contract_data", {
+  id: serial("id").primaryKey(),
+  contractId: integer("contract_id").references(() => contracts.id).notNull(),
+  type: text("type"),
+  costRate: real("cost_rate"),
+  timeStart: text("time_start"),
+  timeFinish: text("time_finish"),
+  meter: integer("meter"),
+  description: text("description"),
+  sunday: boolean("sunday").default(true),
+  monday: boolean("monday").default(true),
+  tuesday: boolean("tuesday").default(true),
+  wednesday: boolean("wednesday").default(true),
+  thursday: boolean("thursday").default(true),
+  friday: boolean("friday").default(true),
+  saturday: boolean("saturday").default(true),
+  january: boolean("january").default(true),
+  february: boolean("february").default(true),
+  march: boolean("march").default(true),
+  april: boolean("april").default(true),
+  may: boolean("may").default(true),
+  june: boolean("june").default(true),
+  july: boolean("july").default(true),
+  august: boolean("august").default(true),
+  september: boolean("september").default(true),
+  october: boolean("october").default(true),
+  november: boolean("november").default(true),
+  december: boolean("december").default(true),
+  validFrom: timestamp("valid_from"),
+});
+
+export const chargeItems = pgTable("charge_items", {
+  id: serial("id").primaryKey(),
+  dataSetId: integer("data_set_id").references(() => dataSets.id).notNull(),
+  dataRecordId: integer("data_record_id"),
+  chargeTypeId: integer("charge_type_id").references(() => chargeTypes.id),
+  cost: real("cost"),
+  units: real("units"),
+  rate: real("rate"),
+});
+
 // --- Data Tables ---
 
 export const dataInvoices = pgTable("data_invoices", {

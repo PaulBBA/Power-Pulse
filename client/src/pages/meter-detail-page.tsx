@@ -41,9 +41,8 @@ function MeterDetailsHeader({ meter }: { meter: any }) {
   const utilityName = meter.utility?.name || "Unknown";
 
   const elecFields = utilityCode === "E" ? [
-    { label: "MPAN Profile", value: meter.mpanProfile },
     { label: "MPAN Core", value: meter.mpanCoreMprn },
-    { label: "Meter Serial", value: meter.meterSerial1 },
+    { label: "Meter Serial", value: meter.mpanProfile },
     { label: "Meter Operator", value: meter.meterOperator },
     { label: "Meter Type", value: meter.meterType },
     { label: "KVA", value: meter.kva },

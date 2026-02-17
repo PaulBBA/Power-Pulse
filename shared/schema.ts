@@ -465,6 +465,18 @@ export const dataProfiles = pgTable("data_profiles", {
   i1830: real("i1830"), i1900: real("i1900"), i1930: real("i1930"), i2000: real("i2000"),
   i2030: real("i2030"), i2100: real("i2100"), i2130: real("i2130"), i2200: real("i2200"),
   i2230: real("i2230"), i2300: real("i2300"), i2330: real("i2330"), i2400: real("i2400"),
+  f0030: integer("f0030"), f0100: integer("f0100"), f0130: integer("f0130"), f0200: integer("f0200"),
+  f0230: integer("f0230"), f0300: integer("f0300"), f0330: integer("f0330"), f0400: integer("f0400"),
+  f0430: integer("f0430"), f0500: integer("f0500"), f0530: integer("f0530"), f0600: integer("f0600"),
+  f0630: integer("f0630"), f0700: integer("f0700"), f0730: integer("f0730"), f0800: integer("f0800"),
+  f0830: integer("f0830"), f0900: integer("f0900"), f0930: integer("f0930"), f1000: integer("f1000"),
+  f1030: integer("f1030"), f1100: integer("f1100"), f1130: integer("f1130"), f1200: integer("f1200"),
+  f1230: integer("f1230"), f1300: integer("f1300"), f1330: integer("f1330"), f1400: integer("f1400"),
+  f1430: integer("f1430"), f1500: integer("f1500"), f1530: integer("f1530"), f1600: integer("f1600"),
+  f1630: integer("f1630"), f1700: integer("f1700"), f1730: integer("f1730"), f1800: integer("f1800"),
+  f1830: integer("f1830"), f1900: integer("f1900"), f1930: integer("f1930"), f2000: integer("f2000"),
+  f2030: integer("f2030"), f2100: integer("f2100"), f2130: integer("f2130"), f2200: integer("f2200"),
+  f2230: integer("f2230"), f2300: integer("f2300"), f2330: integer("f2330"), f2400: integer("f2400"),
 });
 
 // --- Admin To Do ---

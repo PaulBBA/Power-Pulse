@@ -37,7 +37,8 @@ The core hierarchy consists of:
 3. **Data Sets** - Individual meters/utility accounts within sites (with utility-specific fields for electricity, gas, water)
 4. **Contracts** - Supply contracts linked to meters (dataSetId), with rates, kWh splits, reactive power, VAT, and flags from old EMSQL Contracts table
 5. **Contract Charges** - Additional charge lines linked to contracts, with charge type, rate, and tolerance fields
-6. **Invoices** - Billing records and meter readings per data set
+6. **Data Records** - Unified table for all utility billing records (electricity/gas/water) with 100+ fields covering meter readings, costs, splits, reactive power, DUOS/TUOS, and utility-specific charges
+7. **Data Profiles** - Half-hourly interval data (48 intervals per day) for electricity meters, with day totals and type flags
 
 Supporting lookup tables include site status, utilities, suppliers, and charge types.
 

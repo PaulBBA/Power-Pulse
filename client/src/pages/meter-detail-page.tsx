@@ -133,7 +133,7 @@ function MeterDetailsHeader({ meter }: { meter: any }) {
 }
 
 type SortDir = "asc" | "desc";
-type ContractSortKey = "supplier" | "referenceNumber" | "type" | "dateStart" | "dateEnd" | "rateUnits" | "rateFixed";
+type ContractSortKey = "supplier" | "referenceNumber" | "type" | "dateStart" | "dateEnd" | "kwhSplit1CostRate" | "kwhSplit2CostRate" | "rateFixed";
 type InvoiceSortKey = "date" | "previousDate" | "units" | "cost" | "standingCharge" | "otherCharge" | "vat";
 
 function SortableHeader<T extends string>({ label, sortKey, currentSort, currentDir, onSort, align = "left" }: {
@@ -207,8 +207,8 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
           <DetailRow label="Fossil Fuel Levy (p)" value={fmtNum(contract.fossilFuelLevy, 4)} />
 
           <SectionTitle title="Rates" />
-          <DetailRow label="Unit Rate (p)" value={fmtNum(contract.rateUnits, 4)} />
-          <DetailRow label="Unit Rate Split" value={fmtNum(contract.rateUnits1Split)} />
+          <DetailRow label="Rate 1 (p)" value={fmtNum(contract.kwhSplit1CostRate, 4)} />
+          <DetailRow label="Rate 2 (p)" value={fmtNum(contract.kwhSplit2CostRate, 4)} />
           <DetailRow label="Standing Charge (p)" value={fmtNum(contract.rateFixed, 4)} />
           <DetailRow label="Standing Charge Per Day" value={fmtBool(contract.rateFixedPerDay)} />
           <DetailRow label="kVA Rate (p)" value={fmtNum(contract.rateKva, 4)} />
@@ -297,7 +297,7 @@ function ContractsTab({ meterId }: { meterId: number }) {
       if (sortKey === "dateStart" || sortKey === "dateEnd") {
         av = av ? new Date(av).getTime() : 0;
         bv = bv ? new Date(bv).getTime() : 0;
-      } else if (sortKey === "rateUnits" || sortKey === "rateFixed") {
+      } else if (sortKey === "kwhSplit1CostRate" || sortKey === "kwhSplit2CostRate" || sortKey === "rateFixed") {
         av = av ?? -Infinity;
         bv = bv ?? -Infinity;
       } else {
@@ -326,7 +326,8 @@ function ContractsTab({ meterId }: { meterId: number }) {
               <SortableHeader label="Type" sortKey="type" {...hp} />
               <SortableHeader label="Start" sortKey="dateStart" {...hp} />
               <SortableHeader label="End" sortKey="dateEnd" {...hp} />
-              <SortableHeader label="Unit Rate (p)" sortKey="rateUnits" align="right" {...hp} />
+              <SortableHeader label="Rate 1 (p)" sortKey="kwhSplit1CostRate" align="right" {...hp} />
+              <SortableHeader label="Rate 2 (p)" sortKey="kwhSplit2CostRate" align="right" {...hp} />
               <SortableHeader label="Standing Charge (p)" sortKey="rateFixed" align="right" {...hp} />
             </tr>
           </thead>
@@ -343,7 +344,8 @@ function ContractsTab({ meterId }: { meterId: number }) {
                 <td className="p-2">{c.type || "-"}</td>
                 <td className="p-2">{formatDate(c.dateStart)}</td>
                 <td className="p-2">{formatDate(c.dateEnd)}</td>
-                <td className="p-2 text-right">{c.rateUnits ? Number(c.rateUnits).toFixed(4) : "-"}</td>
+                <td className="p-2 text-right">{c.kwhSplit1CostRate ? Number(c.kwhSplit1CostRate).toFixed(4) : "-"}</td>
+                <td className="p-2 text-right">{c.kwhSplit2CostRate ? Number(c.kwhSplit2CostRate).toFixed(4) : "-"}</td>
                 <td className="p-2 text-right">{c.rateFixed ? Number(c.rateFixed).toFixed(2) : "-"}</td>
               </tr>
             ))}

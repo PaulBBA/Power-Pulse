@@ -132,10 +132,11 @@ function MeterDetailsHeader({ meter }: { meter: any }) {
 
 type SortDir = "asc" | "desc";
 type ContractSortKey = "supplier" | "referenceNumber" | "type" | "dateStart" | "dateEnd" | "rateUnits" | "rateFixed";
+type InvoiceSortKey = "date" | "previousDate" | "units" | "cost" | "standingCharge" | "otherCharge" | "vat";
 
-function SortableHeader({ label, sortKey, currentSort, currentDir, onSort, align = "left" }: {
-  label: string; sortKey: ContractSortKey; currentSort: ContractSortKey; currentDir: SortDir;
-  onSort: (key: ContractSortKey) => void; align?: "left" | "right";
+function SortableHeader<T extends string>({ label, sortKey, currentSort, currentDir, onSort, align = "left" }: {
+  label: string; sortKey: T; currentSort: T; currentDir: SortDir;
+  onSort: (key: T) => void; align?: "left" | "right";
 }) {
   const active = currentSort === sortKey;
   const Icon = active ? (currentDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
@@ -231,34 +232,64 @@ function InvoicesTab({ meterId }: { meterId: number }) {
   const { data: records, isLoading } = useQuery<any[]>({
     queryKey: [`/api/data-sets/${meterId}/records`],
   });
+  const [sortKey, setSortKey] = useState<InvoiceSortKey>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const handleSort = (key: InvoiceSortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir(key === "date" || key === "previousDate" ? "desc" : "asc");
+    }
+  };
+
+  const sorted = useMemo(() => {
+    if (!records) return [];
+    return [...records].sort((a, b) => {
+      let av: any, bv: any;
+      if (sortKey === "date" || sortKey === "previousDate") {
+        av = a[sortKey] ? new Date(a[sortKey]).getTime() : 0;
+        bv = b[sortKey] ? new Date(b[sortKey]).getTime() : 0;
+      } else {
+        av = a[sortKey] ?? -Infinity;
+        bv = b[sortKey] ?? -Infinity;
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [records, sortKey, sortDir]);
 
   if (isLoading) return <LoadingState />;
   if (!records || records.length === 0) return <EmptyState message="No invoice/billing records found for this meter." />;
+
+  const hp = { currentSort: sortKey, currentDir: sortDir, onSort: handleSort };
 
   return (
     <div className="border rounded-md overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-muted/50">
           <tr>
-            <th className="text-left p-2 font-medium">Date</th>
-            <th className="text-left p-2 font-medium">Previous Date</th>
-            <th className="text-right p-2 font-medium">Days</th>
-            <th className="text-right p-2 font-medium">kWh</th>
-            <th className="text-right p-2 font-medium">Cost (p)</th>
-            <th className="text-right p-2 font-medium">Standing (p)</th>
-            <th className="text-right p-2 font-medium">Total (p)</th>
+            <SortableHeader label="Date" sortKey="date" {...hp} />
+            <SortableHeader label="Previous Date" sortKey="previousDate" {...hp} />
+            <SortableHeader label="Units" sortKey="units" align="right" {...hp} />
+            <SortableHeader label="Cost (p)" sortKey="cost" align="right" {...hp} />
+            <SortableHeader label="Standing (p)" sortKey="standingCharge" align="right" {...hp} />
+            <SortableHeader label="Other (p)" sortKey="otherCharge" align="right" {...hp} />
+            <SortableHeader label="VAT (p)" sortKey="vat" align="right" {...hp} />
           </tr>
         </thead>
         <tbody>
-          {records.map((r: any) => (
+          {sorted.map((r: any) => (
             <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-record-${r.id}`}>
               <td className="p-2">{formatDate(r.date)}</td>
-              <td className="p-2">{formatDate(r.datePrevious)}</td>
-              <td className="p-2 text-right">{r.days ?? "-"}</td>
-              <td className="p-2 text-right">{r.kwh != null ? Number(r.kwh).toLocaleString() : "-"}</td>
-              <td className="p-2 text-right">{r.costUnits != null ? Number(r.costUnits).toFixed(2) : "-"}</td>
-              <td className="p-2 text-right">{r.costFixed != null ? Number(r.costFixed).toFixed(2) : "-"}</td>
-              <td className="p-2 text-right">{r.costTotal != null ? Number(r.costTotal).toFixed(2) : "-"}</td>
+              <td className="p-2">{formatDate(r.previousDate)}</td>
+              <td className="p-2 text-right">{r.units != null ? Number(r.units).toLocaleString() : "-"}</td>
+              <td className="p-2 text-right">{r.cost != null ? Number(r.cost).toFixed(2) : "-"}</td>
+              <td className="p-2 text-right">{r.standingCharge != null ? Number(r.standingCharge).toFixed(2) : "-"}</td>
+              <td className="p-2 text-right">{r.otherCharge != null ? Number(r.otherCharge).toFixed(2) : "-"}</td>
+              <td className="p-2 text-right">{r.vat != null ? Number(r.vat).toFixed(2) : "-"}</td>
             </tr>
           ))}
         </tbody>

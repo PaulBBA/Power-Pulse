@@ -2,9 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { db } from "./db.js";
-import { users, dataSets, dataProfiles, importLogs } from "@shared/schema.js";
-import { eq, and, sql } from "drizzle-orm";
+import { users, dataSets, dataProfiles, importLogs, sftpConfigs, sftpDownloadLogs } from "@shared/schema.js";
+import { eq, and, sql, desc } from "drizzle-orm";
 import multer from "multer";
+import SftpClient from "ssh2-sftp-client";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -606,6 +607,311 @@ export async function registerRoutes(
   app.get("/api/import/logs", async (_req, res) => {
     try {
       const logs = await db.select().from(importLogs).orderBy(sql`${importLogs.createdAt} DESC`).limit(20);
+      res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- SFTP Configuration ---
+
+  app.get("/api/sftp/configs", async (_req, res) => {
+    try {
+      const configs = await db.select().from(sftpConfigs).orderBy(desc(sftpConfigs.createdAt));
+      const safeConfigs = configs.map(({ password, privateKey, ...rest }) => ({
+        ...rest,
+        hasPassword: !!password,
+        hasPrivateKey: !!privateKey,
+      }));
+      res.json(safeConfigs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/sftp/configs", async (req, res) => {
+    try {
+      const { name, host, port, username, password, privateKey, remoteDirectory, filePattern } = req.body;
+      if (!name || typeof name !== "string" || !host || typeof host !== "string" || !username || typeof username !== "string") {
+        return res.status(400).json({ message: "Name, host, and username are required and must be strings" });
+      }
+      if (port !== undefined && (typeof port !== "number" || port < 1 || port > 65535)) {
+        return res.status(400).json({ message: "Port must be a number between 1 and 65535" });
+      }
+      const [config] = await db.insert(sftpConfigs).values({
+        name,
+        host,
+        port: port || 22,
+        username,
+        password: password || null,
+        privateKey: privateKey || null,
+        remoteDirectory: remoteDirectory || "/",
+        filePattern: filePattern || "*.csv",
+      }).returning();
+      const { password: _p, privateKey: _k, ...safeConfig } = config;
+      res.status(201).json({ ...safeConfig, hasPassword: !!config.password, hasPrivateKey: !!config.privateKey });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/sftp/configs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates: any = {};
+      const allowedFields = ["name", "host", "port", "username", "password", "privateKey", "remoteDirectory", "filePattern", "isActive"];
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) updates[field] = req.body[field];
+      }
+      const [config] = await db.update(sftpConfigs).set(updates).where(eq(sftpConfigs.id, id)).returning();
+      if (!config) return res.status(404).json({ message: "Config not found" });
+      const { password: _p, privateKey: _k, ...safeConfig } = config;
+      res.json({ ...safeConfig, hasPassword: !!config.password, hasPrivateKey: !!config.privateKey });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/sftp/configs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.delete(sftpDownloadLogs).where(eq(sftpDownloadLogs.sftpConfigId, id));
+      await db.delete(sftpConfigs).where(eq(sftpConfigs.id, id));
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/sftp/configs/:id/test", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const [config] = await db.select().from(sftpConfigs).where(eq(sftpConfigs.id, id));
+      if (!config) return res.status(404).json({ message: "Config not found" });
+
+      const sftp = new SftpClient();
+      const connectOpts: any = {
+        host: config.host,
+        port: config.port,
+        username: config.username,
+      };
+      if (config.password) connectOpts.password = config.password;
+      if (config.privateKey) connectOpts.privateKey = config.privateKey;
+
+      await sftp.connect(connectOpts);
+      const list = await sftp.list(config.remoteDirectory);
+      await sftp.end();
+
+      await db.update(sftpConfigs).set({ lastConnected: new Date(), lastError: null }).where(eq(sftpConfigs.id, id));
+
+      const csvFiles = list.filter((f: any) => f.type === "-" && f.name.match(/\.(csv|txt)$/i));
+
+      res.json({
+        success: true,
+        message: `Connected successfully. Found ${csvFiles.length} CSV/TXT files in ${config.remoteDirectory}`,
+        files: csvFiles.map((f: any) => ({
+          name: f.name,
+          size: f.size,
+          modifyTime: f.modifyTime,
+        })),
+      });
+    } catch (error: any) {
+      const id = parseInt(req.params.id);
+      await db.update(sftpConfigs).set({ lastError: error.message }).where(eq(sftpConfigs.id, id));
+      res.status(400).json({ success: false, message: `Connection failed: ${error.message}` });
+    }
+  });
+
+  app.post("/api/sftp/configs/:id/list-files", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const [config] = await db.select().from(sftpConfigs).where(eq(sftpConfigs.id, id));
+      if (!config) return res.status(404).json({ message: "Config not found" });
+
+      const sftp = new SftpClient();
+      const connectOpts: any = {
+        host: config.host,
+        port: config.port,
+        username: config.username,
+      };
+      if (config.password) connectOpts.password = config.password;
+      if (config.privateKey) connectOpts.privateKey = config.privateKey;
+
+      await sftp.connect(connectOpts);
+      const list = await sftp.list(config.remoteDirectory);
+      await sftp.end();
+
+      const previousDownloads = await db.select({ filename: sftpDownloadLogs.filename })
+        .from(sftpDownloadLogs).where(eq(sftpDownloadLogs.sftpConfigId, id));
+      const downloadedFiles = new Set(previousDownloads.map(d => d.filename));
+
+      const csvFiles = list
+        .filter((f: any) => f.type === "-" && f.name.match(/\.(csv|txt)$/i))
+        .map((f: any) => ({
+          name: f.name,
+          size: f.size,
+          modifyTime: f.modifyTime,
+          alreadyDownloaded: downloadedFiles.has(f.name),
+        }))
+        .sort((a: any, b: any) => (b.modifyTime || 0) - (a.modifyTime || 0));
+
+      res.json(csvFiles);
+    } catch (error: any) {
+      res.status(400).json({ message: `Failed to list files: ${error.message}` });
+    }
+  });
+
+  app.post("/api/sftp/configs/:id/download", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { filename } = req.body;
+      if (!filename) return res.status(400).json({ message: "Filename is required" });
+
+      const [config] = await db.select().from(sftpConfigs).where(eq(sftpConfigs.id, id));
+      if (!config) return res.status(404).json({ message: "Config not found" });
+
+      const sftp = new SftpClient();
+      const connectOpts: any = {
+        host: config.host,
+        port: config.port,
+        username: config.username,
+      };
+      if (config.password) connectOpts.password = config.password;
+      if (config.privateKey) connectOpts.privateKey = config.privateKey;
+
+      await sftp.connect(connectOpts);
+      const remotePath = config.remoteDirectory.endsWith("/")
+        ? config.remoteDirectory + filename
+        : config.remoteDirectory + "/" + filename;
+
+      const stat = await sftp.stat(remotePath);
+      if (stat.size > 50 * 1024 * 1024) {
+        await sftp.end();
+        return res.status(400).json({ message: "File too large (max 50MB)" });
+      }
+
+      const buffer = await sftp.get(remotePath) as Buffer;
+      await sftp.end();
+
+      const content = buffer.toString("utf-8");
+      const lines = content.split(/\r?\n/).filter(l => l.trim());
+
+      const allMeters = await db.select({
+        id: dataSets.id,
+        mpan: dataSets.mpanCoreMprn,
+        meterSerial: dataSets.meterSerial1
+      }).from(dataSets);
+
+      const mpanMap = new Map<string, number>();
+      const serialMap = new Map<string, number>();
+      for (const m of allMeters) {
+        if (m.mpan) mpanMap.set(m.mpan.trim(), m.id);
+        if (m.meterSerial) serialMap.set(m.meterSerial.trim(), m.id);
+      }
+
+      const [logEntry] = await db.insert(importLogs).values({
+        filename: `[SFTP] ${filename}`,
+        format: "Format 18 - HH Profile",
+        status: "processing",
+        totalRows: lines.length,
+      }).returning();
+
+      let imported = 0;
+      let skipped = 0;
+      let errors = 0;
+      const errorDetails: string[] = [];
+
+      for (const line of lines) {
+        const fields = line.split(",");
+        if (fields.length < 100) { skipped++; continue; }
+
+        const parsed = parseFormat18Row(fields);
+        if (!parsed.date || !parsed.mpan) { skipped++; continue; }
+
+        const mpanCore = parsed.mpan.length > 8 ? parsed.mpan.slice(2, -1) : parsed.mpan;
+        const dataSetId = mpanMap.get(parsed.mpan) ?? mpanMap.get(mpanCore) ?? serialMap.get(parsed.meterSerial);
+
+        if (!dataSetId) { skipped++; continue; }
+
+        try {
+          const dateStr = parsed.date.toISOString().split("T")[0];
+          const existing = await db.select({ id: dataProfiles.id })
+            .from(dataProfiles)
+            .where(and(
+              eq(dataProfiles.dataSetId, dataSetId),
+              sql`DATE(${dataProfiles.date}) = ${dateStr}`
+            ))
+            .limit(1);
+
+          const profileData = {
+            dataSetId,
+            date: parsed.date,
+            type: 0,
+            dayTotal: Math.round(parsed.dayTotal * 100) / 100,
+            ...parsed.intervals,
+            ...parsed.flags
+          } as any;
+
+          if (existing.length > 0) {
+            await db.update(dataProfiles)
+              .set(profileData)
+              .where(eq(dataProfiles.id, existing[0].id));
+          } else {
+            await db.insert(dataProfiles).values(profileData);
+          }
+          imported++;
+        } catch (err: any) {
+          errors++;
+          if (errorDetails.length < 10) {
+            errorDetails.push(`Row ${parsed.mpan} ${parsed.date.toISOString().split("T")[0]}: ${err.message}`);
+          }
+        }
+      }
+
+      const finalStatus = errors > 0 ? "completed_with_errors" : "completed";
+      await db.update(importLogs).set({
+        status: finalStatus,
+        importedRows: imported,
+        skippedRows: skipped,
+        errorRows: errors,
+        errorDetails: errorDetails.length > 0 ? errorDetails.join("\n") : null,
+        completedAt: new Date()
+      }).where(eq(importLogs.id, logEntry.id));
+
+      await db.insert(sftpDownloadLogs).values({
+        sftpConfigId: id,
+        filename,
+        fileSize: buffer.length,
+        status: finalStatus,
+        importLogId: logEntry.id,
+        processedAt: new Date(),
+        errorDetails: errorDetails.length > 0 ? errorDetails.join("\n") : null,
+      });
+
+      await db.update(sftpConfigs).set({ lastDownload: new Date(), lastError: null }).where(eq(sftpConfigs.id, id));
+
+      res.json({
+        importLogId: logEntry.id,
+        filename,
+        status: finalStatus,
+        imported,
+        skipped,
+        errors,
+        errorDetails: errorDetails.length > 0 ? errorDetails : undefined
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: `Download failed: ${error.message}` });
+    }
+  });
+
+  app.get("/api/sftp/configs/:id/downloads", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const logs = await db.select()
+        .from(sftpDownloadLogs)
+        .where(eq(sftpDownloadLogs.sftpConfigId, id))
+        .orderBy(desc(sftpDownloadLogs.downloadedAt))
+        .limit(50);
       res.json(logs);
     } catch (error: any) {
       res.status(500).json({ message: error.message });

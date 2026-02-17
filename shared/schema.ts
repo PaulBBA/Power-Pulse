@@ -504,6 +504,37 @@ export const importLogs = pgTable("import_logs", {
   completedAt: timestamp("completed_at"),
 });
 
+// --- SFTP Configuration ---
+
+export const sftpConfigs = pgTable("sftp_configs", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  host: text("host").notNull(),
+  port: integer("port").default(22).notNull(),
+  username: text("username").notNull(),
+  password: text("password"),
+  privateKey: text("private_key"),
+  remoteDirectory: text("remote_directory").default("/").notNull(),
+  filePattern: text("file_pattern").default("*.csv"),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastConnected: timestamp("last_connected"),
+  lastDownload: timestamp("last_download"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const sftpDownloadLogs = pgTable("sftp_download_logs", {
+  id: serial("id").primaryKey(),
+  sftpConfigId: integer("sftp_config_id").references(() => sftpConfigs.id).notNull(),
+  filename: text("filename").notNull(),
+  fileSize: integer("file_size"),
+  status: text("status").notNull().default("downloaded"),
+  importLogId: integer("import_log_id").references(() => importLogs.id),
+  downloadedAt: timestamp("downloaded_at").defaultNow().notNull(),
+  processedAt: timestamp("processed_at"),
+  errorDetails: text("error_details"),
+});
+
 // --- Auth ---
 
 export const users = pgTable("users", {
@@ -524,6 +555,7 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 
 export const insertTodoSchema = createInsertSchema(todoItems).omit({ id: true, createdAt: true });
 export const insertImportLogSchema = createInsertSchema(importLogs).omit({ id: true, createdAt: true });
+export const insertSftpConfigSchema = createInsertSchema(sftpConfigs).omit({ id: true, createdAt: true, lastConnected: true, lastDownload: true, lastError: true });
 
 // --- Types ---
 
@@ -541,3 +573,6 @@ export type ChargeType = typeof chargeTypes.$inferSelect;
 export type TodoItem = typeof todoItems.$inferSelect;
 export type InsertTodo = z.infer<typeof insertTodoSchema>;
 export type ImportLog = typeof importLogs.$inferSelect;
+export type SftpConfig = typeof sftpConfigs.$inferSelect;
+export type InsertSftpConfig = z.infer<typeof insertSftpConfigSchema>;
+export type SftpDownloadLog = typeof sftpDownloadLogs.$inferSelect;

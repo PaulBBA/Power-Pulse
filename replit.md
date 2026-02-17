@@ -40,6 +40,9 @@ The core hierarchy consists of:
 6. **Data Records** - Unified table for all utility billing records (electricity/gas/water) with 100+ fields covering meter readings, costs, splits, reactive power, DUOS/TUOS, and utility-specific charges
 7. **Data Profiles** - Half-hourly interval data (48 intervals per day) for electricity meters, with day totals and type flags
 
+8. **SFTP Configs** - SFTP connection configurations for automated profile data downloads from external data collectors
+9. **SFTP Download Logs** - Tracks files downloaded via SFTP with links to import logs
+
 Supporting lookup tables include site status, utilities, suppliers, and charge types.
 
 Future considerations:

@@ -4,7 +4,7 @@ import {
   groups, type Group,
   siteGroups,
   dataSets, type DataSet,
-  dataInvoices, type Invoice,
+  dataRecords, type DataRecord,
   contracts, type Contract, type InsertContract,
   contractCharges, type ContractCharge, type InsertContractCharge,
   chargeTypes, type ChargeType,
@@ -42,7 +42,7 @@ export interface IStorage {
   updateDataSet(id: number, data: Partial<DataSet>): Promise<DataSet>;
 
   // Invoices (Readings)
-  getInvoices(dataSetId: number): Promise<Invoice[]>;
+  getDataRecords(dataSetId: number): Promise<DataRecord[]>;
 
   // Utilities
   getUtilities(): Promise<any[]>;
@@ -199,8 +199,8 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getInvoices(dataSetId: number): Promise<Invoice[]> {
-    return await db.select().from(dataInvoices).where(eq(dataInvoices.dataSetId, dataSetId));
+  async getDataRecords(dataSetId: number): Promise<DataRecord[]> {
+    return await db.select().from(dataRecords).where(eq(dataRecords.dataSetId, dataSetId));
   }
 
   async getUtilities(): Promise<any[]> {

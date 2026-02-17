@@ -134,9 +134,9 @@ export async function registerRoutes(
     res.json(dataSets);
   });
 
-  app.get("/api/data-sets/:id/invoices", async (req, res) => {
-    const invoices = await storage.getInvoices(parseInt(req.params.id));
-    res.json(invoices);
+  app.get("/api/data-sets/:id/records", async (req, res) => {
+    const records = await storage.getDataRecords(parseInt(req.params.id));
+    res.json(records);
   });
 
   // --- Contracts ---

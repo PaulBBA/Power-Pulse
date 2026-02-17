@@ -163,7 +163,7 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
     if (!v) return "-";
     try { return format(new Date(v), "dd/MM/yyyy"); } catch { return "-"; }
   };
-  const fmtNum = (v: any, dp = 2) => (v != null && v !== 0 ? Number(v).toFixed(dp) : "-");
+  const fmtNum = (v: any, dp = 2) => (v != null ? Number(v).toFixed(dp) : "-");
   const fmtBool = (v: any) => (v ? "Yes" : "No");
 
   const DetailRow = ({ label, value }: { label: string; value: string }) => (

@@ -39,8 +39,8 @@ export const suppliers = pgTable("config_suppliers", {
 
 export const sites = pgTable("sites", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
-  code: text("code").notNull().unique(), // UPRN
+  name: text("name").notNull(),
+  code: text("code"), // UPRN
   address: text("address"),
   address2: text("address2"),
   town: text("town"),

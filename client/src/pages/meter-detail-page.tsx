@@ -1,0 +1,465 @@
+import { Layout } from "@/components/layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ArrowLeft, Zap, Flame, Droplets, Package, Loader2,
+  FileText, Gauge, BarChart3, Clock, Building2
+} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation, useRoute } from "wouter";
+import { format } from "date-fns";
+
+function getUtilityIcon(code: string, size = "h-5 w-5") {
+  switch (code) {
+    case "E": return <Zap className={`${size} text-amber-500`} />;
+    case "G": return <Flame className={`${size} text-orange-500`} />;
+    case "W": return <Droplets className={`${size} text-blue-500`} />;
+    default: return <Package className={`${size} text-gray-500`} />;
+  }
+}
+
+function formatDate(d: string | null | undefined) {
+  if (!d) return "";
+  try { return format(new Date(d), "dd/MM/yyyy"); } catch { return ""; }
+}
+
+function DetailField({ label, value }: { label: string; value: any }) {
+  if (value === null || value === undefined || value === "") return null;
+  return (
+    <div data-testid={`field-${label.toLowerCase().replace(/[^a-z0-9]/g, "-")}`}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium">{typeof value === "boolean" ? (value ? "Yes" : "No") : String(value)}</p>
+    </div>
+  );
+}
+
+function MeterDetailsHeader({ meter }: { meter: any }) {
+  const utilityCode = meter.utility?.code || "";
+  const utilityName = meter.utility?.name || "Unknown";
+
+  const elecFields = utilityCode === "E" ? [
+    { label: "MPAN Profile", value: meter.mpanProfile },
+    { label: "MPAN Core", value: meter.mpanCoreMprn },
+    { label: "Meter Serial", value: meter.meterSerial1 },
+    { label: "Meter Operator", value: meter.meterOperator },
+    { label: "Meter Type", value: meter.meterType },
+    { label: "KVA", value: meter.kva },
+    { label: "Voltage", value: meter.voltage },
+    { label: "Power Factor", value: meter.powerFactor },
+    { label: "EAC", value: meter.eac },
+    { label: "Annual Quantity", value: meter.annualQuantity },
+    { label: "Profile Meter", value: meter.profileMeter },
+    { label: "MHHS Applied", value: meter.mhhsApplied },
+    { label: "VAT Rate %", value: meter.vatRate },
+    { label: "CCL Rate", value: meter.tariffCclRate },
+  ] : utilityCode === "G" ? [
+    { label: "MPRN", value: meter.mpanCoreMprn },
+    { label: "Meter Serial", value: meter.meterSerial1 },
+    { label: "Gas Meter Size", value: meter.gasMeterSize },
+    { label: "Annual Quantity", value: meter.annualQuantity },
+    { label: "Nominated SOQ", value: meter.nominatedSoq },
+    { label: "SOQ Peak", value: meter.soqPeak },
+    { label: "kWh Factor", value: meter.kwhFactor },
+    { label: "VAT Rate %", value: meter.vatRate },
+    { label: "CCL Rate", value: meter.tariffCclRate },
+  ] : [
+    { label: "Reference", value: meter.mpanCoreMprn },
+    { label: "Meter Serial", value: meter.meterSerial1 },
+    { label: "Meter Size", value: meter.meterSize },
+    { label: "Annual Quantity", value: meter.annualQuantity },
+    { label: "Return to Sewer %", value: meter.returnToSewer },
+    { label: "Highway Drainage", value: meter.highwayDrainage },
+    { label: "Surface Water", value: meter.surfaceWater },
+    { label: "VAT Rate %", value: meter.vatRate },
+  ];
+
+  const commonFields = [
+    { label: "Location", value: meter.location },
+    { label: "Tariff Name", value: meter.tariffName },
+    { label: "Bill Frequency", value: meter.billFrequency },
+    { label: "Sub-Meter", value: meter.subMeter },
+    { label: "Virtual Meter", value: meter.isVirtual },
+    { label: "Active", value: meter.isActive },
+    { label: "Date Closed", value: meter.dateClosed ? formatDate(meter.dateClosed) : null },
+  ];
+
+  const allFields = [...elecFields, ...commonFields].filter(f => f.value !== null && f.value !== undefined && f.value !== "");
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          {getUtilityIcon(utilityCode)}
+          <div>
+            <CardTitle className="text-xl" data-testid="text-meter-title">
+              {meter.mpanCoreMprn || meter.name || `Meter ${meter.id}`}
+            </CardTitle>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className="text-xs">{utilityName}</Badge>
+              {meter.site && (
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  {meter.site.name}
+                  {meter.site.postcode && `, ${meter.site.postcode}`}
+                </span>
+              )}
+              {meter.isActive === false && (
+                <Badge variant="destructive" className="text-xs">Closed</Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-3">
+          {allFields.map((f, i) => (
+            <DetailField key={i} label={f.label} value={f.value} />
+          ))}
+        </div>
+        {meter.comments && (
+          <div className="mt-3 pt-3 border-t">
+            <p className="text-xs text-muted-foreground">Comments</p>
+            <p className="text-sm">{meter.comments}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ContractsTab({ meterId }: { meterId: number }) {
+  const { data: contracts, isLoading } = useQuery<any[]>({
+    queryKey: [`/api/data-sets/${meterId}/contracts`],
+  });
+
+  if (isLoading) return <LoadingState />;
+  if (!contracts || contracts.length === 0) return <EmptyState message="No supply contracts found for this meter." />;
+
+  return (
+    <div className="border rounded-md overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50">
+          <tr>
+            <th className="text-left p-2 font-medium">Supplier</th>
+            <th className="text-left p-2 font-medium">Reference</th>
+            <th className="text-left p-2 font-medium">Type</th>
+            <th className="text-left p-2 font-medium">Start</th>
+            <th className="text-left p-2 font-medium">End</th>
+            <th className="text-right p-2 font-medium">Unit Rate (p)</th>
+            <th className="text-right p-2 font-medium">Standing Charge (p)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {contracts.map((c: any) => (
+            <tr key={c.id} className="border-t hover:bg-muted/30" data-testid={`row-contract-${c.id}`}>
+              <td className="p-2">{c.supplier || "-"}</td>
+              <td className="p-2 font-mono text-xs">{c.referenceNumber || "-"}</td>
+              <td className="p-2">{c.type || "-"}</td>
+              <td className="p-2">{formatDate(c.dateStart)}</td>
+              <td className="p-2">{formatDate(c.dateEnd)}</td>
+              <td className="p-2 text-right">{c.rateUnits != null ? c.rateUnits.toFixed(4) : "-"}</td>
+              <td className="p-2 text-right">{c.rateFixed != null ? c.rateFixed.toFixed(2) : "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function InvoicesTab({ meterId }: { meterId: number }) {
+  const { data: records, isLoading } = useQuery<any[]>({
+    queryKey: [`/api/data-sets/${meterId}/records`],
+  });
+
+  if (isLoading) return <LoadingState />;
+  if (!records || records.length === 0) return <EmptyState message="No invoice/billing records found for this meter." />;
+
+  return (
+    <div className="border rounded-md overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50">
+          <tr>
+            <th className="text-left p-2 font-medium">Date</th>
+            <th className="text-left p-2 font-medium">Previous Date</th>
+            <th className="text-right p-2 font-medium">Days</th>
+            <th className="text-right p-2 font-medium">kWh</th>
+            <th className="text-right p-2 font-medium">Cost (p)</th>
+            <th className="text-right p-2 font-medium">Standing (p)</th>
+            <th className="text-right p-2 font-medium">Total (p)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {records.map((r: any) => (
+            <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-record-${r.id}`}>
+              <td className="p-2">{formatDate(r.date)}</td>
+              <td className="p-2">{formatDate(r.datePrevious)}</td>
+              <td className="p-2 text-right">{r.days ?? "-"}</td>
+              <td className="p-2 text-right">{r.kwh != null ? Number(r.kwh).toLocaleString() : "-"}</td>
+              <td className="p-2 text-right">{r.costUnits != null ? Number(r.costUnits).toFixed(2) : "-"}</td>
+              <td className="p-2 text-right">{r.costFixed != null ? Number(r.costFixed).toFixed(2) : "-"}</td>
+              <td className="p-2 text-right">{r.costTotal != null ? Number(r.costTotal).toFixed(2) : "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MetersTab({ meterId, meter }: { meterId: number; meter: any }) {
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-4">Physical meters and sub-meters associated with this data set.</p>
+      <div className="border rounded-md overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="text-left p-2 font-medium">Serial Number</th>
+              <th className="text-left p-2 font-medium">Meter Type</th>
+              <th className="text-left p-2 font-medium">Sub-Meter</th>
+              <th className="text-left p-2 font-medium">Virtual</th>
+              <th className="text-left p-2 font-medium">Digits</th>
+              <th className="text-left p-2 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-t hover:bg-muted/30" data-testid={`row-physical-meter-${meterId}`}>
+              <td className="p-2 font-mono">{meter.meterSerial1 || "-"}</td>
+              <td className="p-2">{meter.meterType || "-"}</td>
+              <td className="p-2">{meter.subMeter ? "Yes" : "No"}</td>
+              <td className="p-2">{meter.isVirtual ? "Yes" : "No"}</td>
+              <td className="p-2">{meter.meterDigits ?? "-"}</td>
+              <td className="p-2">
+                {meter.isActive !== false ? (
+                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Active</Badge>
+                ) : (
+                  <Badge variant="destructive" className="text-xs">Closed</Badge>
+                )}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ReadingsTab({ meterId }: { meterId: number }) {
+  const { data: records, isLoading } = useQuery<any[]>({
+    queryKey: [`/api/data-sets/${meterId}/records`],
+  });
+
+  if (isLoading) return <LoadingState />;
+  if (!records || records.length === 0) return <EmptyState message="No direct reading data found for this meter." />;
+
+  const withReadings = records.filter((r: any) => r.meterReadingPresent != null || r.meterReadingPrevious != null);
+  if (withReadings.length === 0) return <EmptyState message="No meter readings recorded. Only invoice data available." />;
+
+  return (
+    <div className="border rounded-md overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50">
+          <tr>
+            <th className="text-left p-2 font-medium">Date</th>
+            <th className="text-right p-2 font-medium">Previous Reading</th>
+            <th className="text-right p-2 font-medium">Present Reading</th>
+            <th className="text-right p-2 font-medium">Units Used</th>
+            <th className="text-right p-2 font-medium">kWh</th>
+          </tr>
+        </thead>
+        <tbody>
+          {withReadings.map((r: any) => (
+            <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-reading-${r.id}`}>
+              <td className="p-2">{formatDate(r.date)}</td>
+              <td className="p-2 text-right">{r.meterReadingPrevious != null ? Number(r.meterReadingPrevious).toLocaleString() : "-"}</td>
+              <td className="p-2 text-right">{r.meterReadingPresent != null ? Number(r.meterReadingPresent).toLocaleString() : "-"}</td>
+              <td className="p-2 text-right">{r.unitsUsed != null ? Number(r.unitsUsed).toLocaleString() : "-"}</td>
+              <td className="p-2 text-right">{r.kwh != null ? Number(r.kwh).toLocaleString() : "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ProfilesTab({ meterId }: { meterId: number }) {
+  const { data, isLoading } = useQuery<{ profiles: any[]; total: number }>({
+    queryKey: [`/api/data-sets/${meterId}/profiles`],
+  });
+
+  if (isLoading) return <LoadingState />;
+  if (!data || data.profiles.length === 0) return <EmptyState message="No half-hourly profile data found for this meter." />;
+
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-3">{data.total.toLocaleString()} profile days total (showing latest 100)</p>
+      <div className="border rounded-md overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="text-left p-2 font-medium">Date</th>
+              <th className="text-right p-2 font-medium">Day Total (kWh)</th>
+              <th className="text-left p-2 font-medium">Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.profiles.map((p: any) => (
+              <tr key={p.id} className="border-t hover:bg-muted/30" data-testid={`row-profile-${p.id}`}>
+                <td className="p-2">{formatDate(p.date)}</td>
+                <td className="p-2 text-right">{p.dayTotal != null ? Number(p.dayTotal).toLocaleString() : "-"}</td>
+                <td className="p-2">{p.type === 0 ? "Actual" : `Type ${p.type}`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function HistoryTab({ meterId, meter }: { meterId: number; meter: any }) {
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground mb-3">Audit trail and change history for this meter.</p>
+      <div className="space-y-3">
+        {meter.lastUpdate && (
+          <div className="flex items-start gap-3 p-3 border rounded-md">
+            <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div>
+              <p className="text-sm font-medium">Last Updated</p>
+              <p className="text-xs text-muted-foreground">{formatDate(meter.lastUpdate)}</p>
+            </div>
+          </div>
+        )}
+        <div className="text-center py-8 text-muted-foreground text-sm">
+          Detailed change history will be available in a future update.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="text-center py-12 text-muted-foreground text-sm">
+      {message}
+    </div>
+  );
+}
+
+export default function MeterDetailPage() {
+  const [, setLocation] = useLocation();
+  const [, params] = useRoute("/meters/:id");
+  const meterId = params?.id ? parseInt(params.id) : 0;
+
+  const { data: meter, isLoading, error } = useQuery<any>({
+    queryKey: [`/api/data-sets/${meterId}`],
+    enabled: meterId > 0,
+  });
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error || !meter) {
+    return (
+      <Layout>
+        <div className="text-center py-24">
+          <p className="text-muted-foreground">Meter not found.</p>
+          <Button variant="outline" className="mt-4" onClick={() => setLocation("/groups")} data-testid="button-back-error">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Groups
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="flex items-center gap-3 mb-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.history.back()}
+          data-testid="button-back"
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back
+        </Button>
+      </div>
+
+      <MeterDetailsHeader meter={meter} />
+
+      <Tabs defaultValue="contracts" className="mt-4">
+        <TabsList className="w-full justify-start" data-testid="tabs-meter-detail">
+          <TabsTrigger value="contracts" data-testid="tab-contracts">
+            <FileText className="mr-1.5 h-4 w-4" />
+            Supply Contracts
+          </TabsTrigger>
+          <TabsTrigger value="invoices" data-testid="tab-invoices">
+            <FileText className="mr-1.5 h-4 w-4" />
+            Invoices
+          </TabsTrigger>
+          <TabsTrigger value="meters" data-testid="tab-meters">
+            <Gauge className="mr-1.5 h-4 w-4" />
+            Meters
+          </TabsTrigger>
+          <TabsTrigger value="readings" data-testid="tab-readings">
+            <Gauge className="mr-1.5 h-4 w-4" />
+            Readings
+          </TabsTrigger>
+          <TabsTrigger value="profiles" data-testid="tab-profiles">
+            <BarChart3 className="mr-1.5 h-4 w-4" />
+            Profile Data
+          </TabsTrigger>
+          <TabsTrigger value="history" data-testid="tab-history">
+            <Clock className="mr-1.5 h-4 w-4" />
+            History
+          </TabsTrigger>
+        </TabsList>
+
+        <Card className="mt-3">
+          <CardContent className="pt-6">
+            <TabsContent value="contracts" className="mt-0">
+              <ContractsTab meterId={meterId} />
+            </TabsContent>
+            <TabsContent value="invoices" className="mt-0">
+              <InvoicesTab meterId={meterId} />
+            </TabsContent>
+            <TabsContent value="meters" className="mt-0">
+              <MetersTab meterId={meterId} meter={meter} />
+            </TabsContent>
+            <TabsContent value="readings" className="mt-0">
+              <ReadingsTab meterId={meterId} />
+            </TabsContent>
+            <TabsContent value="profiles" className="mt-0">
+              <ProfilesTab meterId={meterId} />
+            </TabsContent>
+            <TabsContent value="history" className="mt-0">
+              <HistoryTab meterId={meterId} meter={meter} />
+            </TabsContent>
+          </CardContent>
+        </Card>
+      </Tabs>
+    </Layout>
+  );
+}

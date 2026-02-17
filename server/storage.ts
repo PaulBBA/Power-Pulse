@@ -36,6 +36,7 @@ export interface IStorage {
   updateSite(id: number, data: Partial<Site>): Promise<Site>;
 
   // Data Sets (Meters)
+  getDataSet(id: number): Promise<DataSet | undefined>;
   getDataSets(): Promise<DataSet[]>;
   getDataSetsBySite(siteId: number): Promise<DataSet[]>;
   createDataSet(dataSet: any): Promise<DataSet>;
@@ -179,6 +180,11 @@ export class DatabaseStorage implements IStorage {
   async updateSite(id: number, data: Partial<Site>): Promise<Site> {
     const [updated] = await db.update(sites).set({ ...data, lastUpdate: new Date() }).where(eq(sites.id, id)).returning();
     return updated;
+  }
+
+  async getDataSet(id: number): Promise<DataSet | undefined> {
+    const [dataSet] = await db.select().from(dataSets).where(eq(dataSets.id, id));
+    return dataSet;
   }
 
   async getDataSets(): Promise<DataSet[]> {

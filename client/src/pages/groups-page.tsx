@@ -7,6 +7,7 @@ import {
   Flame, Droplets, Package, FolderOpen, Plus, FolderPlus, FolderMinus, Pencil
 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -78,11 +79,16 @@ function getUtilityIcon(utilityCode: string) {
 }
 
 function MeterItem({ meter }: { meter: MeterNode }) {
+  const [, setLocation] = useLocation();
   const displayName = meter.mpanCoreMprn || meter.name || `Meter ${meter.id}`;
   return (
     <div 
       className="flex items-center gap-2 py-1.5 px-2 ml-12 rounded-md hover:bg-secondary/50 cursor-pointer transition-colors"
       data-testid={`meter-item-${meter.id}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        setLocation(`/meters/${meter.id}`);
+      }}
       onContextMenu={(e) => e.stopPropagation()}
     >
       {getUtilityIcon(meter.utilityCode)}

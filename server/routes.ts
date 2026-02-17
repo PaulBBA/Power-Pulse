@@ -191,9 +191,53 @@ export async function registerRoutes(
     res.json(dataSets);
   });
 
+  app.get("/api/data-sets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const dataSet = await storage.getDataSet(id);
+      if (!dataSet) return res.status(404).json({ message: "Data set not found" });
+
+      const site = await storage.getSite(dataSet.siteId);
+      const allUtilities = await storage.getUtilities();
+      const utility = allUtilities.find((u: any) => u.id === dataSet.utilityTypeId);
+
+      res.json({ ...dataSet, site, utility });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/data-sets/:id/records", async (req, res) => {
     const records = await storage.getDataRecords(parseInt(req.params.id));
     res.json(records);
+  });
+
+  app.get("/api/data-sets/:id/profiles", async (req, res) => {
+    try {
+      const dataSetId = parseInt(req.params.id);
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const profiles = await db.select({
+        id: dataProfiles.id,
+        dataSetId: dataProfiles.dataSetId,
+        type: dataProfiles.type,
+        date: dataProfiles.date,
+        dayTotal: dataProfiles.dayTotal,
+      }).from(dataProfiles)
+        .where(eq(dataProfiles.dataSetId, dataSetId))
+        .orderBy(sql`${dataProfiles.date} DESC`)
+        .limit(limit)
+        .offset(offset);
+
+      const [countResult] = await db.select({ count: sql<number>`count(*)` })
+        .from(dataProfiles)
+        .where(eq(dataProfiles.dataSetId, dataSetId));
+
+      res.json({ profiles, total: Number(countResult.count) });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
   });
 
   // --- Contracts ---

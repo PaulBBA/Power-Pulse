@@ -133,7 +133,7 @@ function MeterDetailsHeader({ meter }: { meter: any }) {
 }
 
 type SortDir = "asc" | "desc";
-type ContractSortKey = "supplier" | "referenceNumber" | "type" | "dateStart" | "dateEnd" | "kwhSplit1CostRate" | "kwhSplit2CostRate" | "rateFixed";
+type ContractSortKey = "supplier" | "referenceNumber" | "type" | "dateStart" | "dateEnd" | "rateUnits" | "rateFixed";
 type InvoiceSortKey = "date" | "previousDate" | "units" | "cost" | "standingCharge" | "otherCharge" | "vat";
 
 function SortableHeader<T extends string>({ label, sortKey, currentSort, currentDir, onSort, align = "left" }: {
@@ -180,6 +180,8 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
     </div>
   );
 
+  const hasSplits = [contract.kwhSplit1, contract.kwhSplit2, contract.kwhSplit3, contract.kwhSplit4, contract.kwhSplit5, contract.kwhSplit6].some((v: any) => v != null && v !== 0);
+  const hasReactive = [contract.reactivePower1Rate, contract.reactivePower2Rate].some((v: any) => v != null && v !== 0);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -207,8 +209,8 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
           <DetailRow label="Fossil Fuel Levy (p)" value={fmtNum(contract.fossilFuelLevy, 4)} />
 
           <SectionTitle title="Rates" />
-          <DetailRow label="Rate 1 (p)" value={fmtNum(contract.kwhSplit1CostRate, 4)} />
-          <DetailRow label="Rate 2 (p)" value={fmtNum(contract.kwhSplit2CostRate, 4)} />
+          <DetailRow label="Unit Rate (p)" value={fmtNum(contract.rateUnits, 4)} />
+          <DetailRow label="Unit Rate Split" value={fmtNum(contract.rateUnits1Split)} />
           <DetailRow label="Standing Charge (p)" value={fmtNum(contract.rateFixed, 4)} />
           <DetailRow label="Standing Charge Per Day" value={fmtBool(contract.rateFixedPerDay)} />
           <DetailRow label="kVA Rate (p)" value={fmtNum(contract.rateKva, 4)} />
@@ -230,26 +232,34 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
           <DetailRow label="FIT Rate (p)" value={fmtNum(contract.rateFit, 4)} />
           <DetailRow label="ROC Rate (p)" value={fmtNum(contract.rateRoc, 4)} />
 
-          <SectionTitle title="kWh Splits" />
-          <DetailRow label="Split 1 kWh" value={fmtNum(contract.kwhSplit1)} />
-          <DetailRow label="Split 1 Cost Rate (p)" value={fmtNum(contract.kwhSplit1CostRate, 4)} />
-          <DetailRow label="Split 2 kWh" value={fmtNum(contract.kwhSplit2)} />
-          <DetailRow label="Split 2 Cost Rate (p)" value={fmtNum(contract.kwhSplit2CostRate, 4)} />
-          <DetailRow label="Split 3 kWh" value={fmtNum(contract.kwhSplit3)} />
-          <DetailRow label="Split 3 Cost Rate (p)" value={fmtNum(contract.kwhSplit3CostRate, 4)} />
-          <DetailRow label="Split 4 kWh" value={fmtNum(contract.kwhSplit4)} />
-          <DetailRow label="Split 4 Cost Rate (p)" value={fmtNum(contract.kwhSplit4CostRate, 4)} />
-          <DetailRow label="Split 5 kWh" value={fmtNum(contract.kwhSplit5)} />
-          <DetailRow label="Split 5 Cost Rate (p)" value={fmtNum(contract.kwhSplit5CostRate, 4)} />
-          <DetailRow label="Split 6 kWh" value={fmtNum(contract.kwhSplit6)} />
-          <DetailRow label="Split 6 Cost Rate (p)" value={fmtNum(contract.kwhSplit6CostRate, 4)} />
+          {hasSplits && (
+            <>
+              <SectionTitle title="kWh Splits" />
+              <DetailRow label="Split 1 kWh" value={fmtNum(contract.kwhSplit1)} />
+              <DetailRow label="Split 1 Cost Rate (p)" value={fmtNum(contract.kwhSplit1CostRate, 4)} />
+              <DetailRow label="Split 2 kWh" value={fmtNum(contract.kwhSplit2)} />
+              <DetailRow label="Split 2 Cost Rate (p)" value={fmtNum(contract.kwhSplit2CostRate, 4)} />
+              <DetailRow label="Split 3 kWh" value={fmtNum(contract.kwhSplit3)} />
+              <DetailRow label="Split 3 Cost Rate (p)" value={fmtNum(contract.kwhSplit3CostRate, 4)} />
+              <DetailRow label="Split 4 kWh" value={fmtNum(contract.kwhSplit4)} />
+              <DetailRow label="Split 4 Cost Rate (p)" value={fmtNum(contract.kwhSplit4CostRate, 4)} />
+              <DetailRow label="Split 5 kWh" value={fmtNum(contract.kwhSplit5)} />
+              <DetailRow label="Split 5 Cost Rate (p)" value={fmtNum(contract.kwhSplit5CostRate, 4)} />
+              <DetailRow label="Split 6 kWh" value={fmtNum(contract.kwhSplit6)} />
+              <DetailRow label="Split 6 Cost Rate (p)" value={fmtNum(contract.kwhSplit6CostRate, 4)} />
+            </>
+          )}
 
-          <SectionTitle title="Reactive Power" />
-          <DetailRow label="Reactive Power 1 Rate (p)" value={fmtNum(contract.reactivePower1Rate, 4)} />
-          <DetailRow label="Reactive Power 1 Split" value={fmtNum(contract.reactivePower1Split)} />
-          <DetailRow label="Reactive Power 2 Rate (p)" value={fmtNum(contract.reactivePower2Rate, 4)} />
-          <DetailRow label="Reactive Power 2 Split" value={fmtNum(contract.reactivePower2Split)} />
-          <DetailRow label="kVArh Default" value={fmtNum(contract.kvarhDefault)} />
+          {hasReactive && (
+            <>
+              <SectionTitle title="Reactive Power" />
+              <DetailRow label="Reactive Power 1 Rate (p)" value={fmtNum(contract.reactivePower1Rate, 4)} />
+              <DetailRow label="Reactive Power 1 Split" value={fmtNum(contract.reactivePower1Split)} />
+              <DetailRow label="Reactive Power 2 Rate (p)" value={fmtNum(contract.reactivePower2Rate, 4)} />
+              <DetailRow label="Reactive Power 2 Split" value={fmtNum(contract.reactivePower2Split)} />
+              <DetailRow label="kVArh Default" value={fmtNum(contract.kvarhDefault)} />
+            </>
+          )}
 
           <SectionTitle title="VAT" />
           <DetailRow label="VAT Rate 1 (%)" value={fmtNum(contract.vat1Rate)} />
@@ -297,7 +307,7 @@ function ContractsTab({ meterId }: { meterId: number }) {
       if (sortKey === "dateStart" || sortKey === "dateEnd") {
         av = av ? new Date(av).getTime() : 0;
         bv = bv ? new Date(bv).getTime() : 0;
-      } else if (sortKey === "kwhSplit1CostRate" || sortKey === "kwhSplit2CostRate" || sortKey === "rateFixed") {
+      } else if (sortKey === "rateUnits" || sortKey === "rateFixed") {
         av = av ?? -Infinity;
         bv = bv ?? -Infinity;
       } else {
@@ -326,8 +336,7 @@ function ContractsTab({ meterId }: { meterId: number }) {
               <SortableHeader label="Type" sortKey="type" {...hp} />
               <SortableHeader label="Start" sortKey="dateStart" {...hp} />
               <SortableHeader label="End" sortKey="dateEnd" {...hp} />
-              <SortableHeader label="Rate 1 (p)" sortKey="kwhSplit1CostRate" align="right" {...hp} />
-              <SortableHeader label="Rate 2 (p)" sortKey="kwhSplit2CostRate" align="right" {...hp} />
+              <SortableHeader label="Unit Rate (p)" sortKey="rateUnits" align="right" {...hp} />
               <SortableHeader label="Standing Charge (p)" sortKey="rateFixed" align="right" {...hp} />
             </tr>
           </thead>
@@ -344,9 +353,8 @@ function ContractsTab({ meterId }: { meterId: number }) {
                 <td className="p-2">{c.type || "-"}</td>
                 <td className="p-2">{formatDate(c.dateStart)}</td>
                 <td className="p-2">{formatDate(c.dateEnd)}</td>
-                <td className="p-2 text-right">{c.kwhSplit1CostRate ? Number(c.kwhSplit1CostRate).toFixed(4) : "-"}</td>
-                <td className="p-2 text-right">{c.kwhSplit2CostRate ? Number(c.kwhSplit2CostRate).toFixed(4) : "-"}</td>
-                <td className="p-2 text-right">{c.rateFixed ? Number(c.rateFixed).toFixed(2) : "-"}</td>
+                <td className="p-2 text-right">{c.rateUnits != null ? c.rateUnits.toFixed(4) : "-"}</td>
+                <td className="p-2 text-right">{c.rateFixed != null ? c.rateFixed.toFixed(2) : "-"}</td>
               </tr>
             ))}
           </tbody>

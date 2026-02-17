@@ -163,7 +163,7 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
     if (!v) return "-";
     try { return format(new Date(v), "dd/MM/yyyy"); } catch { return "-"; }
   };
-  const fmtNum = (v: any, dp = 2) => (v != null ? Number(v).toFixed(dp) : "-");
+  const fmtNum = (v: any, dp = 2) => (v != null && v !== 0 ? Number(v).toFixed(dp) : "-");
   const fmtBool = (v: any) => (v ? "Yes" : "No");
 
   const DetailRow = ({ label, value }: { label: string; value: string }) => (
@@ -180,8 +180,6 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
     </div>
   );
 
-  const hasSplits = [contract.kwhSplit1, contract.kwhSplit2, contract.kwhSplit3, contract.kwhSplit4, contract.kwhSplit5, contract.kwhSplit6].some((v: any) => v != null && v !== 0);
-  const hasReactive = [contract.reactivePower1Rate, contract.reactivePower2Rate].some((v: any) => v != null && v !== 0);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -232,34 +230,26 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
           <DetailRow label="FIT Rate (p)" value={fmtNum(contract.rateFit, 4)} />
           <DetailRow label="ROC Rate (p)" value={fmtNum(contract.rateRoc, 4)} />
 
-          {hasSplits && (
-            <>
-              <SectionTitle title="kWh Splits" />
-              <DetailRow label="Split 1 kWh" value={fmtNum(contract.kwhSplit1)} />
-              <DetailRow label="Split 1 Cost Rate (p)" value={fmtNum(contract.kwhSplit1CostRate, 4)} />
-              <DetailRow label="Split 2 kWh" value={fmtNum(contract.kwhSplit2)} />
-              <DetailRow label="Split 2 Cost Rate (p)" value={fmtNum(contract.kwhSplit2CostRate, 4)} />
-              <DetailRow label="Split 3 kWh" value={fmtNum(contract.kwhSplit3)} />
-              <DetailRow label="Split 3 Cost Rate (p)" value={fmtNum(contract.kwhSplit3CostRate, 4)} />
-              <DetailRow label="Split 4 kWh" value={fmtNum(contract.kwhSplit4)} />
-              <DetailRow label="Split 4 Cost Rate (p)" value={fmtNum(contract.kwhSplit4CostRate, 4)} />
-              <DetailRow label="Split 5 kWh" value={fmtNum(contract.kwhSplit5)} />
-              <DetailRow label="Split 5 Cost Rate (p)" value={fmtNum(contract.kwhSplit5CostRate, 4)} />
-              <DetailRow label="Split 6 kWh" value={fmtNum(contract.kwhSplit6)} />
-              <DetailRow label="Split 6 Cost Rate (p)" value={fmtNum(contract.kwhSplit6CostRate, 4)} />
-            </>
-          )}
+          <SectionTitle title="kWh Splits" />
+          <DetailRow label="Split 1 kWh" value={fmtNum(contract.kwhSplit1)} />
+          <DetailRow label="Split 1 Cost Rate (p)" value={fmtNum(contract.kwhSplit1CostRate, 4)} />
+          <DetailRow label="Split 2 kWh" value={fmtNum(contract.kwhSplit2)} />
+          <DetailRow label="Split 2 Cost Rate (p)" value={fmtNum(contract.kwhSplit2CostRate, 4)} />
+          <DetailRow label="Split 3 kWh" value={fmtNum(contract.kwhSplit3)} />
+          <DetailRow label="Split 3 Cost Rate (p)" value={fmtNum(contract.kwhSplit3CostRate, 4)} />
+          <DetailRow label="Split 4 kWh" value={fmtNum(contract.kwhSplit4)} />
+          <DetailRow label="Split 4 Cost Rate (p)" value={fmtNum(contract.kwhSplit4CostRate, 4)} />
+          <DetailRow label="Split 5 kWh" value={fmtNum(contract.kwhSplit5)} />
+          <DetailRow label="Split 5 Cost Rate (p)" value={fmtNum(contract.kwhSplit5CostRate, 4)} />
+          <DetailRow label="Split 6 kWh" value={fmtNum(contract.kwhSplit6)} />
+          <DetailRow label="Split 6 Cost Rate (p)" value={fmtNum(contract.kwhSplit6CostRate, 4)} />
 
-          {hasReactive && (
-            <>
-              <SectionTitle title="Reactive Power" />
-              <DetailRow label="Reactive Power 1 Rate (p)" value={fmtNum(contract.reactivePower1Rate, 4)} />
-              <DetailRow label="Reactive Power 1 Split" value={fmtNum(contract.reactivePower1Split)} />
-              <DetailRow label="Reactive Power 2 Rate (p)" value={fmtNum(contract.reactivePower2Rate, 4)} />
-              <DetailRow label="Reactive Power 2 Split" value={fmtNum(contract.reactivePower2Split)} />
-              <DetailRow label="kVArh Default" value={fmtNum(contract.kvarhDefault)} />
-            </>
-          )}
+          <SectionTitle title="Reactive Power" />
+          <DetailRow label="Reactive Power 1 Rate (p)" value={fmtNum(contract.reactivePower1Rate, 4)} />
+          <DetailRow label="Reactive Power 1 Split" value={fmtNum(contract.reactivePower1Split)} />
+          <DetailRow label="Reactive Power 2 Rate (p)" value={fmtNum(contract.reactivePower2Rate, 4)} />
+          <DetailRow label="Reactive Power 2 Split" value={fmtNum(contract.reactivePower2Split)} />
+          <DetailRow label="kVArh Default" value={fmtNum(contract.kvarhDefault)} />
 
           <SectionTitle title="VAT" />
           <DetailRow label="VAT Rate 1 (%)" value={fmtNum(contract.vat1Rate)} />

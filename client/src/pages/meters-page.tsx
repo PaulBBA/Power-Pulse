@@ -59,6 +59,7 @@ export default function MetersPage() {
     name: "",
     siteId: 0,
     utilityTypeId: 1,
+    mpanProfile: "",
     mpanCoreMprn: "",
     meterSerial1: "",
     location: "",
@@ -138,6 +139,7 @@ export default function MetersPage() {
         name: editingMeter.name || "",
         siteId: editingMeter.siteId,
         utilityTypeId: editingMeter.utilityTypeId,
+        mpanProfile: editingMeter.mpanProfile || "",
         mpanCoreMprn: editingMeter.mpanCoreMprn || "",
         meterSerial1: editingMeter.meterSerial1 || "",
         location: editingMeter.location || "",
@@ -455,6 +457,7 @@ export default function MetersPage() {
         )}
       />
       {textField(formInstance, "name", "Meter Name")}
+      {textField(formInstance, "mpanProfile", "MPAN Profile")}
       {textField(formInstance, "mpanCoreMprn", "MPAN Core / MPRN")}
       {textField(formInstance, "meterSerial1", "Meter Serial")}
       {textField(formInstance, "location", "Location")}
@@ -704,6 +707,7 @@ export default function MetersPage() {
                 <TableHeader className="bg-secondary/50">
                   <TableRow>
                     <TableHead className="font-bold">Utility Type</TableHead>
+                    <TableHead className="font-bold">MPAN Profile</TableHead>
                     <TableHead className="font-bold">MPAN Core / MPRN</TableHead>
                     <TableHead className="font-bold">Meter Serial 1</TableHead>
                     <TableHead className="font-bold">Location</TableHead>
@@ -721,6 +725,7 @@ export default function MetersPage() {
                             data-testid={`row-meter-${ds.id}`}
                           >
                             <TableCell className="text-sm">{getUtilityName(ds.utilityTypeId)}</TableCell>
+                            <TableCell className="text-sm">{ds.mpanProfile}</TableCell>
                             <TableCell className="text-sm">{ds.mpanCoreMprn}</TableCell>
                             <TableCell className="text-sm">{ds.meterSerial1}</TableCell>
                             <TableCell className="text-sm">{ds.location}</TableCell>

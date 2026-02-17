@@ -488,6 +488,22 @@ export const todoItems = pgTable("todo_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// --- Import Logs ---
+
+export const importLogs = pgTable("import_logs", {
+  id: serial("id").primaryKey(),
+  filename: text("filename").notNull(),
+  format: text("format").notNull(),
+  status: text("status").notNull().default("pending"),
+  totalRows: integer("total_rows").default(0),
+  importedRows: integer("imported_rows").default(0),
+  skippedRows: integer("skipped_rows").default(0),
+  errorRows: integer("error_rows").default(0),
+  errorDetails: text("error_details"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
 // --- Auth ---
 
 export const users = pgTable("users", {
@@ -507,6 +523,7 @@ export const insertContractChargeSchema = createInsertSchema(contractCharges).om
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 
 export const insertTodoSchema = createInsertSchema(todoItems).omit({ id: true, createdAt: true });
+export const insertImportLogSchema = createInsertSchema(importLogs).omit({ id: true, createdAt: true });
 
 // --- Types ---
 
@@ -523,3 +540,4 @@ export type InsertContractCharge = z.infer<typeof insertContractChargeSchema>;
 export type ChargeType = typeof chargeTypes.$inferSelect;
 export type TodoItem = typeof todoItems.$inferSelect;
 export type InsertTodo = z.infer<typeof insertTodoSchema>;
+export type ImportLog = typeof importLogs.$inferSelect;

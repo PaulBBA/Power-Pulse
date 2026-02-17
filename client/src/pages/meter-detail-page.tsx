@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Zap, Flame, Droplets, Package, Loader2,
-  FileText, Gauge, BarChart3, Clock, Building2
+  FileText, Gauge, BarChart3, Clock, Building2, ArrowUp, ArrowDown, ArrowUpDown
 } from "lucide-react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import { format } from "date-fns";
@@ -129,30 +130,87 @@ function MeterDetailsHeader({ meter }: { meter: any }) {
   );
 }
 
+type SortDir = "asc" | "desc";
+type ContractSortKey = "supplier" | "referenceNumber" | "type" | "dateStart" | "dateEnd" | "rateUnits" | "rateFixed";
+
+function SortableHeader({ label, sortKey, currentSort, currentDir, onSort, align = "left" }: {
+  label: string; sortKey: ContractSortKey; currentSort: ContractSortKey; currentDir: SortDir;
+  onSort: (key: ContractSortKey) => void; align?: "left" | "right";
+}) {
+  const active = currentSort === sortKey;
+  const Icon = active ? (currentDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <th
+      className={`${align === "right" ? "text-right" : "text-left"} p-2 font-medium cursor-pointer select-none hover:bg-muted/80 transition-colors`}
+      onClick={() => onSort(sortKey)}
+      data-testid={`sort-${sortKey}`}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <Icon className={`h-3 w-3 ${active ? "text-foreground" : "text-muted-foreground/50"}`} />
+      </span>
+    </th>
+  );
+}
+
 function ContractsTab({ meterId }: { meterId: number }) {
   const { data: contracts, isLoading } = useQuery<any[]>({
     queryKey: [`/api/data-sets/${meterId}/contracts`],
   });
+  const [sortKey, setSortKey] = useState<ContractSortKey>("dateEnd");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const handleSort = (key: ContractSortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir(key === "dateEnd" || key === "dateStart" ? "desc" : "asc");
+    }
+  };
+
+  const sorted = useMemo(() => {
+    if (!contracts) return [];
+    return [...contracts].sort((a, b) => {
+      let av = a[sortKey];
+      let bv = b[sortKey];
+      if (sortKey === "dateStart" || sortKey === "dateEnd") {
+        av = av ? new Date(av).getTime() : 0;
+        bv = bv ? new Date(bv).getTime() : 0;
+      } else if (sortKey === "rateUnits" || sortKey === "rateFixed") {
+        av = av ?? -Infinity;
+        bv = bv ?? -Infinity;
+      } else {
+        av = (av || "").toString().toLowerCase();
+        bv = (bv || "").toString().toLowerCase();
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [contracts, sortKey, sortDir]);
 
   if (isLoading) return <LoadingState />;
   if (!contracts || contracts.length === 0) return <EmptyState message="No supply contracts found for this meter." />;
+
+  const hp = { currentSort: sortKey, currentDir: sortDir, onSort: handleSort };
 
   return (
     <div className="border rounded-md overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-muted/50">
           <tr>
-            <th className="text-left p-2 font-medium">Supplier</th>
-            <th className="text-left p-2 font-medium">Reference</th>
-            <th className="text-left p-2 font-medium">Type</th>
-            <th className="text-left p-2 font-medium">Start</th>
-            <th className="text-left p-2 font-medium">End</th>
-            <th className="text-right p-2 font-medium">Unit Rate (p)</th>
-            <th className="text-right p-2 font-medium">Standing Charge (p)</th>
+            <SortableHeader label="Supplier" sortKey="supplier" {...hp} />
+            <SortableHeader label="Reference" sortKey="referenceNumber" {...hp} />
+            <SortableHeader label="Type" sortKey="type" {...hp} />
+            <SortableHeader label="Start" sortKey="dateStart" {...hp} />
+            <SortableHeader label="End" sortKey="dateEnd" {...hp} />
+            <SortableHeader label="Unit Rate (p)" sortKey="rateUnits" align="right" {...hp} />
+            <SortableHeader label="Standing Charge (p)" sortKey="rateFixed" align="right" {...hp} />
           </tr>
         </thead>
         <tbody>
-          {contracts.map((c: any) => (
+          {sorted.map((c: any) => (
             <tr key={c.id} className="border-t hover:bg-muted/30" data-testid={`row-contract-${c.id}`}>
               <td className="p-2">{c.supplier || "-"}</td>
               <td className="p-2 font-mono text-xs">{c.referenceNumber || "-"}</td>

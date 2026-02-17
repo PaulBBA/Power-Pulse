@@ -42,7 +42,7 @@ function MeterDetailsHeader({ meter }: { meter: any }) {
 
   const elecFields = utilityCode === "E" ? [
     { label: "MPAN Core", value: meter.mpanCoreMprn },
-    { label: "Meter Serial", value: meter.mpanProfile },
+    { label: "Meter Serial", value: meter.meterSerial1 },
     { label: "Meter Operator", value: meter.meterOperator },
     { label: "Meter Type", value: meter.meterType },
     { label: "KVA", value: meter.kva },

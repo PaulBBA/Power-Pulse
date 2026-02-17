@@ -1,0 +1,61 @@
+﻿Id,Name,Utility,Address1,Address2,Town,County,PostCode,Telephone,FAX,EmergencyTelephone,Notes,Code,Checksum,Email1,Email2
+1,Scottish Power,Electricity,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1586877430,NULL,NULL
+2,Npower,Electricity,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,-65651356,NULL,NULL
+3,British Gas,Electricity,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,-308368180,NULL,NULL
+4,EON,Electricity,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1320878364,NULL,NULL
+5,SSE,Electricity,,,,,,,,,,,-1230044506,NULL,NULL
+6,EDF,Electricity,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1531521429,NULL,NULL
+7,TotalEnergies,Gas,,,,,,,,,,,314750861,NULL,NULL
+8,EON,Gas,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1860160544,NULL,NULL
+9,SSE,Gas,,,,,,,,,,,-1075744942,NULL,NULL
+10,Npower,Gas,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1912992333,NULL,NULL
+11,Scottish Power,Gas,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,730341777,NULL,NULL
+12,Corona,Gas,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,925478717,NULL,NULL
+13,EDF,Gas,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1191889476,NULL,NULL
+14,United Utilities,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1557605567,NULL,NULL
+15,Thames,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,897458946,NULL,NULL
+16,Southern,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,609096895,NULL,NULL
+17,Wessex,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,-835350383,NULL,NULL
+18,South West,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,350862797,NULL,NULL
+19,Welsh,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,-868090561,NULL,NULL
+20,Severn Trent,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,513309339,NULL,NULL
+21,North West,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,753031290,NULL,NULL
+22,Northumbrian,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,-405734817,NULL,NULL
+23,Yorkshire,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1806863648,NULL,NULL
+24,Scottish,Water,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,-1727539958,NULL,NULL
+25,Orsted,Gas,,,,,,,,,,,-1298495158,NULL,NULL
+26,Crown,Gas,,,,,,,,,,,348008668,NULL,NULL
+27,SWBS,Water,,,,,,,,,,,-349758347,NULL,NULL
+28,Castle,Water,,,,,,,,,,,-1756654487,NULL,NULL
+29,AWB,Water,,,,,,,,,,,225696287,NULL,NULL
+30,Drax,Electricity,,,,,,,,,,,312410674,,
+31,Yu Energy,Electricity,"CPK House, 2 Horizon Place","Nottingham Business Park, Mellors Way",Nottingham,Nottinghamshire,NG8 6PY,0115 975 8258,0115 975 8259,,,,1899584685,NULL,NULL
+32,D-Energi,Electricity,Madison Place,"Central Park, Northampton Road",Manchester,,M40 5AG,0800 781 7626,,,,,1306243580,NULL,NULL
+33,Yu Energy,Gas,"CPK House, 2 Horizon Place","Nottingham Business Park, Mellors Way",Nottingham,Nottinghamshire,NG8 6PY,0115 975 8258,0115 975 8259,,,,-403970768,NULL,NULL
+34,Contract Natural Gas Ltd,Gas,,,,,,,,,,,-1683561004,NULL,NULL
+35,Opus Energy,Electricity,Royal Pavillion,"2 Summerhouse Road, Moulton Park",Northampton,Northamptonshire,NN3 6BJ,0843 227 2377,,,,,-705524884,NULL,NULL
+36,Opus Energy,Gas,Royal Pavilion,2 Summerhouse Road,Northampton,Northamptonshire,NN3 6BJ,0845 223 5445,,,,,-1227945270,NULL,NULL
+37,Gazprom Energy,Gas,1st Floor,1 City Road,Manchester,,M15 4FN,0845 230 0011,,,,,-1962684962,NULL,NULL
+38,Gazprom,Electricity,,,,,,,,,,,840003780,NULL,NULL
+39,Clear business,Gas,Longley House,Longley Lane,Manchester,,M22 4SY,0333 014 313,service@clearbusines,,,,-1830282188,NULL,NULL
+40,Engie,Electricity,"26 Whitehall Road ",,Leeds,,LS12 1BE,0800 1302115,,,,,-743123596,NULL,NULL
+41,Everflow,Water,Wynyard Business Village,,Wynyard,,TS22 5TB,,,,,,-1845112139,NULL,NULL
+42,Orsted,Electricity,,,,,,,,,,,1436727233,NULL,NULL
+43,Orsted,Electricity,,,,,,,,,,,-474392655,NULL,NULL
+44,Corona Energy,Electricity,,,,,,,,,,,378315488,NULL,NULL
+45,Clear Business,Water,Longley House,Longley Lane,Manchester,,M22 4SY,"0333 014 3131 ",service@clearbusines,,,,971251807,NULL,NULL
+46,Opal Gas,Gas,,,,,,,,,,,-1126867890,NULL,NULL
+47,Octopus,Electricity,,,,,,,,,,,1758127837,NULL,NULL
+48,National Gas,Gas,,,,,,,,,,,203440024,NULL,NULL
+49,Ecotricity,Electricity,,,,,,,,,,,-1654374721,NULL,NULL
+50,National Gas,Electricity,,,,,,,,,,,-1205901021,NULL,NULL
+51,TotalEnergies,Electricity,,,,,,,,,,,-426901675,NULL,NULL
+52,E.ON Next,Gas,,,,,,,,,,,1634209504,NULL,NULL
+53,Scottish Gas,Electricity,,,,,,,,,,,340769493,,
+54,Pozitive Energy,Gas,,,,,,,,,,,-1791488673,SoLR@pozitive.energy,
+55,Hartree,Electricity,,,,,,,,,,,-354640874,,
+56,BPG,Electricity,,,,,,,,,,,524418128,,
+57,British Gas Lite,Electricity,,,,,,,,,,,-638992899,,
+58,British Gas Lite,Gas,,,,,,,,,,,537739643,,
+59,British Gas,Gas,,,,,,,,,,,-1149633573,,
+60,Crown,Electricity,,,,,,,,,,,1675840081,,

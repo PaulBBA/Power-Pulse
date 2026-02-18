@@ -157,6 +157,11 @@ function SortableHeader<T extends string>({ label, sortKey, currentSort, current
 }
 
 function ContractDetailDialog({ contract, open, onClose }: { contract: any; open: boolean; onClose: () => void }) {
+  const { data: contractDataRows } = useQuery<any[]>({
+    queryKey: [`/api/contracts/${contract?.id}/data`],
+    enabled: !!contract?.id && open,
+  });
+
   if (!contract) return null;
 
   const fmtDate = (v: any) => {
@@ -182,6 +187,7 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
 
   const hasSplits = [contract.kwhSplit1, contract.kwhSplit2, contract.kwhSplit3, contract.kwhSplit4, contract.kwhSplit5, contract.kwhSplit6].some((v: any) => v != null && v !== 0);
   const hasReactive = [contract.reactivePower1Rate, contract.reactivePower2Rate].some((v: any) => v != null && v !== 0);
+  const hasContractData = contractDataRows && contractDataRows.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -201,6 +207,32 @@ function ContractDetailDialog({ contract, open, onClose }: { contract: any; open
           <DetailRow label="Contract Type" value={contract.type || "-"} />
           <DetailRow label="Start Date" value={fmtDate(contract.dateStart)} />
           <DetailRow label="End Date" value={fmtDate(contract.dateEnd)} />
+
+          {hasContractData && (
+            <>
+              <SectionTitle title="Unit Rates" />
+              <div className="border rounded-md overflow-hidden mt-1">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-2 font-medium text-xs">Description</th>
+                      <th className="text-right p-2 font-medium text-xs">Rate (p)</th>
+                      <th className="text-left p-2 font-medium text-xs">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contractDataRows!.map((cd: any) => (
+                      <tr key={cd.id} className="border-t" data-testid={`row-contract-data-${cd.id}`}>
+                        <td className="p-2">{cd.description || `Rate ${cd.meter}`}</td>
+                        <td className="p-2 text-right font-mono">{cd.costRate != null ? Number(cd.costRate).toFixed(4) : "-"}</td>
+                        <td className="p-2 text-muted-foreground">{cd.timeStart || ""} – {cd.timeFinish || ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <SectionTitle title="Capacity & Levies" />
           <DetailRow label="kVA" value={fmtNum(contract.kva)} />
@@ -341,22 +373,33 @@ function ContractsTab({ meterId }: { meterId: number }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((c: any) => (
-              <tr
-                key={c.id}
-                className="border-t hover:bg-muted/30 cursor-pointer"
-                data-testid={`row-contract-${c.id}`}
-                onClick={() => setSelectedContract(c)}
-              >
-                <td className="p-2">{c.supplier || "-"}</td>
-                <td className="p-2 font-mono text-xs">{c.referenceNumber || "-"}</td>
-                <td className="p-2">{c.type || "-"}</td>
-                <td className="p-2">{formatDate(c.dateStart)}</td>
-                <td className="p-2">{formatDate(c.dateEnd)}</td>
-                <td className="p-2 text-right">{c.rateUnits != null ? c.rateUnits.toFixed(4) : "-"}</td>
-                <td className="p-2 text-right">{c.rateFixed != null ? c.rateFixed.toFixed(2) : "-"}</td>
-              </tr>
-            ))}
+            {sorted.map((c: any) => {
+              const unitRateDisplay = (() => {
+                if (c.rateUnits != null && c.rateUnits !== 0) return c.rateUnits.toFixed(4);
+                if (c.contractData && c.contractData.length > 0) {
+                  return c.contractData
+                    .map((cd: any) => `${cd.description || `R${cd.meter}`}: ${Number(cd.costRate).toFixed(4)}`)
+                    .join(", ");
+                }
+                return "-";
+              })();
+              return (
+                <tr
+                  key={c.id}
+                  className="border-t hover:bg-muted/30 cursor-pointer"
+                  data-testid={`row-contract-${c.id}`}
+                  onClick={() => setSelectedContract(c)}
+                >
+                  <td className="p-2">{c.supplier || "-"}</td>
+                  <td className="p-2 font-mono text-xs">{c.referenceNumber || "-"}</td>
+                  <td className="p-2">{c.type || "-"}</td>
+                  <td className="p-2">{formatDate(c.dateStart)}</td>
+                  <td className="p-2">{formatDate(c.dateEnd)}</td>
+                  <td className="p-2 text-right text-xs">{unitRateDisplay}</td>
+                  <td className="p-2 text-right">{c.rateFixed != null ? c.rateFixed.toFixed(2) : "-"}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

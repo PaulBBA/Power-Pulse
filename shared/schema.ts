@@ -255,6 +255,8 @@ export const contractData = pgTable("contract_data", {
   validFrom: timestamp("valid_from"),
 });
 
+export type ContractData = typeof contractData.$inferSelect;
+
 export const chargeItems = pgTable("charge_items", {
   id: serial("id").primaryKey(),
   dataSetId: integer("data_set_id").references(() => dataSets.id).notNull(),

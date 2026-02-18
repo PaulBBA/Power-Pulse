@@ -7,6 +7,7 @@ import {
   dataRecords, type DataRecord,
   contracts, type Contract, type InsertContract,
   contractCharges, type ContractCharge, type InsertContractCharge,
+  contractData, type ContractData,
   chargeTypes, type ChargeType,
   utilities,
   todoItems, type TodoItem, type InsertTodo
@@ -55,6 +56,10 @@ export interface IStorage {
   createContract(contract: InsertContract): Promise<Contract>;
   updateContract(id: number, data: Partial<Contract>): Promise<Contract>;
   deleteContract(id: number): Promise<void>;
+
+  // Contract Data (time-of-use rates)
+  getContractData(contractId: number): Promise<ContractData[]>;
+  getContractDataByContractIds(contractIds: number[]): Promise<ContractData[]>;
 
   // Contract Charges
   getContractCharges(contractId: number): Promise<ContractCharge[]>;
@@ -239,6 +244,15 @@ export class DatabaseStorage implements IStorage {
   async deleteContract(id: number): Promise<void> {
     await db.delete(contractCharges).where(eq(contractCharges.contractId, id));
     await db.delete(contracts).where(eq(contracts.id, id));
+  }
+
+  async getContractData(contractId: number): Promise<ContractData[]> {
+    return await db.select().from(contractData).where(eq(contractData.contractId, contractId));
+  }
+
+  async getContractDataByContractIds(contractIds: number[]): Promise<ContractData[]> {
+    if (contractIds.length === 0) return [];
+    return await db.select().from(contractData).where(inArray(contractData.contractId, contractIds));
   }
 
   async getContractCharges(contractId: number): Promise<ContractCharge[]> {

@@ -256,7 +256,18 @@ export async function registerRoutes(
     try {
       const dataSetId = parseInt(req.params.id);
       const dataSetContracts = await storage.getContractsByDataSet(dataSetId);
-      res.json(dataSetContracts);
+      const contractIds = dataSetContracts.map(c => c.id);
+      const allContractData = await storage.getContractDataByContractIds(contractIds);
+      const dataByContract = new Map<number, any[]>();
+      for (const cd of allContractData) {
+        if (!dataByContract.has(cd.contractId)) dataByContract.set(cd.contractId, []);
+        dataByContract.get(cd.contractId)!.push(cd);
+      }
+      const enriched = dataSetContracts.map(c => ({
+        ...c,
+        contractData: dataByContract.get(c.id) || [],
+      }));
+      res.json(enriched);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -308,6 +319,18 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error deleting contract:", error);
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  // --- Contract Data (time-of-use rates) ---
+
+  app.get("/api/contracts/:id/data", async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.id);
+      const data = await storage.getContractData(contractId);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

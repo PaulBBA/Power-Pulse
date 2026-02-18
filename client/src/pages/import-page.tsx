@@ -39,6 +39,7 @@ interface ImportResult {
   id: number;
   status: string;
   imported: number;
+  updated?: number;
   skipped: number;
   errors: number;
   errorDetails?: string[];
@@ -273,7 +274,7 @@ export default function ImportPage() {
     }
   }, [handleInvoiceFileSelect]);
 
-  const handleInvoiceImport = async () => {
+  const handleInvoiceImport = async (duplicateAction: string = "overwrite") => {
     if (!invoiceFile) return;
     setInvoiceImporting(true);
 
@@ -281,6 +282,7 @@ export default function ImportPage() {
       const formData = new FormData();
       formData.append("file", invoiceFile);
       formData.append("username", "admin");
+      formData.append("duplicateAction", duplicateAction);
 
       const res = await fetch("/api/import/invoice/execute", {
         method: "POST",
@@ -350,7 +352,7 @@ export default function ImportPage() {
     }
   }, [handleCrownFileSelect]);
 
-  const handleCrownImport = async () => {
+  const handleCrownImport = async (duplicateAction: string = "overwrite") => {
     if (!crownFile) return;
     setCrownImporting(true);
 
@@ -358,6 +360,7 @@ export default function ImportPage() {
       const formData = new FormData();
       formData.append("file", crownFile);
       formData.append("username", "admin");
+      formData.append("duplicateAction", duplicateAction);
 
       const res = await fetch("/api/import/crown-edi/execute", {
         method: "POST",
@@ -418,13 +421,14 @@ export default function ImportPage() {
     if (file) handleNpowerFileSelect(file);
   }, [handleNpowerFileSelect]);
 
-  const handleNpowerImport = async () => {
+  const handleNpowerImport = async (duplicateAction: string = "overwrite") => {
     if (!npowerFile) return;
     setNpowerImporting(true);
     try {
       const formData = new FormData();
       formData.append("file", npowerFile);
       formData.append("username", "import");
+      formData.append("duplicateAction", duplicateAction);
       const res = await fetch("/api/import/npower-pdf/import", {
         method: "POST",
         body: formData,
@@ -1194,7 +1198,7 @@ export default function ImportPage() {
                             {invoiceResult.errors > 0 ? "Import completed with some issues" : "Import completed successfully"}
                           </p>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {invoiceResult.imported} invoice(s) imported, {invoiceResult.skipped} skipped, {invoiceResult.errors} error(s)
+                            {invoiceResult.imported} imported{invoiceResult.updated ? `, ${invoiceResult.updated} updated` : ""}, {invoiceResult.skipped} skipped, {invoiceResult.errors} error(s)
                           </p>
                           {invoiceResult.errorDetails && (
                             <div className="mt-2 text-xs text-red-600 dark:text-red-400 space-y-1">
@@ -1338,24 +1342,55 @@ export default function ImportPage() {
                         </div>
                       )}
 
-                      <div className="flex gap-3">
-                        <Button
-                          onClick={handleInvoiceImport}
-                          disabled={invoiceImporting || !invoicePreview.invoices.some((inv: any) => inv.matched)}
-                          data-testid="button-invoice-import"
-                        >
-                          {invoiceImporting ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Importing...
-                            </>
-                          ) : (
-                            <>
-                              <Download className="h-4 w-4 mr-2" />
-                              Import {invoicePreview.invoices.filter((inv: any) => inv.matched).length} Invoice(s)
-                            </>
-                          )}
-                        </Button>
+                      {invoicePreview.invoices.some((inv: any) => inv.existingRecordId) && (
+                        <div className="border border-amber-200 bg-amber-50 rounded-lg p-3" data-testid="invoice-duplicate-warning">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-amber-800 mb-1">Data already imported</p>
+                              <p className="text-xs text-amber-700">
+                                {invoicePreview.invoices.filter((inv: any) => inv.existingRecordId).length} of {invoicePreview.invoices.length} invoice(s) already have data for this period.
+                                {invoicePreview.invoices.filter((inv: any) => inv.existingRecordId).map((inv: any) => (
+                                  <span key={inv.mpanCore} className="block mt-1">MPAN {inv.mpanCore}: existing record{inv.existingInvoiceNumber ? ` (${inv.existingInvoiceNumber})` : ""}</span>
+                                ))}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 flex-wrap">
+                        {invoicePreview.invoices.some((inv: any) => inv.existingRecordId) ? (
+                          <>
+                            <Button
+                              onClick={() => handleInvoiceImport("overwrite")}
+                              disabled={invoiceImporting || !invoicePreview.invoices.some((inv: any) => inv.matched)}
+                              variant="destructive"
+                              data-testid="button-invoice-overwrite"
+                            >
+                              {invoiceImporting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</> : <><Download className="h-4 w-4 mr-2" />Overwrite Existing</>}
+                            </Button>
+                            <Button
+                              onClick={() => handleInvoiceImport("add_new")}
+                              disabled={invoiceImporting || !invoicePreview.invoices.some((inv: any) => inv.matched)}
+                              data-testid="button-invoice-add-new"
+                            >
+                              {invoiceImporting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</> : <><Download className="h-4 w-4 mr-2" />Add as New Record</>}
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            onClick={() => handleInvoiceImport("overwrite")}
+                            disabled={invoiceImporting || !invoicePreview.invoices.some((inv: any) => inv.matched)}
+                            data-testid="button-invoice-import"
+                          >
+                            {invoiceImporting ? (
+                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</>
+                            ) : (
+                              <><Download className="h-4 w-4 mr-2" />Import {invoicePreview.invoices.filter((inv: any) => inv.matched).length} Invoice(s)</>
+                            )}
+                          </Button>
+                        )}
                         <Button variant="outline" onClick={resetInvoiceForm} data-testid="button-invoice-cancel">Cancel</Button>
                       </div>
                     </div>
@@ -1451,7 +1486,7 @@ export default function ImportPage() {
                             {crownResult.errors > 0 ? "Import completed with some issues" : "Import completed successfully"}
                           </p>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {crownResult.imported} invoice(s) imported, {crownResult.skipped} skipped, {crownResult.errors} error(s)
+                            {crownResult.imported} imported{crownResult.updated ? `, ${crownResult.updated} updated` : ""}, {crownResult.skipped} skipped, {crownResult.errors} error(s)
                           </p>
                           {crownResult.errorDetails && (
                             <div className="mt-2 text-xs text-red-600 dark:text-red-400 space-y-1">
@@ -1583,24 +1618,55 @@ export default function ImportPage() {
                         </div>
                       )}
 
-                      <div className="flex gap-3">
-                        <Button
-                          onClick={handleCrownImport}
-                          disabled={crownImporting || !crownPreview.invoices.some((inv: any) => inv.matched)}
-                          data-testid="button-crown-import"
-                        >
-                          {crownImporting ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Importing...
-                            </>
-                          ) : (
-                            <>
-                              <Download className="h-4 w-4 mr-2" />
-                              Import {crownPreview.invoices.filter((inv: any) => inv.matched).length} Invoice(s)
-                            </>
-                          )}
-                        </Button>
+                      {crownPreview.invoices.some((inv: any) => inv.existingRecordId) && (
+                        <div className="border border-amber-200 bg-amber-50 rounded-lg p-3" data-testid="crown-duplicate-warning">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-amber-800 mb-1">Data already imported</p>
+                              <p className="text-xs text-amber-700">
+                                {crownPreview.invoices.filter((inv: any) => inv.existingRecordId).length} of {crownPreview.invoices.length} invoice(s) already have data for this period.
+                                {crownPreview.invoices.filter((inv: any) => inv.existingRecordId).map((inv: any) => (
+                                  <span key={inv.mprn} className="block mt-1">MPRN {inv.mprn}: existing record{inv.existingInvoiceNumber ? ` (${inv.existingInvoiceNumber})` : ""}</span>
+                                ))}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 flex-wrap">
+                        {crownPreview.invoices.some((inv: any) => inv.existingRecordId) ? (
+                          <>
+                            <Button
+                              onClick={() => handleCrownImport("overwrite")}
+                              disabled={crownImporting || !crownPreview.invoices.some((inv: any) => inv.matched)}
+                              variant="destructive"
+                              data-testid="button-crown-overwrite"
+                            >
+                              {crownImporting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</> : <><Download className="h-4 w-4 mr-2" />Overwrite Existing</>}
+                            </Button>
+                            <Button
+                              onClick={() => handleCrownImport("add_new")}
+                              disabled={crownImporting || !crownPreview.invoices.some((inv: any) => inv.matched)}
+                              data-testid="button-crown-add-new"
+                            >
+                              {crownImporting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</> : <><Download className="h-4 w-4 mr-2" />Add as New Record</>}
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            onClick={() => handleCrownImport("overwrite")}
+                            disabled={crownImporting || !crownPreview.invoices.some((inv: any) => inv.matched)}
+                            data-testid="button-crown-import"
+                          >
+                            {crownImporting ? (
+                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</>
+                            ) : (
+                              <><Download className="h-4 w-4 mr-2" />Import {crownPreview.invoices.filter((inv: any) => inv.matched).length} Invoice(s)</>
+                            )}
+                          </Button>
+                        )}
                         <Button variant="outline" onClick={resetCrownForm} data-testid="button-crown-cancel">Cancel</Button>
                       </div>
                     </div>
@@ -1778,15 +1844,51 @@ export default function ImportPage() {
                             </table>
                           </div>
                         </div>
-                        <div className="flex gap-3">
-                          <Button
-                            onClick={handleNpowerImport}
-                            disabled={npowerImporting || !npowerPreview.meters.some((m: any) => m.matchedDataSetId)}
-                            data-testid="npower-import-btn"
-                          >
-                            {npowerImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                            Import {npowerPreview.meters.filter((m: any) => m.matchedDataSetId).length} Matched Meters
-                          </Button>
+                        {npowerPreview.meters.some((m: any) => m.existingRecordId) && (
+                          <div className="border border-amber-200 bg-amber-50 rounded-lg p-3" data-testid="npower-duplicate-warning">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="text-sm font-medium text-amber-800 mb-1">Data already imported</p>
+                                <p className="text-xs text-amber-700">
+                                  {npowerPreview.meters.filter((m: any) => m.existingRecordId).length} of {npowerPreview.meters.length} meter(s) already have data for this period.
+                                  {npowerPreview.meters.filter((m: any) => m.existingRecordId).map((m: any) => (
+                                    <span key={m.mpan} className="block mt-1">MPAN {m.mpan}: existing record{m.existingInvoiceNumber ? ` (${m.existingInvoiceNumber})` : ""}</span>
+                                  ))}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex gap-3 flex-wrap">
+                          {npowerPreview.meters.some((m: any) => m.existingRecordId) ? (
+                            <>
+                              <Button
+                                onClick={() => handleNpowerImport("overwrite")}
+                                disabled={npowerImporting || !npowerPreview.meters.some((m: any) => m.matchedDataSetId)}
+                                variant="destructive"
+                                data-testid="npower-overwrite-btn"
+                              >
+                                {npowerImporting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Importing...</> : <><Upload className="h-4 w-4 mr-2" />Overwrite Existing</>}
+                              </Button>
+                              <Button
+                                onClick={() => handleNpowerImport("add_new")}
+                                disabled={npowerImporting || !npowerPreview.meters.some((m: any) => m.matchedDataSetId)}
+                                data-testid="npower-add-new-btn"
+                              >
+                                {npowerImporting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Importing...</> : <><Upload className="h-4 w-4 mr-2" />Add as New Record</>}
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              onClick={() => handleNpowerImport("overwrite")}
+                              disabled={npowerImporting || !npowerPreview.meters.some((m: any) => m.matchedDataSetId)}
+                              data-testid="npower-import-btn"
+                            >
+                              {npowerImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                              Import {npowerPreview.meters.filter((m: any) => m.matchedDataSetId).length} Matched Meters
+                            </Button>
+                          )}
                           <Button variant="outline" onClick={resetNpowerForm} data-testid="npower-cancel-btn">Cancel</Button>
                         </div>
                       </div>

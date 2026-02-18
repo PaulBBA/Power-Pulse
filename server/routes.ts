@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { db } from "./db.js";
-import { users, dataSets, dataRecords, dataProfiles, importLogs, sftpConfigs, sftpDownloadLogs } from "@shared/schema.js";
+import { users, dataSets, dataRecords, dataProfiles, importLogs, sftpConfigs, sftpDownloadLogs, sites } from "@shared/schema.js";
 import { eq, and, sql, desc } from "drizzle-orm";
 import multer from "multer";
 import SftpClient from "ssh2-sftp-client";
@@ -664,7 +664,8 @@ export async function registerRoutes(
         if (m.mpan) mpanMap.set(m.mpan.trim(), m);
       }
 
-      const results = invoices.map(inv => {
+      const results = [];
+      for (const inv of invoices) {
         const meter = inv.mpanCore ? mpanMap.get(inv.mpanCore) : null;
 
         const dayCharge = inv.charges.find(c => c.code === "UNIT" && c.register === "DAY");
@@ -675,7 +676,24 @@ export async function registerRoutes(
         const reapCharge = inv.charges.find(c => c.code === "REAP");
         const dcdaCharge = inv.charges.find(c => c.code === "DCDA");
 
-        return {
+        let existingRecordId: number | null = null;
+        let existingInvoiceNumber: string | null = null;
+        if (meter?.id && inv.periodEnd) {
+          const periodEnd = inv.periodEnd.toISOString().split("T")[0];
+          const existing = await db.select({ id: dataRecords.id, invoiceNumber: dataRecords.invoiceNumber })
+            .from(dataRecords)
+            .where(and(
+              eq(dataRecords.dataSetId, meter.id),
+              sql`DATE(${dataRecords.date}) = ${periodEnd}`
+            ))
+            .limit(1);
+          if (existing.length > 0) {
+            existingRecordId = existing[0].id;
+            existingInvoiceNumber = existing[0].invoiceNumber;
+          }
+        }
+
+        results.push({
           accountRef: inv.accountRef,
           mpanCore: inv.mpanCore,
           matched: !!meter,
@@ -703,8 +721,10 @@ export async function registerRoutes(
           powerFactor: inv.powerFactor,
           supplierName: inv.supplierName,
           chargeCount: inv.charges.length,
-        };
-      });
+          existingRecordId,
+          existingInvoiceNumber,
+        });
+      }
 
       res.json({
         filename: req.file.originalname,
@@ -725,6 +745,7 @@ export async function registerRoutes(
       const content = req.file.buffer.toString("utf-8");
       const invoices = parseMMFile(content);
       const username = (req.body?.username as string) || "import";
+      const duplicateAction = (req.body?.duplicateAction as string) || "overwrite";
 
       const allMeters = await db.select({
         id: dataSets.id,
@@ -744,6 +765,7 @@ export async function registerRoutes(
       }).returning();
 
       let imported = 0;
+      let updated = 0;
       let skipped = 0;
       let errors = 0;
       const errorDetails: string[] = [];
@@ -767,15 +789,21 @@ export async function registerRoutes(
               .limit(1);
 
             if (existing.length > 0) {
-              await db.update(dataRecords)
-                .set(record)
-                .where(eq(dataRecords.id, existing[0].id));
-            } else {
-              await db.insert(dataRecords).values(record);
+              if (duplicateAction === "overwrite") {
+                await db.update(dataRecords)
+                  .set(record)
+                  .where(eq(dataRecords.id, existing[0].id));
+                updated++;
+              } else if (duplicateAction === "add_new") {
+                await db.insert(dataRecords).values(record);
+                imported++;
+              } else {
+                skipped++;
+              }
+              continue;
             }
-          } else {
-            await db.insert(dataRecords).values(record);
           }
+          await db.insert(dataRecords).values(record);
 
           imported++;
         } catch (err: any) {
@@ -799,6 +827,7 @@ export async function registerRoutes(
         id: logEntry.id,
         status: errors > 0 ? "completed_with_errors" : "completed",
         imported,
+        updated,
         skipped,
         errors,
         errorDetails: errorDetails.length > 0 ? errorDetails : undefined
@@ -834,10 +863,28 @@ export async function registerRoutes(
         if (m.mpan) mprnMap.set(m.mpan.trim(), m);
       }
 
-      const results = invoices.map(inv => {
+      const results = [];
+      for (const inv of invoices) {
         const meter = inv.mprn ? mprnMap.get(inv.mprn) : null;
 
-        return {
+        let existingRecordId: number | null = null;
+        let existingInvoiceNumber: string | null = null;
+        if (meter?.id && inv.endReadDate) {
+          const endDate = inv.endReadDate.toISOString().split("T")[0];
+          const existing = await db.select({ id: dataRecords.id, invoiceNumber: dataRecords.invoiceNumber })
+            .from(dataRecords)
+            .where(and(
+              eq(dataRecords.dataSetId, meter.id),
+              sql`DATE(${dataRecords.date}) = ${endDate}`
+            ))
+            .limit(1);
+          if (existing.length > 0) {
+            existingRecordId = existing[0].id;
+            existingInvoiceNumber = existing[0].invoiceNumber;
+          }
+        }
+
+        results.push({
           invoiceNumber: inv.invoiceNumber,
           mprn: inv.mprn,
           meterSerial: inv.meterSerial,
@@ -870,8 +917,10 @@ export async function registerRoutes(
           cv: inv.cv,
           ceRef: inv.ceRef,
           accountNo: inv.accountNo,
-        };
-      });
+          existingRecordId,
+          existingInvoiceNumber,
+        });
+      }
 
       res.json({
         filename: req.file.originalname,
@@ -892,6 +941,7 @@ export async function registerRoutes(
       const content = req.file.buffer.toString("utf-8");
       const invoices = parseCrownEDI(content);
       const username = (req.body?.username as string) || "import";
+      const duplicateAction = (req.body?.duplicateAction as string) || "overwrite";
 
       const allMeters = await db.select({
         id: dataSets.id,
@@ -911,6 +961,7 @@ export async function registerRoutes(
       }).returning();
 
       let imported = 0;
+      let updated = 0;
       let skipped = 0;
       let errors = 0;
       const errorDetails: string[] = [];
@@ -934,15 +985,21 @@ export async function registerRoutes(
               .limit(1);
 
             if (existing.length > 0) {
-              await db.update(dataRecords)
-                .set(record)
-                .where(eq(dataRecords.id, existing[0].id));
-            } else {
-              await db.insert(dataRecords).values(record);
+              if (duplicateAction === "overwrite") {
+                await db.update(dataRecords)
+                  .set(record)
+                  .where(eq(dataRecords.id, existing[0].id));
+                updated++;
+              } else if (duplicateAction === "add_new") {
+                await db.insert(dataRecords).values(record);
+                imported++;
+              } else {
+                skipped++;
+              }
+              continue;
             }
-          } else {
-            await db.insert(dataRecords).values(record);
           }
+          await db.insert(dataRecords).values(record);
 
           imported++;
         } catch (err: any) {
@@ -966,6 +1023,7 @@ export async function registerRoutes(
         id: logEntry.id,
         status: errors > 0 ? "completed_with_errors" : "completed",
         imported,
+        updated,
         skipped,
         errors,
         errorDetails: errorDetails.length > 0 ? errorDetails : undefined
@@ -984,11 +1042,37 @@ export async function registerRoutes(
       const invoice = await parseNpowerPDF(req.file.buffer);
 
       const allDataSets = await db.select().from(dataSets);
-      const metersPreview = invoice.meters.map((meter) => {
+      const metersPreview = [];
+      for (const meter of invoice.meters) {
         const matched = allDataSets.find(
           (ds) => ds.mpanCoreMprn === meter.mpan || ds.mpanCoreMprn2 === meter.mpan
         );
-        return {
+
+        let existingRecordId: number | null = null;
+        let existingInvoiceNumber: string | null = null;
+        let matchedSiteName: string | null = null;
+
+        if (matched) {
+          const siteRows = await db.select().from(sites).where(eq(sites.id, matched.siteId));
+          matchedSiteName = siteRows[0]?.name || null;
+
+          if (meter.periodEnd) {
+            const periodEnd = meter.periodEnd.toISOString().split("T")[0];
+            const existing = await db.select({ id: dataRecords.id, invoiceNumber: dataRecords.invoiceNumber })
+              .from(dataRecords)
+              .where(and(
+                eq(dataRecords.dataSetId, matched.id),
+                sql`DATE(${dataRecords.date}) = ${periodEnd}`
+              ))
+              .limit(1);
+            if (existing.length > 0) {
+              existingRecordId = existing[0].id;
+              existingInvoiceNumber = existing[0].invoiceNumber;
+            }
+          }
+        }
+
+        metersPreview.push({
           mpan: meter.mpan,
           meterSerial: meter.meterSerial,
           periodStart: meter.periodStart,
@@ -1014,18 +1098,10 @@ export async function registerRoutes(
           reactivePowerCost: meter.reactivePowerCost,
           matchedDataSetId: matched?.id || null,
           matchedMeterName: matched?.name || null,
-          matchedSiteName: null as string | null,
-        };
-      });
-
-      for (const mp of metersPreview) {
-        if (mp.matchedDataSetId) {
-          const ds = allDataSets.find((d) => d.id === mp.matchedDataSetId);
-          if (ds) {
-            const siteRows = await db.select().from(sites).where(eq(sites.id, ds.siteId));
-            mp.matchedSiteName = siteRows[0]?.name || null;
-          }
-        }
+          matchedSiteName,
+          existingRecordId,
+          existingInvoiceNumber,
+        });
       }
 
       res.json({
@@ -1050,6 +1126,7 @@ export async function registerRoutes(
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const invoice = await parseNpowerPDF(req.file.buffer);
       const username = (req.body?.username as string) || "import";
+      const duplicateAction = (req.body?.duplicateAction as string) || "overwrite";
 
       const allDataSets = await db.select().from(dataSets);
 
@@ -1079,10 +1156,17 @@ export async function registerRoutes(
         );
 
         if (existing.length > 0) {
-          await db.update(dataRecords)
-            .set(record)
-            .where(eq(dataRecords.id, existing[0].id));
-          updated++;
+          if (duplicateAction === "overwrite") {
+            await db.update(dataRecords)
+              .set(record)
+              .where(eq(dataRecords.id, existing[0].id));
+            updated++;
+          } else if (duplicateAction === "add_new") {
+            await db.insert(dataRecords).values(record);
+            imported++;
+          } else {
+            skipped++;
+          }
         } else {
           await db.insert(dataRecords).values(record);
           imported++;

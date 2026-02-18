@@ -528,7 +528,12 @@ function ReadingsTab({ meterId }: { meterId: number }) {
   if (isLoading) return <LoadingState />;
   if (!records || records.length === 0) return <EmptyState message="No direct reading data found for this meter." />;
 
-  const withReadings = records.filter((r: any) => r.meterReadingPresent != null || r.meterReadingPrevious != null);
+  const withReadings = records.filter((r: any) => 
+    (r.meterReadingPresent != null && r.meterReadingPresent !== 0) || 
+    (r.meterReadingPrevious != null && r.meterReadingPrevious !== 0) ||
+    (r.unitsUsed != null && r.unitsUsed !== 0) ||
+    (r.kwh != null && r.kwh !== 0)
+  );
   if (withReadings.length === 0) return <EmptyState message="No meter readings recorded. Only invoice data available." />;
 
   return (

@@ -528,12 +528,13 @@ function ReadingsTab({ meterId }: { meterId: number }) {
   if (isLoading) return <LoadingState />;
   if (!records || records.length === 0) return <EmptyState message="No direct reading data found for this meter." />;
 
+  // Map the legacy/import columns to displayable readings
   const withReadings = records.filter((r: any) => 
-    (r.meterReadingPresent != null && r.meterReadingPresent !== 0) || 
-    (r.meterReadingPrevious != null && r.meterReadingPrevious !== 0) ||
-    (r.unitsUsed != null && r.unitsUsed !== 0) ||
-    (r.kwh != null && r.kwh !== 0)
+    (r.m1Present != null && r.m1Present !== 0) || 
+    (r.m1Previous != null && r.m1Previous !== 0) ||
+    (r.m1Units != null && r.m1Units !== 0)
   );
+
   if (withReadings.length === 0) return <EmptyState message="No meter readings recorded. Only invoice data available." />;
 
   return (
@@ -545,17 +546,17 @@ function ReadingsTab({ meterId }: { meterId: number }) {
             <th className="text-right p-2 font-medium">Previous Reading</th>
             <th className="text-right p-2 font-medium">Present Reading</th>
             <th className="text-right p-2 font-medium">Units Used</th>
-            <th className="text-right p-2 font-medium">kWh</th>
+            <th className="text-right p-2 font-medium">Cost Rate</th>
           </tr>
         </thead>
         <tbody>
           {withReadings.map((r: any) => (
             <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-reading-${r.id}`}>
               <td className="p-2">{formatDate(r.date)}</td>
-              <td className="p-2 text-right">{r.meterReadingPrevious != null ? Number(r.meterReadingPrevious).toLocaleString() : "-"}</td>
-              <td className="p-2 text-right">{r.meterReadingPresent != null ? Number(r.meterReadingPresent).toLocaleString() : "-"}</td>
-              <td className="p-2 text-right">{r.unitsUsed != null ? Number(r.unitsUsed).toLocaleString() : "-"}</td>
-              <td className="p-2 text-right">{r.kwh != null ? Number(r.kwh).toLocaleString() : "-"}</td>
+              <td className="p-2 text-right">{r.m1Previous != null ? Number(r.m1Previous).toLocaleString() : "-"}</td>
+              <td className="p-2 text-right">{r.m1Present != null ? Number(r.m1Present).toLocaleString() : "-"}</td>
+              <td className="p-2 text-right">{r.m1Units != null ? Number(r.m1Units).toLocaleString() : "-"}</td>
+              <td className="p-2 text-right">{r.m1CostRate != null ? Number(r.m1CostRate).toFixed(4) : "-"}</td>
             </tr>
           ))}
         </tbody>

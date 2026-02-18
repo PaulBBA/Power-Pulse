@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, FileDown, Settings2, ArrowUpDown, Loader2, Plus, Pencil } from "lucide-react";
+import { Search, FileDown, Settings2, ArrowUpDown, Loader2, Plus, Pencil, Zap, Flame, Droplets, Package } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Site, insertSiteSchema } from "@shared/schema";
+import { Site, DataSet, insertSiteSchema } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -29,15 +30,34 @@ export default function SitesPage() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
+  const [viewingMetersSite, setViewingMetersSite] = useState<Site | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   const canCreateSite = user?.role === "admin" || user?.role === "editor";
 
   const { data: sites, isLoading } = useQuery<Site[]>({
     queryKey: ["/api/sites"],
   });
+
+  const { data: allMeters } = useQuery<DataSet[]>({
+    queryKey: ["/api/data-sets"],
+  });
+
+  const siteMeters = viewingMetersSite 
+    ? allMeters?.filter(m => m.siteId === viewingMetersSite.id) || []
+    : [];
+
+  const getUtilityIcon = (utilityTypeId: number) => {
+    switch (utilityTypeId) {
+      case 1: return <Zap className="h-4 w-4 text-amber-500" />;
+      case 2: return <Flame className="h-4 w-4 text-orange-500" />;
+      case 3: return <Droplets className="h-4 w-4 text-blue-500" />;
+      default: return <Package className="h-4 w-4 text-gray-500" />;
+    }
+  };
 
   const form = useForm({
     resolver: zodResolver(insertSiteSchema),
@@ -435,6 +455,7 @@ export default function SitesPage() {
                           <TableRow 
                             className={`${i % 2 === 1 ? "bg-secondary/20" : ""} cursor-pointer`}
                             data-testid={`row-site-${site.id}`}
+                            onClick={() => setViewingMetersSite(site)}
                           >
                             <TableCell className="text-xs font-mono text-muted-foreground">{site.code}</TableCell>
                             <TableCell className="text-sm">{site.name}</TableCell>
@@ -485,6 +506,39 @@ export default function SitesPage() {
               </Button>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={viewingMetersSite !== null} onOpenChange={(open) => { if (!open) setViewingMetersSite(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Meters at {viewingMetersSite?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-2 max-h-[60vh] overflow-y-auto">
+            {siteMeters.length > 0 ? (
+              siteMeters.map(meter => (
+                <div 
+                  key={meter.id}
+                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted cursor-pointer transition-colors"
+                  onClick={() => {
+                    setViewingMetersSite(null);
+                    setLocation(`/meters/${meter.id}`);
+                  }}
+                  data-testid={`meter-item-${meter.id}`}
+                >
+                  {getUtilityIcon(meter.utilityTypeId)}
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{meter.mpanCoreMprn || meter.name || `Meter ${meter.id}`}</span>
+                    {meter.meterSerial1 && (
+                      <span className="text-xs text-muted-foreground">Serial: {meter.meterSerial1}</span>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center py-4 text-muted-foreground italic">No meters found for this site.</p>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </Layout>

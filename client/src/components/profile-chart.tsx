@@ -414,12 +414,25 @@ export function ProfileChart({ meterId, meterIds }: ProfileChartProps) {
   }, []);
 
   const totalConsumption = useMemo(() => {
+    if (viewMode === "footprint" && chartData?.profiles) {
+      return chartData.profiles.reduce((sum: number, p: any) => sum + (p.dayTotal != null ? Number(p.dayTotal) : 0), 0);
+    }
     return processedData.reduce((sum, d) => sum + (d.consumption || 0), 0);
-  }, [processedData]);
+  }, [processedData, viewMode, chartData]);
 
   const maxConsumption = useMemo(() => {
+    if (viewMode === "footprint" && chartData?.profiles) {
+      let peak = 0;
+      for (const p of chartData.profiles) {
+        for (const key of INTERVALS) {
+          const v = p[key];
+          if (v != null && Number(v) > peak) peak = Number(v);
+        }
+      }
+      return peak;
+    }
     return Math.max(...processedData.map(d => d.consumption || 0), 0);
-  }, [processedData]);
+  }, [processedData, viewMode, chartData]);
 
   const avgLabel = viewMode === "day" || viewMode === "week" ? "4-Week Average" : "4-Month Average";
 

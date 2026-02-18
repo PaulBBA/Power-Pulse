@@ -44,7 +44,9 @@ export default function ReportsPage() {
     queryKey: ["/api/groups/hierarchy"],
   });
 
-  const groups = hierarchy?.groups || [];
+  const groups = useMemo(() => {
+    return (hierarchy?.groups || []).filter((g: any) => g.sites && g.sites.length > 0);
+  }, [hierarchy]);
 
   const sitesForGroup = useMemo(() => {
     if (!scope.groupId) return [];

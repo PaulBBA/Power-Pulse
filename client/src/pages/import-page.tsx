@@ -132,6 +132,14 @@ export default function ImportPage() {
   const [invoiceDragOver, setInvoiceDragOver] = useState(false);
   const invoiceFileInputRef = useRef<HTMLInputElement>(null);
 
+  const [crownFile, setCrownFile] = useState<File | null>(null);
+  const [crownPreview, setCrownPreview] = useState<any>(null);
+  const [crownPreviewing, setCrownPreviewing] = useState(false);
+  const [crownImporting, setCrownImporting] = useState(false);
+  const [crownResult, setCrownResult] = useState<ImportResult | null>(null);
+  const [crownDragOver, setCrownDragOver] = useState(false);
+  const crownFileInputRef = useRef<HTMLInputElement>(null);
+
   const { data: importLogs, refetch: refetchLogs } = useQuery<ImportLogEntry[]>({
     queryKey: ["/api/import/logs"],
   });
@@ -291,6 +299,83 @@ export default function ImportPage() {
     setInvoicePreview(null);
     setInvoiceResult(null);
     if (invoiceFileInputRef.current) invoiceFileInputRef.current.value = "";
+  };
+
+  const handleCrownFileSelect = useCallback(async (file: File) => {
+    setCrownFile(file);
+    setCrownPreview(null);
+    setCrownResult(null);
+    setCrownPreviewing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/import/crown-edi/preview", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Preview failed");
+      }
+
+      const data = await res.json();
+      setCrownPreview(data);
+    } catch (err: any) {
+      alert("Error previewing Crown EDI file: " + err.message);
+      setCrownFile(null);
+    } finally {
+      setCrownPreviewing(false);
+    }
+  }, []);
+
+  const handleCrownDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setCrownDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith(".csv") || file.name.endsWith(".CSV") || file.name.endsWith(".txt"))) {
+      handleCrownFileSelect(file);
+    }
+  }, [handleCrownFileSelect]);
+
+  const handleCrownImport = async () => {
+    if (!crownFile) return;
+    setCrownImporting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", crownFile);
+      formData.append("username", "admin");
+
+      const res = await fetch("/api/import/crown-edi/execute", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Import failed");
+      }
+
+      const data = await res.json();
+      setCrownResult(data);
+      refetchLogs();
+    } catch (err: any) {
+      alert("Crown EDI import error: " + err.message);
+    } finally {
+      setCrownImporting(false);
+    }
+  };
+
+  const resetCrownForm = () => {
+    setCrownFile(null);
+    setCrownPreview(null);
+    setCrownResult(null);
+    if (crownFileInputRef.current) crownFileInputRef.current.value = "";
   };
 
   const resetSftpForm = () => {
@@ -465,7 +550,11 @@ export default function ImportPage() {
           </TabsTrigger>
           <TabsTrigger value="invoice" data-testid="tab-invoice">
             <FileText className="h-4 w-4 mr-2" />
-            Invoice Import
+            EDF Invoice
+          </TabsTrigger>
+          <TabsTrigger value="crown-edi" data-testid="tab-crown-edi">
+            <FileText className="h-4 w-4 mr-2" />
+            Crown EDI
           </TabsTrigger>
           <TabsTrigger value="history" data-testid="tab-history">
             <Clock className="h-4 w-4 mr-2" />
@@ -1214,12 +1303,248 @@ export default function ImportPage() {
                     </div>
                     <p className="text-xs text-muted-foreground">EDF Energy Meter Message format with charges, readings, CCL and VAT</p>
                   </div>
-                  <div className="p-3 border rounded-md opacity-50">
+                  <div className="p-3 border rounded-md">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="font-medium text-sm">Other Suppliers</p>
-                      <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+                      <p className="font-medium text-sm">Crown EDI (Gas)</p>
+                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Active</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">Support for other supplier invoice formats</p>
+                    <p className="text-xs text-muted-foreground">Use the Crown EDI tab to import gas invoices</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="crown-edi" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Crown EDI File Upload
+                  </CardTitle>
+                  <CardDescription>Upload Crown Gas & Power EDI CSV files to import gas billing data.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!crownFile ? (
+                    <div
+                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${crownDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+                      onDragOver={(e) => { e.preventDefault(); setCrownDragOver(true); }}
+                      onDragLeave={() => setCrownDragOver(false)}
+                      onDrop={handleCrownDrop}
+                      onClick={() => crownFileInputRef.current?.click()}
+                      data-testid="crown-dropzone"
+                    >
+                      <CloudUpload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                      <p className="font-medium mb-1">Drop your Crown EDI CSV file here</p>
+                      <p className="text-sm text-muted-foreground">or click to browse. Supports .csv and .txt files</p>
+                      <input
+                        ref={crownFileInputRef}
+                        type="file"
+                        accept=".csv,.CSV,.txt"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleCrownFileSelect(file);
+                        }}
+                        data-testid="input-crown-file"
+                      />
+                    </div>
+                  ) : crownPreviewing ? (
+                    <div className="flex flex-col items-center gap-3 py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-sm text-muted-foreground">Parsing Crown EDI file...</p>
+                    </div>
+                  ) : crownResult ? (
+                    <div className="space-y-4">
+                      <div className={`flex items-start gap-3 p-4 rounded-lg ${crownResult.errors > 0 ? "bg-yellow-50 dark:bg-yellow-900/20" : "bg-green-50 dark:bg-green-900/20"}`}>
+                        {crownResult.errors > 0 ? (
+                          <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                        ) : (
+                          <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                        )}
+                        <div>
+                          <p className="font-medium" data-testid="text-crown-result">
+                            {crownResult.errors > 0 ? "Import completed with some issues" : "Import completed successfully"}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {crownResult.imported} invoice(s) imported, {crownResult.skipped} skipped, {crownResult.errors} error(s)
+                          </p>
+                          {crownResult.errorDetails && (
+                            <div className="mt-2 text-xs text-red-600 dark:text-red-400 space-y-1">
+                              {crownResult.errorDetails.map((e, i) => <p key={i}>{e}</p>)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <Button variant="outline" onClick={resetCrownForm} data-testid="button-crown-reset">
+                        Upload Another File
+                      </Button>
+                    </div>
+                  ) : crownPreview ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">{crownPreview.filename}</span>
+                          <Badge variant="outline" className="text-xs">{crownPreview.format}</Badge>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={resetCrownForm} data-testid="button-crown-clear">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <Separator />
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Invoices Found</p>
+                          <p className="font-semibold text-lg" data-testid="text-crown-count">{crownPreview.invoiceCount}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Meters Matched</p>
+                          <p className="font-semibold text-lg" data-testid="text-crown-matched">
+                            {crownPreview.invoices.filter((inv: any) => inv.matched).length} / {crownPreview.invoiceCount}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-left p-2 font-medium">MPRN</th>
+                              <th className="text-left p-2 font-medium">Period</th>
+                              <th className="text-left p-2 font-medium">Reads</th>
+                              <th className="text-right p-2 font-medium">kWh</th>
+                              <th className="text-right p-2 font-medium">Net (£)</th>
+                              <th className="text-right p-2 font-medium">VAT (£)</th>
+                              <th className="text-right p-2 font-medium">Total (£)</th>
+                              <th className="text-center p-2 font-medium">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {crownPreview.invoices.map((inv: any, idx: number) => (
+                              <tr key={idx} className="border-t" data-testid={`row-crown-${idx}`}>
+                                <td className="p-2">
+                                  <span className="font-mono text-xs">{inv.mprn || "Unknown"}</span>
+                                  {inv.meterName && <span className="block text-xs text-muted-foreground">{inv.meterName}</span>}
+                                </td>
+                                <td className="p-2 text-xs">
+                                  {inv.startReadDate && inv.endReadDate
+                                    ? `${new Date(inv.startReadDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} - ${new Date(inv.endReadDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`
+                                    : "Unknown"}
+                                </td>
+                                <td className="p-2 text-xs">
+                                  {inv.startRead.toFixed(1)}{inv.startReadType ? ` ${inv.startReadType}` : ""} → {inv.endRead.toFixed(1)}{inv.endReadType ? ` ${inv.endReadType}` : ""}
+                                </td>
+                                <td className="p-2 text-right">{inv.totalEnergy.toLocaleString()}</td>
+                                <td className="p-2 text-right">{inv.netTotal.toFixed(2)}</td>
+                                <td className="p-2 text-right">{(inv.vat1 + inv.vat2).toFixed(2)}</td>
+                                <td className="p-2 text-right font-medium">{inv.invoiceTotal.toFixed(2)}</td>
+                                <td className="p-2 text-center">
+                                  {inv.matched ? (
+                                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Matched</Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="text-xs">No Match</Badge>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {crownPreview.invoices.some((inv: any) => inv.matched) && (
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium">Charge Breakdown (First Matched Invoice)</h4>
+                          {(() => {
+                            const inv = crownPreview.invoices.find((i: any) => i.matched) || crownPreview.invoices[0];
+                            return (
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                <div className="p-2 bg-muted/50 rounded">
+                                  <p className="text-muted-foreground">Gas Units</p>
+                                  <p className="font-medium">{inv.totalEnergy.toLocaleString()} kWh @ {inv.unitRate}p</p>
+                                </div>
+                                {inv.standingCharge > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">Standing Charge</p>
+                                    <p className="font-medium">£{inv.standingCharge.toFixed(2)} ({inv.scDays} days @ {inv.scRate}p/day)</p>
+                                  </div>
+                                )}
+                                {inv.cclAmount > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">CCL</p>
+                                    <p className="font-medium">£{inv.cclAmount.toFixed(2)} @ {inv.cclRate}p/kWh</p>
+                                  </div>
+                                )}
+                                {inv.vat1 > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">VAT ({inv.vat1Percent}%)</p>
+                                    <p className="font-medium">£{inv.vat1.toFixed(2)}</p>
+                                  </div>
+                                )}
+                                {inv.vat2 > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">VAT ({inv.vat2Percent}%)</p>
+                                    <p className="font-medium">£{inv.vat2.toFixed(2)}</p>
+                                  </div>
+                                )}
+                                <div className="p-2 bg-muted/50 rounded">
+                                  <p className="text-muted-foreground">Correction / CV</p>
+                                  <p className="font-medium">{inv.correctionFactor} / {inv.cv}</p>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={handleCrownImport}
+                          disabled={crownImporting || !crownPreview.invoices.some((inv: any) => inv.matched)}
+                          data-testid="button-crown-import"
+                        >
+                          {crownImporting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Importing...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="h-4 w-4 mr-2" />
+                              Import {crownPreview.invoices.filter((inv: any) => inv.matched).length} Invoice(s)
+                            </>
+                          )}
+                        </Button>
+                        <Button variant="outline" onClick={resetCrownForm} data-testid="button-crown-cancel">Cancel</Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">File Format</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="p-3 border rounded-md bg-primary/5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-sm">Crown EDI CSV</p>
+                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Active</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Crown Gas & Power EDI format with paired I1/I2 records for gas invoices</p>
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p><strong>I1 rows:</strong> Invoice totals, charges, VAT</p>
+                    <p><strong>I2 rows:</strong> Meter details, readings, rates</p>
+                    <p><strong>Matching:</strong> MPRN from I2 matched to meters in database</p>
                   </div>
                 </CardContent>
               </Card>

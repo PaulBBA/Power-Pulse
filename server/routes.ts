@@ -7,6 +7,7 @@ import { eq, and, sql, desc } from "drizzle-orm";
 import multer from "multer";
 import SftpClient from "ssh2-sftp-client";
 import { parseMMFile, mmInvoiceToDataRecord } from "./mm-parser.js";
+import { parseCrownEDI, crownEDIToDataRecord } from "./crown-edi-parser.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -803,6 +804,173 @@ export async function registerRoutes(
       });
     } catch (error: any) {
       console.error("Invoice import error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Crown EDI Invoice Import ---
+
+  app.post("/api/import/crown-edi/preview", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      const content = req.file.buffer.toString("utf-8");
+      const invoices = parseCrownEDI(content);
+
+      if (invoices.length === 0) {
+        return res.status(400).json({ message: "No valid Crown EDI invoice data found in file" });
+      }
+
+      const allMeters = await db.select({
+        id: dataSets.id,
+        mpan: dataSets.mpanCoreMprn,
+        name: dataSets.name,
+        siteId: dataSets.siteId,
+      }).from(dataSets);
+
+      const mprnMap = new Map<string, typeof allMeters[0]>();
+      for (const m of allMeters) {
+        if (m.mpan) mprnMap.set(m.mpan.trim(), m);
+      }
+
+      const results = invoices.map(inv => {
+        const meter = inv.mprn ? mprnMap.get(inv.mprn) : null;
+
+        return {
+          invoiceNumber: inv.invoiceNumber,
+          mprn: inv.mprn,
+          meterSerial: inv.meterSerial,
+          matched: !!meter,
+          meterId: meter?.id || null,
+          meterName: meter?.name || null,
+          siteId: meter?.siteId || null,
+          billDate: inv.billDate?.toISOString().split("T")[0] || null,
+          startReadDate: inv.startReadDate?.toISOString().split("T")[0] || null,
+          endReadDate: inv.endReadDate?.toISOString().split("T")[0] || null,
+          startRead: inv.startRead,
+          startReadType: inv.startReadType,
+          endRead: inv.endRead,
+          endReadType: inv.endReadType,
+          totalEnergy: inv.totalEnergy,
+          gasCost: inv.gasCost,
+          standingCharge: inv.standingCharge,
+          cclAmount: inv.cclAmount,
+          netTotal: inv.netTotal,
+          vat1Percent: inv.vat1Percent,
+          vat1: inv.vat1,
+          vat2Percent: inv.vat2Percent,
+          vat2: inv.vat2,
+          invoiceTotal: inv.invoiceTotal,
+          unitRate: inv.unitRate,
+          scRate: inv.scRate,
+          scDays: inv.scDays,
+          cclRate: inv.cclRate,
+          correctionFactor: inv.correctionFactor,
+          cv: inv.cv,
+          ceRef: inv.ceRef,
+          accountNo: inv.accountNo,
+        };
+      });
+
+      res.json({
+        filename: req.file.originalname,
+        format: "Crown EDI",
+        invoiceCount: results.length,
+        invoices: results,
+      });
+    } catch (error: any) {
+      console.error("Crown EDI preview error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/import/crown-edi/execute", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      const content = req.file.buffer.toString("utf-8");
+      const invoices = parseCrownEDI(content);
+      const username = (req.body?.username as string) || "import";
+
+      const allMeters = await db.select({
+        id: dataSets.id,
+        mpan: dataSets.mpanCoreMprn,
+      }).from(dataSets);
+
+      const mprnMap = new Map<string, number>();
+      for (const m of allMeters) {
+        if (m.mpan) mprnMap.set(m.mpan.trim(), m.id);
+      }
+
+      const [logEntry] = await db.insert(importLogs).values({
+        filename: req.file.originalname,
+        format: "Crown EDI",
+        status: "processing",
+        totalRows: invoices.length,
+      }).returning();
+
+      let imported = 0;
+      let skipped = 0;
+      let errors = 0;
+      const errorDetails: string[] = [];
+
+      for (const inv of invoices) {
+        if (!inv.mprn) { skipped++; continue; }
+        const dataSetId = mprnMap.get(inv.mprn);
+        if (!dataSetId) { skipped++; continue; }
+
+        try {
+          const record = crownEDIToDataRecord(inv, dataSetId, username);
+
+          const endDate = inv.endReadDate ? inv.endReadDate.toISOString().split("T")[0] : null;
+          if (endDate) {
+            const existing = await db.select({ id: dataRecords.id })
+              .from(dataRecords)
+              .where(and(
+                eq(dataRecords.dataSetId, dataSetId),
+                sql`DATE(${dataRecords.date}) = ${endDate}`
+              ))
+              .limit(1);
+
+            if (existing.length > 0) {
+              await db.update(dataRecords)
+                .set(record)
+                .where(eq(dataRecords.id, existing[0].id));
+            } else {
+              await db.insert(dataRecords).values(record);
+            }
+          } else {
+            await db.insert(dataRecords).values(record);
+          }
+
+          imported++;
+        } catch (err: any) {
+          errors++;
+          if (errorDetails.length < 10) {
+            errorDetails.push(`MPRN ${inv.mprn}: ${err.message}`);
+          }
+        }
+      }
+
+      await db.update(importLogs).set({
+        status: errors > 0 ? "completed_with_errors" : "completed",
+        importedRows: imported,
+        skippedRows: skipped,
+        errorRows: errors,
+        errorDetails: errorDetails.length > 0 ? errorDetails.join("\n") : null,
+        completedAt: new Date()
+      }).where(eq(importLogs.id, logEntry.id));
+
+      res.json({
+        id: logEntry.id,
+        status: errors > 0 ? "completed_with_errors" : "completed",
+        imported,
+        skipped,
+        errors,
+        errorDetails: errorDetails.length > 0 ? errorDetails : undefined
+      });
+    } catch (error: any) {
+      console.error("Crown EDI import error:", error);
       res.status(500).json({ message: error.message });
     }
   });

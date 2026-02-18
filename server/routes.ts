@@ -2,10 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { db } from "./db.js";
-import { users, dataSets, dataProfiles, importLogs, sftpConfigs, sftpDownloadLogs } from "@shared/schema.js";
+import { users, dataSets, dataRecords, dataProfiles, importLogs, sftpConfigs, sftpDownloadLogs } from "@shared/schema.js";
 import { eq, and, sql, desc } from "drizzle-orm";
 import multer from "multer";
 import SftpClient from "ssh2-sftp-client";
+import { parseMMFile, mmInvoiceToDataRecord } from "./mm-parser.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -632,6 +633,176 @@ export async function registerRoutes(
       const logs = await db.select().from(importLogs).orderBy(sql`${importLogs.createdAt} DESC`).limit(20);
       res.json(logs);
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Invoice MM Import ---
+
+  app.post("/api/import/invoice/preview", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      const content = req.file.buffer.toString("utf-8");
+      const invoices = parseMMFile(content);
+
+      if (invoices.length === 0) {
+        return res.status(400).json({ message: "No valid invoice data found in file" });
+      }
+
+      const allMeters = await db.select({
+        id: dataSets.id,
+        mpan: dataSets.mpanCoreMprn,
+        name: dataSets.name,
+        siteId: dataSets.siteId,
+      }).from(dataSets);
+
+      const mpanMap = new Map<string, typeof allMeters[0]>();
+      for (const m of allMeters) {
+        if (m.mpan) mpanMap.set(m.mpan.trim(), m);
+      }
+
+      const results = invoices.map(inv => {
+        const meter = inv.mpanCore ? mpanMap.get(inv.mpanCore) : null;
+
+        const dayCharge = inv.charges.find(c => c.code === "UNIT" && c.register === "DAY");
+        const nightCharge = inv.charges.find(c => c.code === "UNIT" && c.register === "NIGHT");
+        const singleCharge = inv.charges.find(c => c.code === "UNIT" && c.register === "SINGLE");
+        const stdgCharge = inv.charges.find(c => c.code === "STDG");
+        const avalCharge = inv.charges.find(c => c.code === "AVAL");
+        const reapCharge = inv.charges.find(c => c.code === "REAP");
+        const dcdaCharge = inv.charges.find(c => c.code === "DCDA");
+
+        return {
+          accountRef: inv.accountRef,
+          mpanCore: inv.mpanCore,
+          matched: !!meter,
+          meterId: meter?.id || null,
+          meterName: meter?.name || null,
+          siteId: meter?.siteId || null,
+          invoiceDate: inv.invoiceDate?.toISOString().split("T")[0] || null,
+          periodStart: inv.periodStart?.toISOString().split("T")[0] || null,
+          periodEnd: inv.periodEnd?.toISOString().split("T")[0] || null,
+          totalIncVat: inv.totalIncVat,
+          netTotal: inv.netTotal,
+          vatAmount: inv.vatAmount,
+          vatPercent: inv.vatPercent,
+          totalKwh: inv.totalKwh,
+          dayUnits: dayCharge?.quantity || singleCharge?.quantity || 0,
+          nightUnits: nightCharge?.quantity || 0,
+          dayRate: dayCharge ? dayCharge.rate * 100 : (singleCharge ? singleCharge.rate * 100 : 0),
+          nightRate: nightCharge ? nightCharge.rate * 100 : 0,
+          standingCharge: stdgCharge ? stdgCharge.costPence / 100 : 0,
+          availabilityCharge: avalCharge ? avalCharge.costPence / 100 : 0,
+          reactivePowerCharge: reapCharge ? reapCharge.costPence / 100 : 0,
+          meteringCharge: dcdaCharge ? dcdaCharge.costPence / 100 : 0,
+          cclAmount: inv.cclAmount,
+          cclRate: inv.cclRate,
+          powerFactor: inv.powerFactor,
+          supplierName: inv.supplierName,
+          chargeCount: inv.charges.length,
+        };
+      });
+
+      res.json({
+        filename: req.file.originalname,
+        format: "EDF MM Invoice",
+        invoiceCount: results.length,
+        invoices: results,
+      });
+    } catch (error: any) {
+      console.error("Invoice preview error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/import/invoice/execute", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      const content = req.file.buffer.toString("utf-8");
+      const invoices = parseMMFile(content);
+      const username = (req.body?.username as string) || "import";
+
+      const allMeters = await db.select({
+        id: dataSets.id,
+        mpan: dataSets.mpanCoreMprn,
+      }).from(dataSets);
+
+      const mpanMap = new Map<string, number>();
+      for (const m of allMeters) {
+        if (m.mpan) mpanMap.set(m.mpan.trim(), m.id);
+      }
+
+      const [logEntry] = await db.insert(importLogs).values({
+        filename: req.file.originalname,
+        format: "EDF MM Invoice",
+        status: "processing",
+        totalRows: invoices.length,
+      }).returning();
+
+      let imported = 0;
+      let skipped = 0;
+      let errors = 0;
+      const errorDetails: string[] = [];
+
+      for (const inv of invoices) {
+        if (!inv.mpanCore) { skipped++; continue; }
+        const dataSetId = mpanMap.get(inv.mpanCore);
+        if (!dataSetId) { skipped++; continue; }
+
+        try {
+          const record = mmInvoiceToDataRecord(inv, dataSetId, username);
+
+          const periodEnd = inv.periodEnd ? inv.periodEnd.toISOString().split("T")[0] : null;
+          if (periodEnd) {
+            const existing = await db.select({ id: dataRecords.id })
+              .from(dataRecords)
+              .where(and(
+                eq(dataRecords.dataSetId, dataSetId),
+                sql`DATE(${dataRecords.date}) = ${periodEnd}`
+              ))
+              .limit(1);
+
+            if (existing.length > 0) {
+              await db.update(dataRecords)
+                .set(record)
+                .where(eq(dataRecords.id, existing[0].id));
+            } else {
+              await db.insert(dataRecords).values(record);
+            }
+          } else {
+            await db.insert(dataRecords).values(record);
+          }
+
+          imported++;
+        } catch (err: any) {
+          errors++;
+          if (errorDetails.length < 10) {
+            errorDetails.push(`MPAN ${inv.mpanCore}: ${err.message}`);
+          }
+        }
+      }
+
+      await db.update(importLogs).set({
+        status: errors > 0 ? "completed_with_errors" : "completed",
+        importedRows: imported,
+        skippedRows: skipped,
+        errorRows: errors,
+        errorDetails: errorDetails.length > 0 ? errorDetails.join("\n") : null,
+        completedAt: new Date()
+      }).where(eq(importLogs.id, logEntry.id));
+
+      res.json({
+        id: logEntry.id,
+        status: errors > 0 ? "completed_with_errors" : "completed",
+        imported,
+        skipped,
+        errors,
+        errorDetails: errorDetails.length > 0 ? errorDetails : undefined
+      });
+    } catch (error: any) {
+      console.error("Invoice import error:", error);
       res.status(500).json({ message: error.message });
     }
   });

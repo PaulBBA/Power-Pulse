@@ -124,6 +124,14 @@ export default function ImportPage() {
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
   const [downloadResult, setDownloadResult] = useState<{ filename: string; status: string; imported: number; skipped: number; errors: number } | null>(null);
 
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [invoicePreview, setInvoicePreview] = useState<any>(null);
+  const [invoicePreviewing, setInvoicePreviewing] = useState(false);
+  const [invoiceImporting, setInvoiceImporting] = useState(false);
+  const [invoiceResult, setInvoiceResult] = useState<ImportResult | null>(null);
+  const [invoiceDragOver, setInvoiceDragOver] = useState(false);
+  const invoiceFileInputRef = useRef<HTMLInputElement>(null);
+
   const { data: importLogs, refetch: refetchLogs } = useQuery<ImportLogEntry[]>({
     queryKey: ["/api/import/logs"],
   });
@@ -206,6 +214,83 @@ export default function ImportPage() {
     setPreview(null);
     setResult(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleInvoiceFileSelect = useCallback(async (file: File) => {
+    setInvoiceFile(file);
+    setInvoicePreview(null);
+    setInvoiceResult(null);
+    setInvoicePreviewing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/import/invoice/preview", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Preview failed");
+      }
+
+      const data = await res.json();
+      setInvoicePreview(data);
+    } catch (err: any) {
+      alert("Error previewing invoice file: " + err.message);
+      setInvoiceFile(null);
+    } finally {
+      setInvoicePreviewing(false);
+    }
+  }, []);
+
+  const handleInvoiceDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setInvoiceDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith(".mm") || file.name.endsWith(".MM") || file.name.endsWith(".txt"))) {
+      handleInvoiceFileSelect(file);
+    }
+  }, [handleInvoiceFileSelect]);
+
+  const handleInvoiceImport = async () => {
+    if (!invoiceFile) return;
+    setInvoiceImporting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", invoiceFile);
+      formData.append("username", "admin");
+
+      const res = await fetch("/api/import/invoice/execute", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Import failed");
+      }
+
+      const data = await res.json();
+      setInvoiceResult(data);
+      refetchLogs();
+    } catch (err: any) {
+      alert("Invoice import error: " + err.message);
+    } finally {
+      setInvoiceImporting(false);
+    }
+  };
+
+  const resetInvoiceForm = () => {
+    setInvoiceFile(null);
+    setInvoicePreview(null);
+    setInvoiceResult(null);
+    if (invoiceFileInputRef.current) invoiceFileInputRef.current.value = "";
   };
 
   const resetSftpForm = () => {
@@ -365,7 +450,7 @@ export default function ImportPage() {
     <Layout>
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">Data Import</h1>
-        <p className="text-muted-foreground">Upload half-hourly profile data from CSV files or download via SFTP.</p>
+        <p className="text-muted-foreground">Import invoice data and half-hourly profile data from various file formats.</p>
       </div>
 
       <Tabs defaultValue="sftp" className="w-full">
@@ -377,6 +462,10 @@ export default function ImportPage() {
           <TabsTrigger value="upload" data-testid="tab-upload">
             <Upload className="h-4 w-4 mr-2" />
             Manual Upload
+          </TabsTrigger>
+          <TabsTrigger value="invoice" data-testid="tab-invoice">
+            <FileText className="h-4 w-4 mr-2" />
+            Invoice Import
           </TabsTrigger>
           <TabsTrigger value="history" data-testid="tab-history">
             <Clock className="h-4 w-4 mr-2" />
@@ -881,6 +970,256 @@ export default function ImportPage() {
                       </div>
                       <p className="text-xs text-muted-foreground">MPRN-based gas half-hourly data</p>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="invoice" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Invoice File Upload
+                  </CardTitle>
+                  <CardDescription>Upload EDF MM (Meter Message) invoice files to import billing data.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!invoiceFile ? (
+                    <div
+                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${invoiceDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+                      onDragOver={(e) => { e.preventDefault(); setInvoiceDragOver(true); }}
+                      onDragLeave={() => setInvoiceDragOver(false)}
+                      onDrop={handleInvoiceDrop}
+                      onClick={() => invoiceFileInputRef.current?.click()}
+                      data-testid="invoice-dropzone"
+                    >
+                      <CloudUpload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                      <p className="font-medium mb-1">Drop your MM invoice file here</p>
+                      <p className="text-sm text-muted-foreground">or click to browse. Supports .mm and .txt files</p>
+                      <input
+                        ref={invoiceFileInputRef}
+                        type="file"
+                        accept=".mm,.txt,.MM"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleInvoiceFileSelect(file);
+                        }}
+                        data-testid="input-invoice-file"
+                      />
+                    </div>
+                  ) : invoicePreviewing ? (
+                    <div className="flex flex-col items-center gap-3 py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-sm text-muted-foreground">Parsing invoice file...</p>
+                    </div>
+                  ) : invoiceResult ? (
+                    <div className="space-y-4">
+                      <div className={`flex items-start gap-3 p-4 rounded-lg ${invoiceResult.errors > 0 ? "bg-yellow-50 dark:bg-yellow-900/20" : "bg-green-50 dark:bg-green-900/20"}`}>
+                        {invoiceResult.errors > 0 ? (
+                          <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                        ) : (
+                          <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                        )}
+                        <div>
+                          <p className="font-medium" data-testid="text-invoice-result">
+                            {invoiceResult.errors > 0 ? "Import completed with some issues" : "Import completed successfully"}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {invoiceResult.imported} invoice(s) imported, {invoiceResult.skipped} skipped, {invoiceResult.errors} error(s)
+                          </p>
+                          {invoiceResult.errorDetails && (
+                            <div className="mt-2 text-xs text-red-600 dark:text-red-400 space-y-1">
+                              {invoiceResult.errorDetails.map((e, i) => <p key={i}>{e}</p>)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <Button variant="outline" onClick={resetInvoiceForm} data-testid="button-invoice-reset">
+                        Upload Another File
+                      </Button>
+                    </div>
+                  ) : invoicePreview ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">{invoicePreview.filename}</span>
+                          <Badge variant="outline" className="text-xs">{invoicePreview.format}</Badge>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={resetInvoiceForm} data-testid="button-invoice-clear">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <Separator />
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Invoices Found</p>
+                          <p className="font-semibold text-lg" data-testid="text-invoice-count">{invoicePreview.invoiceCount}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Meters Matched</p>
+                          <p className="font-semibold text-lg" data-testid="text-invoice-matched">
+                            {invoicePreview.invoices.filter((inv: any) => inv.matched).length} / {invoicePreview.invoiceCount}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-left p-2 font-medium">MPAN</th>
+                              <th className="text-left p-2 font-medium">Period</th>
+                              <th className="text-right p-2 font-medium">kWh</th>
+                              <th className="text-right p-2 font-medium">Net (£)</th>
+                              <th className="text-right p-2 font-medium">VAT (£)</th>
+                              <th className="text-right p-2 font-medium">Total (£)</th>
+                              <th className="text-center p-2 font-medium">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {invoicePreview.invoices.map((inv: any, idx: number) => (
+                              <tr key={idx} className="border-t" data-testid={`row-invoice-${idx}`}>
+                                <td className="p-2">
+                                  <span className="font-mono text-xs">{inv.mpanCore || "Unknown"}</span>
+                                  {inv.meterName && <span className="block text-xs text-muted-foreground">{inv.meterName}</span>}
+                                </td>
+                                <td className="p-2 text-xs">
+                                  {inv.periodStart && inv.periodEnd
+                                    ? `${new Date(inv.periodStart).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} - ${new Date(inv.periodEnd).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`
+                                    : "Unknown"}
+                                </td>
+                                <td className="p-2 text-right">{inv.totalKwh.toFixed(1)}</td>
+                                <td className="p-2 text-right">{inv.netTotal.toFixed(2)}</td>
+                                <td className="p-2 text-right">{inv.vatAmount.toFixed(2)}</td>
+                                <td className="p-2 text-right font-medium">{inv.totalIncVat.toFixed(2)}</td>
+                                <td className="p-2 text-center">
+                                  {inv.matched ? (
+                                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Matched</Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="text-xs">No Match</Badge>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {invoicePreview.invoices.some((inv: any) => inv.matched) && (
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium">Charge Breakdown (First Invoice)</h4>
+                          {(() => {
+                            const inv = invoicePreview.invoices[0];
+                            return (
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                {inv.dayUnits > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">Day Units</p>
+                                    <p className="font-medium">{inv.dayUnits.toFixed(1)} kWh @ {inv.dayRate.toFixed(2)}p</p>
+                                  </div>
+                                )}
+                                {inv.nightUnits > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">Night Units</p>
+                                    <p className="font-medium">{inv.nightUnits.toFixed(1)} kWh @ {inv.nightRate.toFixed(2)}p</p>
+                                  </div>
+                                )}
+                                {inv.standingCharge > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">Standing Charge</p>
+                                    <p className="font-medium">£{inv.standingCharge.toFixed(2)}</p>
+                                  </div>
+                                )}
+                                {inv.availabilityCharge > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">Availability</p>
+                                    <p className="font-medium">£{inv.availabilityCharge.toFixed(2)}</p>
+                                  </div>
+                                )}
+                                {inv.cclAmount > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">CCL</p>
+                                    <p className="font-medium">£{inv.cclAmount.toFixed(2)} @ {inv.cclRate}p/kWh</p>
+                                  </div>
+                                )}
+                                {inv.reactivePowerCharge > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">Reactive Power</p>
+                                    <p className="font-medium">£{inv.reactivePowerCharge.toFixed(2)}</p>
+                                  </div>
+                                )}
+                                {inv.meteringCharge > 0 && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">Metering/DCDA</p>
+                                    <p className="font-medium">£{inv.meteringCharge.toFixed(2)}</p>
+                                  </div>
+                                )}
+                                {inv.powerFactor && (
+                                  <div className="p-2 bg-muted/50 rounded">
+                                    <p className="text-muted-foreground">Power Factor</p>
+                                    <p className="font-medium">{inv.powerFactor.toFixed(4)}</p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={handleInvoiceImport}
+                          disabled={invoiceImporting || !invoicePreview.invoices.some((inv: any) => inv.matched)}
+                          data-testid="button-invoice-import"
+                        >
+                          {invoiceImporting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Importing...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="h-4 w-4 mr-2" />
+                              Import {invoicePreview.invoices.filter((inv: any) => inv.matched).length} Invoice(s)
+                            </>
+                          )}
+                        </Button>
+                        <Button variant="outline" onClick={resetInvoiceForm} data-testid="button-invoice-cancel">Cancel</Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Supported Formats</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="p-3 border rounded-md bg-primary/5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-sm">EDF MM Invoice</p>
+                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Active</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">EDF Energy Meter Message format with charges, readings, CCL and VAT</p>
+                  </div>
+                  <div className="p-3 border rounded-md opacity-50">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-sm">Other Suppliers</p>
+                      <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Support for other supplier invoice formats</p>
                   </div>
                 </CardContent>
               </Card>

@@ -88,6 +88,16 @@ export async function parseNpowerPDF(buffer: Buffer): Promise<NpowerInvoice> {
   const accountMatch = text.match(/Account number:\s*(A\d+)/);
   const accountNumber = accountMatch ? accountMatch[1] : "";
 
+  let invoicePeriodStart: Date | null = null;
+  let invoicePeriodEnd: Date | null = null;
+  const periodMatch = text.match(/Invoice period:\s*(\d{1,2}\s+\w+\s+\d{4})\s+to\s+(\d{1,2}\s+\w+\s+\d{4})/);
+  if (periodMatch) {
+    const s = new Date(periodMatch[1]);
+    const e = new Date(periodMatch[2]);
+    if (!isNaN(s.getTime())) invoicePeriodStart = s;
+    if (!isNaN(e.getTime())) invoicePeriodEnd = e;
+  }
+
   const totalExVatMatch = text.match(/Total charges excluding VAT\s+£?([\d,]+\.\d{2})/);
   const totalExVat = totalExVatMatch ? parseMoney(totalExVatMatch[1]) : 0;
 
@@ -109,7 +119,7 @@ export async function parseNpowerPDF(buffer: Buffer): Promise<NpowerInvoice> {
 
   const mpanArray = Array.from(mpans);
   for (const mpan of mpanArray) {
-    const meter = parseMeterSection(text, mpan);
+    const meter = parseMeterSection(text, mpan, invoicePeriodStart, invoicePeriodEnd);
     meters.push(meter);
   }
 
@@ -125,7 +135,7 @@ export async function parseNpowerPDF(buffer: Buffer): Promise<NpowerInvoice> {
   };
 }
 
-function parseMeterSection(text: string, mpan: string): NpowerMeterInvoice {
+function parseMeterSection(text: string, mpan: string, invoicePeriodStart: Date | null, invoicePeriodEnd: Date | null): NpowerMeterInvoice {
   const consumptionStart = text.indexOf(`Consumption details for MPAN ${mpan}`);
   const chargesStart = text.indexOf(`Breakdown of charges for MPAN ${mpan}`);
 
@@ -145,11 +155,16 @@ function parseMeterSection(text: string, mpan: string): NpowerMeterInvoice {
 
   let periodStart: Date | null = null;
   let periodEnd: Date | null = null;
-  const dateMatches = consumptionSection.match(/(\d{2}\/\d{2}\/\d{4})/g);
-  if (dateMatches && dateMatches.length >= 2) {
-    periodStart = parseUkDate(dateMatches[0]);
-    periodEnd = parseUkDate(dateMatches[dateMatches.length - 1]);
+  const meterReadingPattern = /[A-Z]\d{2}[A-Z]\d{4,5}\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})/g;
+  let readingMatch;
+  while ((readingMatch = meterReadingPattern.exec(consumptionSection)) !== null) {
+    const startDate = parseUkDate(readingMatch[1]);
+    const endDate = parseUkDate(readingMatch[2]);
+    if (startDate && (!periodStart || startDate < periodStart)) periodStart = startDate;
+    if (endDate && (!periodEnd || endDate > periodEnd)) periodEnd = endDate;
   }
+  if (!periodStart && invoicePeriodStart) periodStart = invoicePeriodStart;
+  if (!periodEnd && invoicePeriodEnd) periodEnd = invoicePeriodEnd;
 
   let dayKwh = 0, nightKwh = 0, totalKwh = 0;
   let dayRate = 0, nightRate = 0, dayCost = 0, nightCost = 0;
@@ -403,11 +418,17 @@ export function npowerInvoiceToDataRecord(
     meter.cm + meter.nccs + meter.nrab + meter.cfd
   ) * 100) / 100;
 
+  let previousDate: Date | null = null;
+  if (meter.periodStart) {
+    previousDate = new Date(meter.periodStart);
+    previousDate.setDate(previousDate.getDate() - 1);
+  }
+
   return {
     dataSetId,
     utilityType: "electricity",
     date: meter.periodEnd,
-    previousDate: meter.periodStart,
+    previousDate,
     direct: null,
     estimate: null,
     units: meter.totalKwh,

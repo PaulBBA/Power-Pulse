@@ -986,7 +986,7 @@ export async function registerRoutes(
       const allDataSets = await db.select().from(dataSets);
       const metersPreview = invoice.meters.map((meter) => {
         const matched = allDataSets.find(
-          (ds) => ds.number === meter.mpan || ds.number2 === meter.mpan
+          (ds) => ds.mpanCoreMprn === meter.mpan || ds.mpanCoreMprn2 === meter.mpan
         );
         return {
           mpan: meter.mpan,
@@ -1059,7 +1059,7 @@ export async function registerRoutes(
 
       for (const meter of invoice.meters) {
         const matched = allDataSets.find(
-          (ds) => ds.number === meter.mpan || ds.number2 === meter.mpan
+          (ds) => ds.mpanCoreMprn === meter.mpan || ds.mpanCoreMprn2 === meter.mpan
         );
 
         if (!matched) {

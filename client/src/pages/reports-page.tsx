@@ -351,69 +351,185 @@ export default function ReportsPage() {
     XLSX.writeFile(wb, `Simple_Totals_${scopeSummary.replace(/[^a-zA-Z0-9]/g, "_") || "Report"}.xlsx`);
   }, [simpleTotalsData, reportParams, scopeSummary]);
 
-  const downloadBodExcel = useCallback(() => {
+  const downloadBodExcel = useCallback(async () => {
     if (!bodData?.meters?.length || !reportParams) return;
+    const ExcelJS = (await import("exceljs")).default;
     const months = bodData.months;
     const fromDate = new Date(reportParams.dateFrom);
     const toDate = new Date(reportParams.dateTo);
     const fromStr = `${String(fromDate.getDate()).padStart(2, "0")}/${String(fromDate.getMonth() + 1).padStart(2, "0")}/${fromDate.getFullYear()}`;
     const toStr = `${String(toDate.getDate()).padStart(2, "0")}/${String(toDate.getMonth() + 1).padStart(2, "0")}/${toDate.getFullYear()}`;
-
-    const headers = [
-      "Site Name", "Code", "Reference Number", "Supplier", "MPAN (Core) 1", "MPAN (profile) 1",
-      "Total kWh", "Profile %", "Invoice %", "Direct %", "No Data %", "Row Showing",
-      ...months.map(m => {
-        const [y, mo] = m.split("-");
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        return `${monthNames[parseInt(mo) - 1]} ${y.slice(2)}`;
-      }),
-    ];
-
     const utilLabel = reportParams.utilityFilter && reportParams.utilityFilter !== "all"
       ? `${reportParams.utilityFilter.charAt(0).toUpperCase() + reportParams.utilityFilter.slice(1)} `
       : "";
-    const wsData: any[][] = [
-      [`${utilLabel}Best of Data by Month with Breakdown for ${fromStr} to ${toStr}`],
-      [],
-      headers,
+    const totalCols = 12 + months.length;
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Sheet");
+
+    const titleRow = ws.addRow([`${utilLabel}Best of Data by Month with Breakdown for ${fromStr} to ${toStr}`]);
+    ws.mergeCells(1, 1, 1, totalCols);
+    titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+    titleRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2B579A" } };
+    titleRow.getCell(1).alignment = { horizontal: "center" };
+    titleRow.height = 28;
+
+    ws.addRow([]);
+
+    const monthHeaders = months.map(m => {
+      const [y, mo] = m.split("-");
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${monthNames[parseInt(mo) - 1]} ${y.slice(2)}`;
+    });
+    const headerValues = [
+      "Site Name", "Code", "Reference Number", "Supplier", "MPAN (Core) 1", "MPAN (profile) 1",
+      "Total kWh", "Profile %", "Invoice %", "Direct %", "No Data %", "Row Showing",
+      ...monthHeaders,
     ];
+    const headerRow = ws.addRow(headerValues);
+    const headerFill = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FF4472C4" } };
+    const headerFont = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+    const headerBorder = {
+      bottom: { style: "medium" as const, color: { argb: "FF2B579A" } },
+    };
+    headerRow.eachCell((cell) => {
+      cell.font = headerFont;
+      cell.fill = headerFill;
+      cell.border = headerBorder;
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    });
+    headerRow.height = 24;
+
+    const thinBorder = {
+      left: { style: "thin" as const, color: { argb: "FFD0D0D0" } },
+      right: { style: "thin" as const, color: { argb: "FFD0D0D0" } },
+      bottom: { style: "thin" as const, color: { argb: "FFD0D0D0" } },
+    };
+
+    const rowStyles: Record<string, { fill: any; font: any }> = {
+      "Profile": {
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE6F1" } },
+        font: { size: 9, color: { argb: "FF1F4E79" } },
+      },
+      "Invoice": {
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } },
+        font: { size: 9, color: { argb: "FF7F6000" } },
+      },
+      "Direct": {
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } },
+        font: { size: 9, color: { argb: "FF375623" } },
+      },
+      "Total": {
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E2F3" } },
+        font: { bold: true, size: 10, color: { argb: "FF1F3864" } },
+      },
+      "No Data (%)": {
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCE4EC" } },
+        font: { size: 9, color: { argb: "FFC00000" } },
+      },
+    };
+
+    const numFmt = "#,##0.00";
+    const pctFmt = "0.00";
 
     for (const meter of bodData.meters) {
-      wsData.push([
-        meter.siteName, meter.code, meter.referenceNumber, meter.supplier,
-        meter.mpanCore, meter.mpanProfile, meter.totalKwh,
-        meter.profilePct, meter.invoicePct, meter.directPct, meter.noDataPct,
-        "Profile", ...meter.monthly.map(mm => mm.profile),
-      ]);
-      wsData.push([null, null, null, null, null, null, null, null, null, null, null,
-        "Invoice", ...meter.monthly.map(mm => mm.invoice),
-      ]);
-      wsData.push([null, null, null, null, null, null, null, null, null, null, null,
-        "Direct", ...meter.monthly.map(mm => mm.direct),
-      ]);
-      wsData.push([null, null, null, null, null, null, null, null, null, null, null,
-        "Total", ...meter.monthly.map(mm => mm.total),
-      ]);
-      wsData.push([null, null, null, null, null, null, null, null, null, null, null,
-        "No Data (%)", ...meter.monthly.map(mm => mm.noDataPct),
-      ]);
+      const sourceRows = [
+        { label: "Profile", vals: meter.monthly.map(mm => mm.profile) },
+        { label: "Invoice", vals: meter.monthly.map(mm => mm.invoice) },
+        { label: "Direct", vals: meter.monthly.map(mm => mm.direct) },
+        { label: "Total", vals: meter.monthly.map(mm => mm.total) },
+        { label: "No Data (%)", vals: meter.monthly.map(mm => mm.noDataPct) },
+      ];
+
+      sourceRows.forEach((sr, rIdx) => {
+        const isFirst = rIdx === 0;
+        const rowData = isFirst
+          ? [
+              meter.siteName, meter.code, meter.referenceNumber, meter.supplier,
+              meter.mpanCore, meter.mpanProfile, meter.totalKwh,
+              meter.profilePct, meter.invoicePct, meter.directPct, meter.noDataPct,
+              sr.label, ...sr.vals,
+            ]
+          : [
+              null, null, null, null, null, null, null, null, null, null, null,
+              sr.label, ...sr.vals,
+            ];
+
+        const row = ws.addRow(rowData);
+        const style = rowStyles[sr.label];
+
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          cell.fill = style.fill;
+          cell.font = style.font;
+          cell.border = thinBorder;
+          if (colNumber >= 7 && colNumber <= 11) {
+            cell.numFmt = colNumber === 7 ? numFmt : pctFmt;
+            cell.alignment = { horizontal: "right" };
+          }
+          if (colNumber === 12) {
+            cell.font = { ...style.font, bold: true };
+            cell.alignment = { horizontal: "left" };
+          }
+          if (colNumber >= 13) {
+            cell.numFmt = sr.label === "No Data (%)" ? "0" : numFmt;
+            cell.alignment = { horizontal: "right" };
+          }
+        });
+
+        if (isFirst) {
+          row.getCell(1).font = { ...style.font, bold: true };
+          row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            if (colNumber <= 6) {
+              cell.border = {
+                ...thinBorder,
+                top: { style: "medium", color: { argb: "FF4472C4" } },
+              };
+            }
+          });
+        }
+      });
     }
 
-    wsData.push([bodData.meters.length]);
-    const grandTotal = bodData.grandTotals.reduce((s, gt) => s + gt.total, 0);
-    wsData.push([null, null, null, null, null, null, null, null, null, null, null, null,
-      ...bodData.grandTotals.map(gt => gt.total), grandTotal,
-    ]);
+    ws.addRow([]);
 
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws["!cols"] = [
-      { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 14 },
-      { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
-      ...months.map(() => ({ wch: 14 })),
+    const grandTotal = bodData.grandTotals.reduce((s, gt) => s + gt.total, 0);
+    const gtValues: (string | number | null)[] = Array(12).fill(null);
+    gtValues[0] = "Grand Total";
+    const gtRow = ws.addRow([...gtValues, ...bodData.grandTotals.map(gt => gt.total), grandTotal]);
+    const gtFill = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FF2B579A" } };
+    const gtFont = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
+    ws.mergeCells(gtRow.number, 1, gtRow.number, 12);
+    gtRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      cell.fill = gtFill;
+      cell.font = gtFont;
+      cell.border = { top: { style: "medium", color: { argb: "FF1F3864" } } };
+      if (colNumber >= 13) {
+        cell.numFmt = numFmt;
+        cell.alignment = { horizontal: "right" };
+      }
+      if (colNumber === 1) {
+        cell.alignment = { horizontal: "right" };
+      }
+    });
+    gtRow.height = 22;
+
+    ws.columns = [
+      { width: 32 }, { width: 16 }, { width: 16 }, { width: 14 }, { width: 18 }, { width: 16 },
+      { width: 14 }, { width: 11 }, { width: 11 }, { width: 11 }, { width: 11 }, { width: 14 },
+      ...months.map(() => ({ width: 14 })),
+      ...(months.length > 0 ? [{ width: 16 }] : []),
     ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet");
-    XLSX.writeFile(wb, `Best_of_Data_${scopeSummary.replace(/[^a-zA-Z0-9]/g, "_") || "Report"}.xlsx`);
+
+    ws.views = [{ state: "frozen", xSplit: 0, ySplit: 3 }];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Best_of_Data_${scopeSummary.replace(/[^a-zA-Z0-9]/g, "_") || "Report"}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   }, [bodData, reportParams, scopeSummary]);
 
   return (

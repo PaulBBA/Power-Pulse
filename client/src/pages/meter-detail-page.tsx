@@ -525,15 +525,15 @@ function ReadingsTab({ meterId }: { meterId: number }) {
     queryKey: [`/api/data-sets/${meterId}/records`],
   });
 
-  if (isLoading) return <LoadingState />;
-  if (!records || records.length === 0) return <EmptyState message="No direct reading data found for this meter." />;
-
   // Map the legacy/import columns to displayable readings
-  const withReadings = records.filter((r: any) => 
-    (r.m1Present != null && r.m1Present !== 0) || 
-    (r.m1Previous != null && r.m1Previous !== 0) ||
-    (r.m1Units != null && r.m1Units !== 0)
-  );
+  const withReadings = useMemo(() => {
+    if (!records) return [];
+    return records.filter((r: any) => 
+      (r.m1Present != null && r.m1Present !== 0) || 
+      (r.m1Previous != null && r.m1Previous !== 0) ||
+      (r.m1Units != null && r.m1Units !== 0)
+    );
+  }, [records]);
 
   // Sort by date, newest to oldest
   const sortedReadings = useMemo(() => {
@@ -543,6 +543,10 @@ function ReadingsTab({ meterId }: { meterId: number }) {
       return dateB - dateA;
     });
   }, [withReadings]);
+
+  if (isLoading) return <LoadingState />;
+  if (!records || records.length === 0) return <EmptyState message="No direct reading data found for this meter." />;
+  if (withReadings.length === 0) return <EmptyState message="No meter readings recorded. Only invoice data available." />;
 
   return (
     <div className="border rounded-md overflow-x-auto">

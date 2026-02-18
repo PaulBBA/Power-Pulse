@@ -535,12 +535,19 @@ function ReadingsTab({ meterId }: { meterId: number }) {
     );
   }, [records]);
 
-  // Sort by date, newest to oldest
+  // Sort by date (newest first), then by direct/estimate (Direct first), then by id (newest first)
   const sortedReadings = useMemo(() => {
     return [...withReadings].sort((a, b) => {
       const dateA = a.date ? new Date(a.date).getTime() : 0;
       const dateB = b.date ? new Date(b.date).getTime() : 0;
-      return dateB - dateA;
+      if (dateB !== dateA) return dateB - dateA;
+      
+      // If dates are same, prefer Direct over Estimate
+      const typeA = a.direct === "D" ? 0 : (a.estimate === "A" ? 1 : 2);
+      const typeB = b.direct === "D" ? 0 : (b.estimate === "A" ? 1 : 2);
+      if (typeA !== typeB) return typeA - typeB;
+
+      return b.id - a.id;
     });
   }, [withReadings]);
 
@@ -554,6 +561,7 @@ function ReadingsTab({ meterId }: { meterId: number }) {
         <thead className="bg-muted/50">
           <tr>
             <th className="text-left p-2 font-medium">Date</th>
+            <th className="text-left p-2 font-medium">Type</th>
             <th className="text-right p-2 font-medium">Previous Reading</th>
             <th className="text-right p-2 font-medium">Present Reading</th>
             <th className="text-right p-2 font-medium">Units Used</th>
@@ -561,15 +569,19 @@ function ReadingsTab({ meterId }: { meterId: number }) {
           </tr>
         </thead>
         <tbody>
-          {sortedReadings.map((r: any) => (
-            <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-reading-${r.id}`}>
-              <td className="p-2">{formatDate(r.date)}</td>
-              <td className="p-2 text-right">{r.m1Previous != null ? Number(r.m1Previous).toLocaleString() : "-"}</td>
-              <td className="p-2 text-right">{r.m1Present != null ? Number(r.m1Present).toLocaleString() : "-"}</td>
-              <td className="p-2 text-right">{r.m1Units != null ? Number(r.m1Units).toLocaleString() : "-"}</td>
-              <td className="p-2 text-right">{r.m1CostRate != null ? Number(r.m1CostRate).toFixed(4) : "-"}</td>
-            </tr>
-          ))}
+          {sortedReadings.map((r: any) => {
+            const type = r.direct === "D" ? "Direct" : (r.estimate === "A" ? "Actual" : (r.estimate === "E" ? "Estimate" : "Other"));
+            return (
+              <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-reading-${r.id}`}>
+                <td className="p-2">{formatDate(r.date)}</td>
+                <td className="p-2 text-xs font-medium">{type}</td>
+                <td className="p-2 text-right">{r.m1Previous != null ? Number(r.m1Previous).toLocaleString() : "-"}</td>
+                <td className="p-2 text-right">{r.m1Present != null ? Number(r.m1Present).toLocaleString() : "-"}</td>
+                <td className="p-2 text-right">{r.m1Units != null ? Number(r.m1Units).toLocaleString() : "-"}</td>
+                <td className="p-2 text-right">{r.m1CostRate != null ? Number(r.m1CostRate).toFixed(4) : "-"}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

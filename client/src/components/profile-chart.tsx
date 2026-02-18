@@ -14,7 +14,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 
-type ViewMode = "day" | "week" | "month" | "year";
+type ViewMode = "day" | "week" | "month" | "year" | "footprint";
 
 const INTERVALS = [
   "i0030","i0100","i0130","i0200","i0230","i0300","i0330","i0400",
@@ -41,6 +41,7 @@ function getDateRange(anchor: Date, mode: ViewMode): { start: Date; end: Date } 
     case "week":
       return { start: startOfWeek(anchor, { weekStartsOn: 1 }), end: endOfWeek(anchor, { weekStartsOn: 1 }) };
     case "month":
+    case "footprint":
       return { start: startOfMonth(anchor), end: endOfMonth(anchor) };
     case "year":
       return { start: startOfYear(anchor), end: endOfYear(anchor) };
@@ -51,7 +52,9 @@ function navigate(anchor: Date, mode: ViewMode, direction: number): Date {
   switch (mode) {
     case "day": return direction > 0 ? addDays(anchor, 1) : subDays(anchor, 1);
     case "week": return direction > 0 ? addWeeks(anchor, 1) : subWeeks(anchor, 1);
-    case "month": return direction > 0 ? addMonths(anchor, 1) : subMonths(anchor, 1);
+    case "month":
+    case "footprint":
+      return direction > 0 ? addMonths(anchor, 1) : subMonths(anchor, 1);
     case "year": return direction > 0 ? addYears(anchor, 1) : subYears(anchor, 1);
   }
 }
@@ -62,6 +65,7 @@ function getAverageRange(start: Date, mode: ViewMode): { start: Date; end: Date 
     case "week":
       return { start: subWeeks(start, 4), end: subDays(start, 1) };
     case "month":
+    case "footprint":
       return { start: subMonths(start, 4), end: subDays(start, 1) };
     case "year":
       return { start: subYears(start, 3), end: subDays(start, 1) };
@@ -75,9 +79,157 @@ function formatTitle(anchor: Date, mode: ViewMode): string {
       const { end } = getDateRange(anchor, "week");
       return `Week Ending ${format(end, "d MMMM yyyy")}`;
     }
-    case "month": return format(anchor, "MMMM yyyy");
+    case "month":
+    case "footprint":
+      return format(anchor, "MMMM yyyy");
     case "year": return format(anchor, "yyyy");
   }
+}
+
+const HOUR_LABELS = [
+  "1","2","3","4","5","6","7","8","9","10","11","12",
+  "13","14","15","16","17","18","19","20","21","22","23","24",
+];
+
+function getHeatmapColor(value: number, min: number, max: number): string {
+  if (value === 0 || max === min) return "#f0f9ff";
+  const ratio = Math.min(1, Math.max(0, (value - min) / (max - min)));
+  if (ratio <= 0.15) return "#e0f2fe";
+  if (ratio <= 0.25) return "#dcfce7";
+  if (ratio <= 0.35) return "#bbf7d0";
+  if (ratio <= 0.45) return "#86efac";
+  if (ratio <= 0.55) return "#fef08a";
+  if (ratio <= 0.65) return "#fde047";
+  if (ratio <= 0.75) return "#fdba74";
+  if (ratio <= 0.85) return "#fb923c";
+  if (ratio <= 0.95) return "#f87171";
+  return "#ef4444";
+}
+
+function FootprintHeatmap({ profiles }: { profiles: any[] }) {
+  const { allValues, min, max, blockSize } = useMemo(() => {
+    const vals: number[] = [];
+    for (const p of profiles) {
+      for (const key of INTERVALS) {
+        const v = p[key];
+        if (v != null && Number(v) > 0) vals.push(Number(v));
+      }
+    }
+    if (vals.length === 0) return { allValues: vals, min: 0, max: 0, blockSize: 0 };
+    const minVal = Math.min(...vals);
+    const maxVal = Math.max(...vals);
+    const block = Math.round((maxVal - minVal) / 10);
+    return { allValues: vals, min: minVal, max: maxVal, blockSize: block || 1 };
+  }, [profiles]);
+
+  const legendSteps = useMemo(() => {
+    if (max === 0) return [];
+    const steps: { color: string; label: string }[] = [];
+    const stepCount = 10;
+    for (let i = 0; i <= stepCount; i++) {
+      const val = min + (max - min) * (i / stepCount);
+      steps.push({
+        color: getHeatmapColor(val, min, max),
+        label: `${Math.round(val)} kWh`,
+      });
+    }
+    return steps;
+  }, [min, max]);
+
+  if (profiles.length === 0) {
+    return (
+      <div className="text-center py-16 text-muted-foreground text-sm">
+        No data available for this period.
+      </div>
+    );
+  }
+
+  return (
+    <div data-testid="footprint-heatmap">
+      <div className="flex gap-6">
+        <div className="flex-1 overflow-x-auto relative">
+          <table className="border-collapse text-[10px]" style={{ minWidth: "100%" }}>
+            <thead>
+              <tr>
+                <th className="sticky left-0 bg-background z-10 text-left px-1 py-0.5 font-medium text-muted-foreground whitespace-nowrap" style={{ minWidth: 110 }}></th>
+                {HOUR_LABELS.map((h, i) => (
+                  <th key={h} colSpan={2} className="text-center px-0 py-0.5 font-normal text-muted-foreground border-l border-border/30">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {profiles.map((p: any) => {
+                const d = new Date(p.date);
+                const dateLabel = format(d, "dd/MM/yyyy EEE");
+                return (
+                  <tr key={p.id}>
+                    <td className="sticky left-0 bg-background z-10 px-1 py-0 font-medium text-muted-foreground whitespace-nowrap border-r border-border/50" style={{ minWidth: 110 }}>
+                      {dateLabel}
+                    </td>
+                    {INTERVALS.map((key, i) => {
+                      const val = p[key] != null ? Number(p[key]) : 0;
+                      const color = val > 0 ? getHeatmapColor(val, min, max) : "#f8fafc";
+                      return (
+                        <td
+                          key={key}
+                          className="p-0 cursor-crosshair"
+                          style={{
+                            backgroundColor: color,
+                            width: 14,
+                            minWidth: 14,
+                            height: 18,
+                            borderLeft: i % 2 === 0 ? "1px solid rgba(0,0,0,0.05)" : "none",
+                          }}
+                          title={`${dateLabel} ${INTERVAL_LABELS[i]}: ${val.toFixed(1)} kWh`}
+                          data-testid={`cell-heatmap-${p.id}-${i}`}
+                        />
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td className="sticky left-0 bg-background z-10"></td>
+                {HOUR_LABELS.map((h) => (
+                  <td key={`f-${h}`} colSpan={2} className="text-center text-[9px] text-muted-foreground border-t border-border/30 pt-0.5">
+                    {h}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td className="sticky left-0 bg-background z-10"></td>
+                <td colSpan={12} className="text-center text-[10px] text-muted-foreground pt-1 font-medium">Night</td>
+                <td colSpan={8} className="text-center text-[10px] text-muted-foreground pt-1 font-medium">Morning</td>
+                <td colSpan={10} className="text-center text-[10px] text-muted-foreground pt-1 font-medium">Afternoon</td>
+                <td colSpan={8} className="text-center text-[10px] text-muted-foreground pt-1 font-medium">Peak</td>
+                <td colSpan={10} className="text-center text-[10px] text-muted-foreground pt-1 font-medium">Evening</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div className="flex-shrink-0 text-[11px]" style={{ minWidth: 130 }}>
+          <div className="mb-2 space-y-0.5">
+            <div className="flex justify-between"><span className="text-muted-foreground">Maximum</span><strong>{Math.round(max)} kWh</strong></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Minimum</span><strong>{Math.round(min)} kWh</strong></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Block Size</span><strong>{blockSize} kWh</strong></div>
+          </div>
+          <div className="space-y-0.5 mt-3">
+            {legendSteps.map((s, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <div className="w-4 h-3 border border-border/30 rounded-sm flex-shrink-0" style={{ backgroundColor: s.color }} />
+                <span className="text-muted-foreground">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface ProfileChartProps {
@@ -118,7 +270,7 @@ export function ProfileChart({ meterId, meterIds }: ProfileChartProps) {
   const { data: avgData } = useQuery<{ profiles: any[] }>({
     queryKey: [`/api/data-sets/${meterId}/profiles/chart`, avgStartStr, avgEndStr],
     queryFn: () => fetch(`/api/data-sets/${meterId}/profiles/chart?start=${avgStartStr}&end=${avgEndStr}`).then(r => r.json()),
-    enabled: viewMode !== "year",
+    enabled: viewMode !== "year" && viewMode !== "footprint",
   });
 
   const processedData = useMemo(() => {
@@ -330,6 +482,14 @@ export function ProfileChart({ meterId, meterIds }: ProfileChartProps) {
           >
             Day
           </Button>
+          <Button
+            variant={viewMode === "footprint" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleModeChange("footprint")}
+            data-testid="btn-view-footprint"
+          >
+            Footprint
+          </Button>
         </div>
         <Button variant="outline" size="sm" onClick={handleToday} data-testid="btn-view-latest">
           <Calendar className="h-4 w-4 mr-1" />
@@ -360,6 +520,8 @@ export function ProfileChart({ meterId, meterIds }: ProfileChartProps) {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
+      ) : viewMode === "footprint" ? (
+        <FootprintHeatmap profiles={chartData?.profiles || []} />
       ) : processedData.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">
           No data available for this period.

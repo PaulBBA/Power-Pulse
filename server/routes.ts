@@ -370,6 +370,8 @@ export async function registerRoutes(
 
       const invoiceDailyByMeter = new Map<number, Map<string, number>>();
       const directDailyByMeter = new Map<number, Map<string, number>>();
+      const invoiceCoverageByMeter = new Map<number, Set<string>>();
+      const directCoverageByMeter = new Map<number, Set<string>>();
 
       for (const rec of records) {
         if (!rec.date || rec.units == null) continue;
@@ -378,6 +380,9 @@ export async function registerRoutes(
 
         if (!targetMap.has(rec.dataSetId)) targetMap.set(rec.dataSetId, new Map());
         const dailyMap = targetMap.get(rec.dataSetId)!;
+        const coverageMap = isDirect ? directCoverageByMeter : invoiceCoverageByMeter;
+        if (!coverageMap.has(rec.dataSetId)) coverageMap.set(rec.dataSetId, new Set());
+        const coverageSet = coverageMap.get(rec.dataSetId)!;
 
         const endDate = new Date(rec.date);
         let startDate: Date;
@@ -398,6 +403,7 @@ export async function registerRoutes(
         while (iterDate <= clampedEnd) {
           const dayStr = iterDate.toISOString().slice(0, 10);
           dailyMap.set(dayStr, (dailyMap.get(dayStr) || 0) + dailyRate);
+          coverageSet.add(dayStr);
           iterDate.setDate(iterDate.getDate() + 1);
         }
       }
@@ -429,7 +435,16 @@ export async function registerRoutes(
           const invoiceVal = invoiceDailyByMeter.get(meterId)?.get(dayStr) || 0;
           const directVal = directDailyByMeter.get(meterId)?.get(dayStr) || 0;
 
-          const sources: Record<string, number> = {
+          const hasProfile = profileByMeterDay.has(`${meterId}_${dayStr}`);
+          const hasInvoice = invoiceCoverageByMeter.get(meterId)?.has(dayStr) || false;
+          const hasDirect = directCoverageByMeter.get(meterId)?.has(dayStr) || false;
+
+          const hasCoverage: Record<string, boolean> = {
+            "Profile": hasProfile,
+            "Invoice": hasInvoice,
+            "Direct": hasDirect,
+          };
+          const values: Record<string, number> = {
             "Profile": profileVal,
             "Invoice": invoiceVal,
             "Direct": directVal,
@@ -437,7 +452,7 @@ export async function registerRoutes(
 
           let chosen: string | null = null;
           for (const src of priorityOrder) {
-            if (sources[src] && sources[src] !== 0) {
+            if (hasCoverage[src]) {
               chosen = src;
               break;
             }
@@ -449,16 +464,16 @@ export async function registerRoutes(
           if (!monthlyTotal[monthKey]) monthlyTotal[monthKey] = 0;
 
           if (chosen === "Profile") {
-            monthlyProfile[monthKey] += profileVal;
-            monthlyTotal[monthKey] += profileVal;
+            monthlyProfile[monthKey] += values["Profile"];
+            monthlyTotal[monthKey] += values["Profile"];
             profileDays++;
           } else if (chosen === "Invoice") {
-            monthlyInvoice[monthKey] += invoiceVal;
-            monthlyTotal[monthKey] += invoiceVal;
+            monthlyInvoice[monthKey] += values["Invoice"];
+            monthlyTotal[monthKey] += values["Invoice"];
             invoiceDays++;
           } else if (chosen === "Direct") {
-            monthlyDirect[monthKey] += directVal;
-            monthlyTotal[monthKey] += directVal;
+            monthlyDirect[monthKey] += values["Direct"];
+            monthlyTotal[monthKey] += values["Direct"];
             directDays++;
           } else {
             noDataDays++;
@@ -486,10 +501,10 @@ export async function registerRoutes(
               const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
               if (mk !== m) return false;
               const ds = d.toISOString().slice(0, 10);
-              const pv = profileByMeterDay.get(`${meterId}_${ds}`) || 0;
-              const iv = invoiceDailyByMeter.get(meterId)?.get(ds) || 0;
-              const dv = directDailyByMeter.get(meterId)?.get(ds) || 0;
-              return !pv && !iv && !dv;
+              const hasP = profileByMeterDay.has(`${meterId}_${ds}`);
+              const hasI = invoiceCoverageByMeter.get(meterId)?.has(ds) || false;
+              const hasD = directCoverageByMeter.get(meterId)?.has(ds) || false;
+              return !hasP && !hasI && !hasD;
             }).length;
             return daysInMonth > 0 ? Math.round((monthNoData / daysInMonth) * 100) : 0;
           })(),

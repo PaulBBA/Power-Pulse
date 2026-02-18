@@ -15,6 +15,7 @@ import SitesPage from "@/pages/sites-page";
 import GroupsPage from "@/pages/groups-page";
 import ContractsPage from "@/pages/contracts-page";
 import MeterDetailPage from "@/pages/meter-detail-page";
+import ReportsPage from "@/pages/reports-page";
 
 function Router() {
   return (
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/meters/:id" component={MeterDetailPage} />
       <Route path="/meters" component={MetersPage} />
       <Route path="/contracts" component={ContractsPage} />
+      <Route path="/reports" component={ReportsPage} />
       <Route path="/import" component={ImportPage} />
       <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />

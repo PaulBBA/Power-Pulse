@@ -1037,10 +1037,11 @@ export async function registerRoutes(
         vatAmount: invoice.vatAmount,
         invoiceTotal: invoice.invoiceTotal,
         meters: metersPreview,
+        warnings: invoice.warnings || [],
       });
     } catch (error: any) {
       console.error("npower PDF preview error:", error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ message: error.message });
     }
   });
 

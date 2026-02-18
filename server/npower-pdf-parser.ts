@@ -48,6 +48,7 @@ export interface NpowerInvoice {
   vatAmount: number;
   invoiceTotal: number;
   meters: NpowerMeterInvoice[];
+  warnings: string[];
 }
 
 function parseUkDate(s: string): Date | null {
@@ -70,19 +71,42 @@ function parseNumber(s: string): number {
 }
 
 export async function parseNpowerPDF(buffer: Buffer): Promise<NpowerInvoice> {
-  const parser = new PDFParse({ data: new Uint8Array(buffer) });
-  const textResult = await parser.getText();
-  const text = textResult.text;
-  await parser.destroy();
+  let text: string;
+  try {
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const textResult = await parser.getText();
+    text = textResult.text;
+    await parser.destroy();
+  } catch (err: any) {
+    throw new Error(`Failed to read PDF file. The file may be corrupted or not a valid PDF. (${err.message})`);
+  }
+
+  if (!text || text.trim().length < 100) {
+    throw new Error("Could not extract text from this PDF. It may be a scanned image rather than a readable PDF document.");
+  }
+
+  if (!text.includes("npower") && !text.includes("Npower") && !text.includes("NPOWER")) {
+    throw new Error("This does not appear to be an npower invoice. The PDF does not contain expected npower branding.");
+  }
+
+  if (!text.includes("electricity") && !text.includes("Electricity")) {
+    throw new Error("This does not appear to be an electricity invoice. Only npower electricity invoices are supported.");
+  }
 
   const invoiceNumMatch = text.match(/Invoice number:\s*(IN\d+)/);
   const invoiceNumber = invoiceNumMatch ? invoiceNumMatch[1] : "";
+  if (!invoiceNumber) {
+    throw new Error("Could not find an invoice number (expected format: INxxxxxxxx). The PDF format may have changed.");
+  }
 
   const invoiceDateMatch = text.match(/Invoice date:\s*(\d{1,2}\s+\w+\s+\d{4})/);
   let invoiceDate: Date | null = null;
   if (invoiceDateMatch) {
     const d = new Date(invoiceDateMatch[1]);
     if (!isNaN(d.getTime())) invoiceDate = d;
+  }
+  if (!invoiceDate) {
+    throw new Error(`Could not parse invoice date from the PDF. Expected format like "5 Feb 2026".`);
   }
 
   const accountMatch = text.match(/Account number:\s*(A\d+)/);
@@ -97,9 +121,15 @@ export async function parseNpowerPDF(buffer: Buffer): Promise<NpowerInvoice> {
     if (!isNaN(s.getTime())) invoicePeriodStart = s;
     if (!isNaN(e.getTime())) invoicePeriodEnd = e;
   }
+  if (!invoicePeriodEnd) {
+    throw new Error("Could not find the invoice period. Expected format like 'Invoice period: 1 Jan 2026 to 31 Jan 2026'.");
+  }
 
   const totalExVatMatch = text.match(/Total charges excluding VAT\s+£?([\d,]+\.\d{2})/);
   const totalExVat = totalExVatMatch ? parseMoney(totalExVatMatch[1]) : 0;
+  if (totalExVat === 0) {
+    throw new Error("Could not find 'Total charges excluding VAT' in the invoice. The PDF format may have changed.");
+  }
 
   const vatMatch = text.match(/Standard VAT\s+([\d.]+)%\s+£?([\d,]+\.\d{2})\s+£?([\d,]+\.\d{2})/);
   const vatRate = vatMatch ? parseFloat(vatMatch[1]) : 20;
@@ -115,11 +145,25 @@ export async function parseNpowerPDF(buffer: Buffer): Promise<NpowerInvoice> {
     mpans.add(match[1]);
   }
 
+  if (mpans.size === 0) {
+    throw new Error("No MPANs (13-digit meter references) found in this invoice. Expected sections like 'Consumption details for MPAN 1234567890123'. The PDF format may have changed.");
+  }
+
   const meters: NpowerMeterInvoice[] = [];
+  const warnings: string[] = [];
 
   const mpanArray = Array.from(mpans);
   for (const mpan of mpanArray) {
     const meter = parseMeterSection(text, mpan, invoicePeriodStart, invoicePeriodEnd);
+    if (!meter.periodEnd) {
+      warnings.push(`MPAN ${mpan}: Could not determine billing period dates`);
+    }
+    if (meter.totalKwh === 0 && meter.dayKwh === 0 && meter.nightKwh === 0) {
+      warnings.push(`MPAN ${mpan}: No consumption (kWh) values found`);
+    }
+    if (meter.totalExVat === 0) {
+      warnings.push(`MPAN ${mpan}: Could not find total charges for this meter`);
+    }
     meters.push(meter);
   }
 
@@ -132,6 +176,7 @@ export async function parseNpowerPDF(buffer: Buffer): Promise<NpowerInvoice> {
     vatAmount,
     invoiceTotal,
     meters,
+    warnings,
   };
 }
 

@@ -145,6 +145,7 @@ export default function ImportPage() {
   const [npowerPreviewing, setNpowerPreviewing] = useState(false);
   const [npowerImporting, setNpowerImporting] = useState(false);
   const [npowerResult, setNpowerResult] = useState<any>(null);
+  const [npowerError, setNpowerError] = useState<string | null>(null);
   const [npowerDragOver, setNpowerDragOver] = useState(false);
   const npowerFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -390,6 +391,7 @@ export default function ImportPage() {
     setNpowerFile(file);
     setNpowerPreview(null);
     setNpowerResult(null);
+    setNpowerError(null);
     setNpowerPreviewing(true);
     try {
       const formData = new FormData();
@@ -402,7 +404,7 @@ export default function ImportPage() {
       const data = await res.json();
       setNpowerPreview(data);
     } catch (err: any) {
-      alert("Error previewing npower PDF: " + err.message);
+      setNpowerError(err.message || "Failed to parse PDF file");
       setNpowerFile(null);
     } finally {
       setNpowerPreviewing(false);
@@ -432,7 +434,7 @@ export default function ImportPage() {
       setNpowerResult(data);
       refetchLogs();
     } catch (err: any) {
-      alert("npower PDF import error: " + err.message);
+      setNpowerError(err.message || "Failed to import PDF data");
     } finally {
       setNpowerImporting(false);
     }
@@ -442,6 +444,7 @@ export default function ImportPage() {
     setNpowerFile(null);
     setNpowerPreview(null);
     setNpowerResult(null);
+    setNpowerError(null);
     if (npowerFileInputRef.current) npowerFileInputRef.current.value = "";
   };
 
@@ -1673,6 +1676,20 @@ export default function ImportPage() {
                         <p className="text-sm text-muted-foreground">Parsing npower PDF...</p>
                       </div>
                     )}
+                    {npowerError && (
+                      <div className="border border-red-200 bg-red-50 rounded-lg p-4" data-testid="npower-error">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-medium text-red-800 mb-1">Could not process this PDF</p>
+                            <p className="text-sm text-red-700">{npowerError}</p>
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={resetNpowerForm} className="text-red-600 hover:text-red-800 hover:bg-red-100">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     {npowerPreview && !npowerResult && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -1702,6 +1719,19 @@ export default function ImportPage() {
                             <p className="font-medium">£{(npowerPreview.totalExVat + npowerPreview.vatAmount).toFixed(2)}</p>
                           </div>
                         </div>
+                        {npowerPreview.warnings?.length > 0 && (
+                          <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-3">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="text-sm font-medium text-yellow-800 mb-1">Warnings</p>
+                                {npowerPreview.warnings.map((w: string, i: number) => (
+                                  <p key={i} className="text-xs text-yellow-700">{w}</p>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         <Separator />
                         <div>
                           <h4 className="font-medium mb-2">Meters Found ({npowerPreview.meters.length})</h4>

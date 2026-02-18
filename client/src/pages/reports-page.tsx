@@ -170,7 +170,7 @@ export default function ReportsPage() {
                       <SelectTrigger data-testid="select-group">
                         <SelectValue placeholder="Select a group..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-60 overflow-y-auto">
                         {groups.map((g: any) => (
                           <SelectItem key={g.id} value={g.id.toString()}>
                             {g.name}
@@ -191,7 +191,7 @@ export default function ReportsPage() {
                         <SelectTrigger data-testid="select-site">
                           <SelectValue placeholder={scope.groupId ? "Select a site..." : "Select a group first"} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-60 overflow-y-auto">
                           {sitesForGroup.map((s: any) => (
                             <SelectItem key={s.id} value={s.id.toString()}>
                               {s.name}
@@ -213,7 +213,7 @@ export default function ReportsPage() {
                         <SelectTrigger data-testid="select-meter">
                           <SelectValue placeholder={scope.siteId ? "Select a meter..." : "Select a site first"} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-60 overflow-y-auto">
                           {metersForSite.map((m: any) => (
                             <SelectItem key={m.id} value={m.id.toString()}>
                               {m.mpanCoreMprn || m.meterSerial1 || `Meter ${m.id}`}

@@ -244,6 +244,46 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/data-sets/:id/profiles/chart", async (req, res) => {
+    try {
+      const dataSetId = parseInt(req.params.id);
+      const startDate = req.query.start as string;
+      const endDate = req.query.end as string;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "start and end query params required" });
+      }
+
+      const profiles = await db.select().from(dataProfiles)
+        .where(and(
+          eq(dataProfiles.dataSetId, dataSetId),
+          sql`${dataProfiles.date} >= ${startDate}::date`,
+          sql`${dataProfiles.date} <= ${endDate}::date`
+        ))
+        .orderBy(sql`${dataProfiles.date} ASC`);
+
+      res.json({ profiles });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/data-sets/:id/profiles/date-range", async (req, res) => {
+    try {
+      const dataSetId = parseInt(req.params.id);
+      const result = await db.select({
+        earliest: sql<string>`MIN(${dataProfiles.date})`,
+        latest: sql<string>`MAX(${dataProfiles.date})`,
+        totalDays: sql<number>`COUNT(*)`,
+      }).from(dataProfiles)
+        .where(eq(dataProfiles.dataSetId, dataSetId));
+
+      res.json(result[0] || { earliest: null, latest: null, totalDays: 0 });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // --- Contracts ---
 
   app.get("/api/contracts", async (_req, res) => {

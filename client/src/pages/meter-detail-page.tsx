@@ -13,6 +13,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import { format } from "date-fns";
+import { ProfileChart } from "@/components/profile-chart";
 
 function getUtilityIcon(code: string, size = "h-5 w-5") {
   switch (code) {
@@ -572,36 +573,9 @@ function ReadingsTab({ meterId }: { meterId: number }) {
 }
 
 function ProfilesTab({ meterId }: { meterId: number }) {
-  const { data, isLoading } = useQuery<{ profiles: any[]; total: number }>({
-    queryKey: [`/api/data-sets/${meterId}/profiles`],
-  });
-
-  if (isLoading) return <LoadingState />;
-  if (!data || data.profiles.length === 0) return <EmptyState message="No half-hourly profile data found for this meter." />;
-
   return (
     <div>
-      <p className="text-sm text-muted-foreground mb-3">{data.total.toLocaleString()} profile days total (showing latest 100)</p>
-      <div className="border rounded-md overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="text-left p-2 font-medium">Date</th>
-              <th className="text-right p-2 font-medium">Day Total (kWh)</th>
-              <th className="text-left p-2 font-medium">Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.profiles.map((p: any) => (
-              <tr key={p.id} className="border-t hover:bg-muted/30" data-testid={`row-profile-${p.id}`}>
-                <td className="p-2">{formatDate(p.date)}</td>
-                <td className="p-2 text-right">{p.dayTotal != null ? Number(p.dayTotal).toLocaleString() : "-"}</td>
-                <td className="p-2">{p.type === 0 ? "Actual" : `Type ${p.type}`}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ProfileChart meterId={meterId} />
     </div>
   );
 }

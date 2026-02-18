@@ -8,6 +8,7 @@ import multer from "multer";
 import SftpClient from "ssh2-sftp-client";
 import { parseMMFile, mmInvoiceToDataRecord } from "./mm-parser.js";
 import { parseCrownEDI, crownEDIToDataRecord } from "./crown-edi-parser.js";
+import { parseNpowerPDF, npowerInvoiceToDataRecord } from "./npower-pdf-parser.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -971,6 +972,132 @@ export async function registerRoutes(
       });
     } catch (error: any) {
       console.error("Crown EDI import error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- npower PDF Import ---
+
+  app.post("/api/import/npower-pdf/preview", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const invoice = await parseNpowerPDF(req.file.buffer);
+
+      const allDataSets = await db.select().from(dataSets);
+      const metersPreview = invoice.meters.map((meter) => {
+        const matched = allDataSets.find(
+          (ds) => ds.number === meter.mpan || ds.number2 === meter.mpan
+        );
+        return {
+          mpan: meter.mpan,
+          meterSerial: meter.meterSerial,
+          periodStart: meter.periodStart,
+          periodEnd: meter.periodEnd,
+          dayKwh: meter.dayKwh,
+          nightKwh: meter.nightKwh,
+          totalKwh: meter.totalKwh,
+          dayRate: meter.dayRate,
+          nightRate: meter.nightRate,
+          dayCost: meter.dayCost,
+          nightCost: meter.nightCost,
+          wapDayCost: meter.wapDayCost,
+          wapNightCost: meter.wapNightCost,
+          duos: meter.duos,
+          tuos: meter.tuos,
+          bsuos: meter.bsuos,
+          standingMetering: meter.standingMetering,
+          totalGovLevies: meter.totalGovLevies,
+          cclAmount: meter.cclAmount,
+          totalExVat: meter.totalExVat,
+          maxDemandKw: meter.maxDemandKw,
+          maxDemandKva: meter.maxDemandKva,
+          reactivePowerCost: meter.reactivePowerCost,
+          matchedDataSetId: matched?.id || null,
+          matchedMeterName: matched?.name || null,
+          matchedSiteName: null as string | null,
+        };
+      });
+
+      for (const mp of metersPreview) {
+        if (mp.matchedDataSetId) {
+          const ds = allDataSets.find((d) => d.id === mp.matchedDataSetId);
+          if (ds) {
+            const siteRows = await db.select().from(sites).where(eq(sites.id, ds.siteId));
+            mp.matchedSiteName = siteRows[0]?.name || null;
+          }
+        }
+      }
+
+      res.json({
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: invoice.invoiceDate,
+        accountNumber: invoice.accountNumber,
+        totalExVat: invoice.totalExVat,
+        vatRate: invoice.vatRate,
+        vatAmount: invoice.vatAmount,
+        invoiceTotal: invoice.invoiceTotal,
+        meters: metersPreview,
+      });
+    } catch (error: any) {
+      console.error("npower PDF preview error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/import/npower-pdf/import", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const invoice = await parseNpowerPDF(req.file.buffer);
+      const username = (req.body?.username as string) || "import";
+
+      const allDataSets = await db.select().from(dataSets);
+
+      let imported = 0;
+      let updated = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (const meter of invoice.meters) {
+        const matched = allDataSets.find(
+          (ds) => ds.number === meter.mpan || ds.number2 === meter.mpan
+        );
+
+        if (!matched) {
+          skipped++;
+          errors.push(`No matching meter found for MPAN ${meter.mpan}`);
+          continue;
+        }
+
+        const record = npowerInvoiceToDataRecord(invoice, meter, matched.id, username);
+
+        const existing = await db.select().from(dataRecords).where(
+          and(
+            eq(dataRecords.dataSetId, matched.id),
+            eq(dataRecords.date, record.date)
+          )
+        );
+
+        if (existing.length > 0) {
+          await db.update(dataRecords)
+            .set(record)
+            .where(eq(dataRecords.id, existing[0].id));
+          updated++;
+        } else {
+          await db.insert(dataRecords).values(record);
+          imported++;
+        }
+      }
+
+      res.json({
+        imported,
+        updated,
+        skipped,
+        total: invoice.meters.length,
+        invoiceNumber: invoice.invoiceNumber,
+        errors,
+      });
+    } catch (error: any) {
+      console.error("npower PDF import error:", error);
       res.status(500).json({ message: error.message });
     }
   });

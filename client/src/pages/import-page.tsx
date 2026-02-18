@@ -140,6 +140,14 @@ export default function ImportPage() {
   const [crownDragOver, setCrownDragOver] = useState(false);
   const crownFileInputRef = useRef<HTMLInputElement>(null);
 
+  const [npowerFile, setNpowerFile] = useState<File | null>(null);
+  const [npowerPreview, setNpowerPreview] = useState<any>(null);
+  const [npowerPreviewing, setNpowerPreviewing] = useState(false);
+  const [npowerImporting, setNpowerImporting] = useState(false);
+  const [npowerResult, setNpowerResult] = useState<any>(null);
+  const [npowerDragOver, setNpowerDragOver] = useState(false);
+  const npowerFileInputRef = useRef<HTMLInputElement>(null);
+
   const { data: importLogs, refetch: refetchLogs } = useQuery<ImportLogEntry[]>({
     queryKey: ["/api/import/logs"],
   });
@@ -378,6 +386,65 @@ export default function ImportPage() {
     if (crownFileInputRef.current) crownFileInputRef.current.value = "";
   };
 
+  const handleNpowerFileSelect = useCallback(async (file: File) => {
+    setNpowerFile(file);
+    setNpowerPreview(null);
+    setNpowerResult(null);
+    setNpowerPreviewing(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/import/npower-pdf/preview", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json()).message);
+      const data = await res.json();
+      setNpowerPreview(data);
+    } catch (err: any) {
+      alert("Error previewing npower PDF: " + err.message);
+      setNpowerFile(null);
+    } finally {
+      setNpowerPreviewing(false);
+    }
+  }, []);
+
+  const handleNpowerDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setNpowerDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleNpowerFileSelect(file);
+  }, [handleNpowerFileSelect]);
+
+  const handleNpowerImport = async () => {
+    if (!npowerFile) return;
+    setNpowerImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", npowerFile);
+      formData.append("username", "import");
+      const res = await fetch("/api/import/npower-pdf/import", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json()).message);
+      const data = await res.json();
+      setNpowerResult(data);
+      refetchLogs();
+    } catch (err: any) {
+      alert("npower PDF import error: " + err.message);
+    } finally {
+      setNpowerImporting(false);
+    }
+  };
+
+  const resetNpowerForm = () => {
+    setNpowerFile(null);
+    setNpowerPreview(null);
+    setNpowerResult(null);
+    if (npowerFileInputRef.current) npowerFileInputRef.current.value = "";
+  };
+
   const resetSftpForm = () => {
     setSftpForm({ name: "", host: "", port: "22", username: "", password: "", remoteDirectory: "/", filePattern: "*.csv" });
     setShowPassword(false);
@@ -555,6 +622,10 @@ export default function ImportPage() {
           <TabsTrigger value="crown-edi" data-testid="tab-crown-edi">
             <FileText className="h-4 w-4 mr-2" />
             Crown EDI
+          </TabsTrigger>
+          <TabsTrigger value="npower-pdf" data-testid="tab-npower-pdf">
+            <FileText className="h-4 w-4 mr-2" />
+            npower PDF
           </TabsTrigger>
           <TabsTrigger value="history" data-testid="tab-history">
             <Clock className="h-4 w-4 mr-2" />
@@ -1310,6 +1381,13 @@ export default function ImportPage() {
                     </div>
                     <p className="text-xs text-muted-foreground">Use the Crown EDI tab to import gas invoices</p>
                   </div>
+                  <div className="p-3 border rounded-md">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-sm">npower PDF</p>
+                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Active</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Use the npower PDF tab to import npower electricity invoices</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -1548,6 +1626,202 @@ export default function ImportPage() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="npower-pdf" className="mt-6">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">npower PDF Invoice Upload</CardTitle>
+                    <CardDescription>Upload npower electricity PDF invoices for parsing and import</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {!npowerFile && !npowerResult && (
+                      <div
+                        data-testid="npower-drop-zone"
+                        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                          npowerDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+                        }`}
+                        onDragOver={(e) => { e.preventDefault(); setNpowerDragOver(true); }}
+                        onDragLeave={() => setNpowerDragOver(false)}
+                        onDrop={handleNpowerDrop}
+                        onClick={() => npowerFileInputRef.current?.click()}
+                      >
+                        <CloudUpload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                        <p className="font-medium mb-1">Drop your npower PDF invoice here</p>
+                        <p className="text-sm text-muted-foreground">or click to browse files</p>
+                        <input
+                          ref={npowerFileInputRef}
+                          type="file"
+                          accept=".pdf"
+                          className="hidden"
+                          data-testid="npower-file-input"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleNpowerFileSelect(file);
+                          }}
+                        />
+                      </div>
+                    )}
+                    {npowerPreviewing && (
+                      <div className="flex items-center justify-center p-8">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        <p className="text-sm text-muted-foreground">Parsing npower PDF...</p>
+                      </div>
+                    )}
+                    {npowerPreview && !npowerResult && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-primary" />
+                            <span className="font-medium">{npowerFile?.name}</span>
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={resetNpowerForm} data-testid="npower-reset-btn">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div className="p-2 bg-muted rounded">
+                            <p className="text-muted-foreground text-xs">Invoice</p>
+                            <p className="font-medium" data-testid="npower-invoice-number">{npowerPreview.invoiceNumber}</p>
+                          </div>
+                          <div className="p-2 bg-muted rounded">
+                            <p className="text-muted-foreground text-xs">Date</p>
+                            <p className="font-medium">{npowerPreview.invoiceDate ? new Date(npowerPreview.invoiceDate).toLocaleDateString() : "-"}</p>
+                          </div>
+                          <div className="p-2 bg-muted rounded">
+                            <p className="text-muted-foreground text-xs">Account</p>
+                            <p className="font-medium">{npowerPreview.accountNumber}</p>
+                          </div>
+                          <div className="p-2 bg-muted rounded">
+                            <p className="text-muted-foreground text-xs">Total (inc VAT)</p>
+                            <p className="font-medium">£{(npowerPreview.totalExVat + npowerPreview.vatAmount).toFixed(2)}</p>
+                          </div>
+                        </div>
+                        <Separator />
+                        <div>
+                          <h4 className="font-medium mb-2">Meters Found ({npowerPreview.meters.length})</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs" data-testid="npower-preview-table">
+                              <thead>
+                                <tr className="border-b">
+                                  <th className="text-left p-2">MPAN</th>
+                                  <th className="text-left p-2">Match</th>
+                                  <th className="text-right p-2">Period</th>
+                                  <th className="text-right p-2">Day kWh</th>
+                                  <th className="text-right p-2">Night kWh</th>
+                                  <th className="text-right p-2">Consumption</th>
+                                  <th className="text-right p-2">DUoS</th>
+                                  <th className="text-right p-2">TNUoS</th>
+                                  <th className="text-right p-2">CCL</th>
+                                  <th className="text-right p-2">Total ex VAT</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {npowerPreview.meters.map((m: any, idx: number) => (
+                                  <tr key={idx} className="border-b hover:bg-muted/50">
+                                    <td className="p-2 font-mono">{m.mpan}</td>
+                                    <td className="p-2">
+                                      {m.matchedDataSetId ? (
+                                        <Badge className="bg-green-100 text-green-700 text-xs">{m.matchedMeterName}</Badge>
+                                      ) : (
+                                        <Badge variant="destructive" className="text-xs">No match</Badge>
+                                      )}
+                                    </td>
+                                    <td className="p-2 text-right text-muted-foreground">
+                                      {m.periodStart ? new Date(m.periodStart).toLocaleDateString() : "?"} - {m.periodEnd ? new Date(m.periodEnd).toLocaleDateString() : "?"}
+                                    </td>
+                                    <td className="p-2 text-right">{m.dayKwh.toFixed(1)}</td>
+                                    <td className="p-2 text-right">{m.nightKwh.toFixed(1)}</td>
+                                    <td className="p-2 text-right">£{(m.dayCost + m.nightCost + m.wapDayCost + m.wapNightCost).toFixed(2)}</td>
+                                    <td className="p-2 text-right">£{m.duos.toFixed(2)}</td>
+                                    <td className="p-2 text-right">£{m.tuos.toFixed(2)}</td>
+                                    <td className="p-2 text-right">£{m.cclAmount.toFixed(2)}</td>
+                                    <td className="p-2 text-right font-medium">£{m.totalExVat.toFixed(2)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <Button
+                            onClick={handleNpowerImport}
+                            disabled={npowerImporting || !npowerPreview.meters.some((m: any) => m.matchedDataSetId)}
+                            data-testid="npower-import-btn"
+                          >
+                            {npowerImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                            Import {npowerPreview.meters.filter((m: any) => m.matchedDataSetId).length} Matched Meters
+                          </Button>
+                          <Button variant="outline" onClick={resetNpowerForm} data-testid="npower-cancel-btn">Cancel</Button>
+                        </div>
+                      </div>
+                    )}
+                    {npowerResult && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-green-600">
+                          <CheckCircle className="h-5 w-5" />
+                          <span className="font-medium">Import Complete</span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                            <p className="text-muted-foreground text-xs">Imported</p>
+                            <p className="font-medium text-green-700" data-testid="npower-imported-count">{npowerResult.imported}</p>
+                          </div>
+                          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                            <p className="text-muted-foreground text-xs">Updated</p>
+                            <p className="font-medium text-blue-700">{npowerResult.updated}</p>
+                          </div>
+                          <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded">
+                            <p className="text-muted-foreground text-xs">Skipped</p>
+                            <p className="font-medium text-amber-700">{npowerResult.skipped}</p>
+                          </div>
+                          <div className="p-2 bg-muted rounded">
+                            <p className="text-muted-foreground text-xs">Invoice</p>
+                            <p className="font-medium">{npowerResult.invoiceNumber}</p>
+                          </div>
+                        </div>
+                        {npowerResult.errors?.length > 0 && (
+                          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded text-sm">
+                            <p className="font-medium text-amber-700 mb-1">Notes:</p>
+                            {npowerResult.errors.map((e: string, i: number) => (
+                              <p key={i} className="text-amber-600 text-xs">{e}</p>
+                            ))}
+                          </div>
+                        )}
+                        <Button onClick={resetNpowerForm} variant="outline" data-testid="npower-new-import-btn">Import Another</Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">File Format</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="p-3 border rounded-md bg-primary/5">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-medium text-sm">npower PDF</p>
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Active</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">npower/E.ON electricity invoice PDFs with multi-MPAN support</p>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p><strong>Consumption:</strong> Day/Night kWh with rates</p>
+                      <p><strong>Network:</strong> DUoS, TNUoS, BSUoS charges</p>
+                      <p><strong>Government:</strong> RO, FIT, CfD, CM, NCCS, NRAB levies</p>
+                      <p><strong>CCL:</strong> Climate Change Levy</p>
+                      <p><strong>Matching:</strong> 13-digit MPAN matched to meters</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </TabsContent>

@@ -69,7 +69,7 @@ export default function ReportsPage() {
   });
 
   const groups = useMemo(() => {
-    return (hierarchy?.groups || []).filter((g: any) => g.sites && g.sites.length > 0);
+    return (hierarchy?.groups || []).filter((g: any) => g.sites && g.sites.length > 0).sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
   }, [hierarchy]);
 
   const sitesForGroup = useMemo(() => {

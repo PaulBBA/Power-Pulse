@@ -379,7 +379,7 @@ export default function GroupsPage() {
       return s.meters.some(matchesMeter);
     };
 
-    let groups = hierarchy.groups;
+    let groups = hierarchy.groups.sort((a, b) => a.name.localeCompare(b.name));
     let unassigned = hierarchy.unassigned;
 
     if (selectedGroup !== "all") {

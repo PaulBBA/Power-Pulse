@@ -20,7 +20,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { ArrowUpDown, Plus, Loader2, FileSignature, Pencil } from "lucide-react";
+import { ArrowUpDown, Plus, Loader2, FileSignature, Pencil, Eye } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Contract, DataSet, Site } from "@shared/schema";
@@ -167,11 +167,168 @@ function contractToFormValues(c: Contract) {
   };
 }
 
+function ContractViewDialog({ contract, open, onClose }: { contract: Contract | null; open: boolean; onClose: () => void }) {
+  const { data: contractDataRows } = useQuery<any[]>({
+    queryKey: [`/api/contracts/${contract?.id}/data`],
+    enabled: !!contract?.id && open,
+  });
+
+  if (!contract) return null;
+
+  const fmtDate = (v: any) => {
+    if (!v) return "-";
+    try { return format(new Date(v), "dd/MM/yyyy"); } catch { return "-"; }
+  };
+  const fmtNum = (v: any, dp = 2) => (v != null && v !== 0 ? Number(v).toFixed(dp) : "-");
+  const fmtBool = (v: any) => (v ? "Yes" : "No");
+
+  const DetailRow = ({ label, value }: { label: string; value: string }) => (
+    <div className="flex justify-between py-1.5 border-b border-muted/40 last:border-0">
+      <span className="text-muted-foreground text-sm">{label}</span>
+      <span className="text-sm font-medium text-right">{value}</span>
+    </div>
+  );
+
+  const SectionTitle = ({ title }: { title: string }) => (
+    <div className="pt-3 pb-1">
+      <Separator className="mb-2" />
+      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</h4>
+    </div>
+  );
+
+  const hasSplits = [contract.kwhSplit1, contract.kwhSplit2, contract.kwhSplit3, contract.kwhSplit4, contract.kwhSplit5, contract.kwhSplit6].some((v: any) => v != null && v !== 0);
+  const hasReactive = [contract.reactivePower1Rate, contract.reactivePower2Rate].some((v: any) => v != null && v !== 0);
+  const hasContractData = contractDataRows && contractDataRows.length > 0;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle data-testid="text-contract-view-title">Contract Details</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            {contract.supplier || "Unknown Supplier"} — {contract.referenceNumber || "No Reference"}
+          </p>
+        </DialogHeader>
+
+        <div className="space-y-0">
+          <DetailRow label="Supplier" value={contract.supplier || "-"} />
+          <DetailRow label="Reference Number" value={contract.referenceNumber || "-"} />
+          <DetailRow label="Contract Type" value={contract.type || "-"} />
+          <DetailRow label="Start Date" value={fmtDate(contract.dateStart)} />
+          <DetailRow label="End Date" value={fmtDate(contract.dateEnd)} />
+
+          {hasContractData && (
+            <>
+              <SectionTitle title="Unit Rates" />
+              <div className="border rounded-md overflow-hidden mt-1">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-2 font-medium text-xs">Description</th>
+                      <th className="text-right p-2 font-medium text-xs">Rate (p)</th>
+                      <th className="text-left p-2 font-medium text-xs">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contractDataRows!.map((cd: any) => (
+                      <tr key={cd.id} className="border-t" data-testid={`row-contract-data-${cd.id}`}>
+                        <td className="p-2">{cd.description || `Rate ${cd.meter}`}</td>
+                        <td className="p-2 text-right font-mono">{cd.costRate != null ? Number(cd.costRate).toFixed(4) : "-"}</td>
+                        <td className="p-2 text-muted-foreground">{cd.timeStart || ""} – {cd.timeFinish || ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          <SectionTitle title="Capacity & Levies" />
+          <DetailRow label="kVA" value={fmtNum(contract.kva)} />
+          <DetailRow label="Maximum Input Capacity" value={fmtNum(contract.maximumInputCapacity)} />
+          <DetailRow label="Climate Change Levy (p)" value={fmtNum(contract.climateChangeLevy, 4)} />
+          <DetailRow label="Fossil Fuel Levy (p)" value={fmtNum(contract.fossilFuelLevy, 4)} />
+
+          <SectionTitle title="Rates" />
+          <DetailRow label="Unit Rate (p)" value={fmtNum(contract.rateUnits, 4)} />
+          <DetailRow label="Unit Rate Split" value={fmtNum(contract.rateUnits1Split)} />
+          <DetailRow label="Standing Charge (p)" value={fmtNum(contract.rateFixed, 4)} />
+          <DetailRow label="Standing Charge Per Day" value={fmtBool(contract.rateFixedPerDay)} />
+          <DetailRow label="kVA Rate (p)" value={fmtNum(contract.rateKva, 4)} />
+          <DetailRow label="kVA Rate 2 (p)" value={fmtNum(contract.rateKva2, 4)} />
+          <DetailRow label="kVA Per Day" value={fmtBool(contract.rateKvaPerDay)} />
+          <DetailRow label="kVA Split" value={fmtNum(contract.rateKvaSplit)} />
+          <DetailRow label="MD Rate (p)" value={fmtNum(contract.rateMd, 4)} />
+          <DetailRow label="MD Rate 2 (p)" value={fmtNum(contract.rateMd2, 4)} />
+          <DetailRow label="MD Split" value={fmtNum(contract.rateMdSplit)} />
+          <DetailRow label="Transportation (p)" value={fmtNum(contract.rateTransportation, 4)} />
+          <DetailRow label="Transportation Per kWh" value={fmtBool(contract.rateTransportationPerKwh)} />
+          <DetailRow label="Metering (p)" value={fmtNum(contract.rateMetering, 4)} />
+          <DetailRow label="Metering Per Day" value={fmtBool(contract.rateMeteringPerDay)} />
+          <DetailRow label="Settlements (p)" value={fmtNum(contract.rateSettlements, 4)} />
+          <DetailRow label="Settlements Per Day" value={fmtBool(contract.rateSettlementsPerDay)} />
+          <DetailRow label="TRIAD Rate (p)" value={fmtNum(contract.rateTriad, 4)} />
+          <DetailRow label="Green Rate (p)" value={fmtNum(contract.rateGreen, 4)} />
+          <DetailRow label="Green %" value={fmtNum(contract.rateGreenPercent)} />
+          <DetailRow label="FIT Rate (p)" value={fmtNum(contract.rateFit, 4)} />
+          <DetailRow label="ROC Rate (p)" value={fmtNum(contract.rateRoc, 4)} />
+
+          {hasSplits && (
+            <>
+              <SectionTitle title="kWh Splits" />
+              <DetailRow label="Split 1 kWh" value={fmtNum(contract.kwhSplit1)} />
+              <DetailRow label="Split 1 Cost Rate (p)" value={fmtNum(contract.kwhSplit1CostRate, 4)} />
+              <DetailRow label="Split 2 kWh" value={fmtNum(contract.kwhSplit2)} />
+              <DetailRow label="Split 2 Cost Rate (p)" value={fmtNum(contract.kwhSplit2CostRate, 4)} />
+              <DetailRow label="Split 3 kWh" value={fmtNum(contract.kwhSplit3)} />
+              <DetailRow label="Split 3 Cost Rate (p)" value={fmtNum(contract.kwhSplit3CostRate, 4)} />
+              <DetailRow label="Split 4 kWh" value={fmtNum(contract.kwhSplit4)} />
+              <DetailRow label="Split 4 Cost Rate (p)" value={fmtNum(contract.kwhSplit4CostRate, 4)} />
+              <DetailRow label="Split 5 kWh" value={fmtNum(contract.kwhSplit5)} />
+              <DetailRow label="Split 5 Cost Rate (p)" value={fmtNum(contract.kwhSplit5CostRate, 4)} />
+              <DetailRow label="Split 6 kWh" value={fmtNum(contract.kwhSplit6)} />
+              <DetailRow label="Split 6 Cost Rate (p)" value={fmtNum(contract.kwhSplit6CostRate, 4)} />
+            </>
+          )}
+
+          {hasReactive && (
+            <>
+              <SectionTitle title="Reactive Power" />
+              <DetailRow label="Reactive Power 1 Rate (p)" value={fmtNum(contract.reactivePower1Rate, 4)} />
+              <DetailRow label="Reactive Power 1 Split" value={fmtNum(contract.reactivePower1Split)} />
+              <DetailRow label="Reactive Power 2 Rate (p)" value={fmtNum(contract.reactivePower2Rate, 4)} />
+              <DetailRow label="Reactive Power 2 Split" value={fmtNum(contract.reactivePower2Split)} />
+              <DetailRow label="kVArh Default" value={fmtNum(contract.kvarhDefault)} />
+            </>
+          )}
+
+          <SectionTitle title="VAT" />
+          <DetailRow label="VAT Rate 1 (%)" value={fmtNum(contract.vat1Rate)} />
+          <DetailRow label="VAT Rate 2 (%)" value={fmtNum(contract.vat2Rate)} />
+          <DetailRow label="VAT Split" value={fmtNum(contract.vatSplit)} />
+
+          <SectionTitle title="Flags & Other" />
+          <DetailRow label="Loss Adjustment" value={fmtBool(contract.lossAdjustment)} />
+          <DetailRow label="TUoS" value={fmtBool(contract.tuos)} />
+          <DetailRow label="Use of System" value={fmtBool(contract.useOfSystem)} />
+          <DetailRow label="Distributor Capacity" value={fmtBool(contract.useDistributorCapacity)} />
+          <DetailRow label="Distributor Reactive Power" value={fmtBool(contract.useDistributorReactivePower)} />
+          <DetailRow label="Clock" value={fmtBool(contract.clock)} />
+          <DetailRow label="Bank Holidays" value={fmtNum(contract.bankHolidays, 0)} />
+          <DetailRow label="Billing Point" value={fmtNum(contract.billingPoint, 0)} />
+          <DetailRow label="Batch" value={fmtNum(contract.batch, 0)} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ContractsPage() {
   const [sortField, setSortField] = useState<SortField>("dateEnd");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [viewingContract, setViewingContract] = useState<Contract | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -631,7 +788,11 @@ export default function ContractsPage() {
                   {sortedContracts.map((contract) => (
                     <ContextMenu key={contract.id}>
                       <ContextMenuTrigger asChild>
-                        <TableRow data-testid={`row-contract-${contract.id}`} className="cursor-pointer hover:bg-muted/50">
+                        <TableRow
+                          data-testid={`row-contract-${contract.id}`}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setViewingContract(contract)}
+                        >
                           <TableCell data-testid={`text-start-${contract.id}`}>{formatDate(contract.dateStart)}</TableCell>
                           <TableCell data-testid={`text-end-${contract.id}`}>{formatDate(contract.dateEnd)}</TableCell>
                           <TableCell data-testid={`text-utility-${contract.id}`}>{getUtilityName(contract.dataSetId)}</TableCell>
@@ -642,6 +803,13 @@ export default function ContractsPage() {
                         </TableRow>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
+                        <ContextMenuItem
+                          onClick={() => setViewingContract(contract)}
+                          data-testid={`menu-view-${contract.id}`}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </ContextMenuItem>
                         <ContextMenuItem
                           onClick={() => openEditDialog(contract)}
                           data-testid={`menu-edit-${contract.id}`}
@@ -680,6 +848,12 @@ export default function ContractsPage() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <ContractViewDialog
+        contract={viewingContract}
+        open={!!viewingContract}
+        onClose={() => setViewingContract(null)}
+      />
     </Layout>
   );
 }

@@ -325,7 +325,7 @@ function ContractViewDialog({ contract, open, onClose }: { contract: Contract | 
 
 export default function ContractsPage() {
   const [sortField, setSortField] = useState<SortField>("dateEnd");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);

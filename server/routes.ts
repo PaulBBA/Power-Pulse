@@ -125,6 +125,7 @@ export async function registerRoutes(
 
       const from = new Date(dateFrom as string);
       const to = new Date(dateTo as string);
+      const expectedDays = Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
       let meterIds: number[] = [];
       if (level === "meter" && meterId) {
@@ -161,7 +162,7 @@ export async function registerRoutes(
         profilesByMeter.set(p.dataSetId, arr);
       }
 
-      const files: { mpan: string; filename: string; csv: string; rowCount: number }[] = [];
+      const files: { mpan: string; filename: string; csv: string; rowCount: number; expectedDays: number }[] = [];
 
       for (const meter of meterInfo) {
         const meterProfiles = profilesByMeter.get(meter.id);
@@ -194,6 +195,7 @@ export async function registerRoutes(
           filename: `${safeMpan}.csv`,
           csv: lines.join("\n"),
           rowCount: lines.length,
+          expectedDays,
         });
       }
 

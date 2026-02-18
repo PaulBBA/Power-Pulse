@@ -296,7 +296,7 @@ export default function ReportsPage() {
   });
 
   const { data: profileDownloadData, isLoading: profileDownloadLoading } = useQuery<{
-    files: { mpan: string; filename: string; csv: string; rowCount: number }[];
+    files: { mpan: string; filename: string; csv: string; rowCount: number; expectedDays: number }[];
   }>({
     queryKey: ["/api/reports/profile-download", reportParams],
     queryFn: async () => {
@@ -1064,7 +1064,12 @@ export default function ReportsPage() {
                   <div key={idx} className="flex items-center justify-between p-3 border rounded-md" data-testid={`profile-file-${idx}`}>
                     <div>
                       <p className="text-sm font-medium">{file.mpan}</p>
-                      <p className="text-xs text-muted-foreground">{file.rowCount.toLocaleString()} days of data \u2022 {file.filename}</p>
+                      <p className="text-xs text-muted-foreground">{file.rowCount.toLocaleString()} of {file.expectedDays.toLocaleString()} days {"\u2022"} {file.filename}</p>
+                      {file.rowCount < file.expectedDays && (
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                          Missing {(file.expectedDays - file.rowCount).toLocaleString()} days ({((file.expectedDays - file.rowCount) / file.expectedDays * 100).toFixed(1)}% of date range)
+                        </p>
+                      )}
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => downloadProfileCsv(file)} data-testid={`btn-download-profile-${idx}`}>
                       <Download className="h-4 w-4 mr-1" />CSV

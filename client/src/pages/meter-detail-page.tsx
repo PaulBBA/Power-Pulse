@@ -535,7 +535,14 @@ function ReadingsTab({ meterId }: { meterId: number }) {
     (r.m1Units != null && r.m1Units !== 0)
   );
 
-  if (withReadings.length === 0) return <EmptyState message="No meter readings recorded. Only invoice data available." />;
+  // Sort by date, newest to oldest
+  const sortedReadings = useMemo(() => {
+    return [...withReadings].sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [withReadings]);
 
   return (
     <div className="border rounded-md overflow-x-auto">
@@ -550,7 +557,7 @@ function ReadingsTab({ meterId }: { meterId: number }) {
           </tr>
         </thead>
         <tbody>
-          {withReadings.map((r: any) => (
+          {sortedReadings.map((r: any) => (
             <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-reading-${r.id}`}>
               <td className="p-2">{formatDate(r.date)}</td>
               <td className="p-2 text-right">{r.m1Previous != null ? Number(r.m1Previous).toLocaleString() : "-"}</td>

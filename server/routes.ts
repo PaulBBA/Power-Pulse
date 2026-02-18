@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { db } from "./db.js";
-import { users, dataSets, dataRecords, dataProfiles, importLogs, sftpConfigs, sftpDownloadLogs, sites } from "@shared/schema.js";
+import { users, dataSets, dataRecords, dataProfiles, importLogs, sftpConfigs, sftpDownloadLogs, sites, groups, siteGroups, suppliers, utilities } from "@shared/schema.js";
 import { eq, and, sql, desc } from "drizzle-orm";
 import multer from "multer";
 import SftpClient from "ssh2-sftp-client";
@@ -113,6 +113,78 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error removing site from group:", error);
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/reports/site-details/:groupId", async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.groupId);
+      const group = await db.select().from(groups).where(eq(groups.id, groupId));
+      if (!group.length) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+
+      const sgRows = await db.select().from(siteGroups).where(eq(siteGroups.groupId, groupId));
+      const siteIds = sgRows.map(sg => sg.siteId);
+      if (!siteIds.length) {
+        return res.json({ groupName: group[0].name, rows: [] });
+      }
+
+      const allSites = await db.select().from(sites);
+      const groupSites = allSites.filter(s => siteIds.includes(s.id));
+
+      const allDataSets = await db.select().from(dataSets);
+      const allSuppliers = await db.select().from(suppliers);
+      const allUtilities = await db.select().from(utilities);
+
+      const supplierMap = new Map(allSuppliers.map(s => [s.id, s.name]));
+      const utilityMap = new Map(allUtilities.map(u => [u.id, u.name]));
+
+      const rows: any[] = [];
+      for (const site of groupSites.sort((a, b) => (a.name || "").localeCompare(b.name || ""))) {
+        const siteMeters = allDataSets
+          .filter(ds => ds.siteId === site.id)
+          .sort((a, b) => {
+            const uA = utilityMap.get(a.utilityTypeId) || "";
+            const uB = utilityMap.get(b.utilityTypeId) || "";
+            return uA.localeCompare(uB);
+          });
+
+        if (siteMeters.length === 0) {
+          rows.push({
+            siteName: site.name,
+            address1: site.address,
+            town: site.town,
+            postCode: site.postcode,
+            utility: "",
+            supplier: "",
+            meterSerial: "",
+            mpanCoreMprn: "",
+            mpanProfile: "",
+            kva: 0,
+          });
+        } else {
+          for (const meter of siteMeters) {
+            rows.push({
+              siteName: site.name,
+              address1: site.address,
+              town: site.town,
+              postCode: site.postcode,
+              utility: utilityMap.get(meter.utilityTypeId) || "",
+              supplier: meter.supplierId ? (supplierMap.get(meter.supplierId) || "") : "",
+              meterSerial: meter.meterSerial1 || "",
+              mpanCoreMprn: meter.mpanCoreMprn || "",
+              mpanProfile: meter.mpanProfile || "",
+              kva: meter.kva || 0,
+            });
+          }
+        }
+      }
+
+      res.json({ groupName: group[0].name, rows, count: rows.length });
+    } catch (error: any) {
+      console.error("Error generating site details report:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 

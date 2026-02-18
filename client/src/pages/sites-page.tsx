@@ -166,8 +166,8 @@ export default function SitesPage() {
   };
 
   const filteredSites = sites?.filter(site => 
-    site.name.toLowerCase().includes(search.toLowerCase()) ||
-    site.code.toLowerCase().includes(search.toLowerCase())
+    (site.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+    (site.code?.toLowerCase() || "").includes(search.toLowerCase())
   ) || [];
 
   const siteFormFields = (formInstance: any) => (

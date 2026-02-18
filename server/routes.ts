@@ -188,6 +188,97 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/reports/simple-totals", async (req, res) => {
+    try {
+      const { level, groupId, siteId, meterId, dateFrom, dateTo } = req.query as Record<string, string>;
+
+      if (!level || !dateFrom || !dateTo) {
+        return res.status(400).json({ message: "level, dateFrom, dateTo are required" });
+      }
+
+      let dataSetIds: number[] = [];
+
+      if (level === "meter" && meterId) {
+        dataSetIds = [parseInt(meterId)];
+      } else if (level === "site" && siteId) {
+        const siteDataSets = await db.select({ id: dataSets.id }).from(dataSets).where(eq(dataSets.siteId, parseInt(siteId)));
+        dataSetIds = siteDataSets.map(ds => ds.id);
+      } else if (level === "group" && groupId) {
+        const sgRows = await db.select().from(siteGroups).where(eq(siteGroups.groupId, parseInt(groupId)));
+        const siteIds = sgRows.map(sg => sg.siteId);
+        if (siteIds.length > 0) {
+          const allDs = await db.select({ id: dataSets.id, siteId: dataSets.siteId }).from(dataSets);
+          dataSetIds = allDs.filter(ds => siteIds.includes(ds.siteId)).map(ds => ds.id);
+        }
+      }
+
+      if (dataSetIds.length === 0) {
+        return res.json({ utilities: [] });
+      }
+
+      const fromDate = new Date(dateFrom);
+      const toDate = new Date(dateTo);
+
+      const records = await db.select({
+        utilityType: dataRecords.utilityType,
+        date: dataRecords.date,
+        units: dataRecords.units,
+        cost: dataRecords.cost,
+      }).from(dataRecords).where(
+        and(
+          sql`${dataRecords.dataSetId} IN (${sql.raw(dataSetIds.join(","))})`,
+          sql`${dataRecords.date} >= ${fromDate}`,
+          sql`${dataRecords.date} <= ${toDate}`,
+          sql`(${dataRecords.excludeFromReports} IS NULL OR ${dataRecords.excludeFromReports} = 0)`
+        )
+      );
+
+      const utilityMonthly: Record<string, Record<string, { kwh: number; cost: number }>> = {};
+
+      for (const rec of records) {
+        const uType = rec.utilityType || "Unknown";
+        if (!utilityMonthly[uType]) utilityMonthly[uType] = {};
+
+        const monthKey = rec.date ? `${rec.date.getFullYear()}-${String(rec.date.getMonth() + 1).padStart(2, "0")}` : "unknown";
+        if (!utilityMonthly[uType][monthKey]) {
+          utilityMonthly[uType][monthKey] = { kwh: 0, cost: 0 };
+        }
+        utilityMonthly[uType][monthKey].kwh += rec.units || 0;
+        utilityMonthly[uType][monthKey].cost += rec.cost || 0;
+      }
+
+      const allMonths: string[] = [];
+      const cur = new Date(fromDate);
+      while (cur <= toDate) {
+        allMonths.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}`);
+        cur.setMonth(cur.getMonth() + 1);
+      }
+
+      const utilityOrder = ["Electricity", "Gas", "Water", "Oil", "Solid Fuel"];
+      const sortedTypes = Object.keys(utilityMonthly).sort((a, b) => {
+        const iA = utilityOrder.indexOf(a);
+        const iB = utilityOrder.indexOf(b);
+        return (iA === -1 ? 99 : iA) - (iB === -1 ? 99 : iB);
+      });
+
+      const result = sortedTypes.map(uType => {
+        const monthly = allMonths.map(m => ({
+          month: m,
+          kwh: Math.round((utilityMonthly[uType][m]?.kwh || 0) * 100) / 100,
+          cost: Math.round((utilityMonthly[uType][m]?.cost || 0) * 100) / 100,
+        }));
+        const totalKwh = Math.round(monthly.reduce((s, m) => s + m.kwh, 0) * 100) / 100;
+        const totalCost = Math.round(monthly.reduce((s, m) => s + m.cost, 0) * 100) / 100;
+        return { utilityType: uType, monthly, totalKwh, totalCost };
+      });
+
+      res.json({ utilities: result });
+    } catch (error: any) {
+      console.error("Error generating simple totals report:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/utilities", async (_req, res) => {
     const utils = await storage.getUtilities();
     res.json(utils);

@@ -10,6 +10,9 @@ import {
   startOfYear, endOfYear, addDays, addWeeks, addMonths, addYears,
   subDays, subWeeks, subMonths, subYears, isBefore, isAfter, parseISO,
 } from "date-fns";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 
 type ViewMode = "day" | "week" | "month" | "year";
 
@@ -416,6 +419,31 @@ export function ProfileChart({ meterId, meterIds }: ProfileChartProps) {
               </div>
             )}
           </div>
+
+          {chartData?.profiles && chartData.profiles.length > 0 && (
+            <div className="mt-6 border rounded-md" data-testid="profile-daily-table">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-medium">Date</TableHead>
+                    <TableHead className="text-right font-medium">Day Total (kWh)</TableHead>
+                    <TableHead className="font-medium">Type</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {chartData.profiles.map((p: any) => (
+                    <TableRow key={p.id} data-testid={`row-profile-${p.id}`}>
+                      <TableCell>{format(new Date(p.date), "EEE dd/MM/yyyy")}</TableCell>
+                      <TableCell className="text-right">
+                        {p.dayTotal != null ? Number(p.dayTotal).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "-"}
+                      </TableCell>
+                      <TableCell>{p.type === 0 ? "Actual" : `Type ${p.type}`}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </>
       )}
     </div>

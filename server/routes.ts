@@ -236,7 +236,8 @@ export async function registerRoutes(
       const utilityMonthly: Record<string, Record<string, { kwh: number; cost: number }>> = {};
 
       for (const rec of records) {
-        const uType = rec.utilityType || "Unknown";
+        const rawType = rec.utilityType || "Unknown";
+        const uType = rawType.charAt(0).toUpperCase() + rawType.slice(1);
         if (!utilityMonthly[uType]) utilityMonthly[uType] = {};
 
         const monthKey = rec.date ? `${rec.date.getFullYear()}-${String(rec.date.getMonth() + 1).padStart(2, "0")}` : "unknown";

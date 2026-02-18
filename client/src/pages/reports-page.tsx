@@ -1034,40 +1034,6 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {reportGenerated && reportParams?.report === "profile-download" && !profileDownloadLoading && (
-        <Card className="mb-6 border-dashed border-amber-400">
-          <CardContent className="pt-6">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold">UI Demo — Profile Download (Format 18)</h2>
-              <p className="text-xs text-muted-foreground mt-1">This is a dummy preview showing how complete and incomplete data looks. It will be removed.</p>
-            </div>
-            <Separator className="mb-4" />
-            <div className="space-y-2">
-              {[
-                { mpan: "1160001167150", filename: "1160001167150.csv", rowCount: 365, expectedDays: 365 },
-                { mpan: "1100039621646", filename: "1100039621646.csv", rowCount: 310, expectedDays: 365 },
-                { mpan: "1170001363243", filename: "1170001363243.csv", rowCount: 59, expectedDays: 365 },
-              ].map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 border rounded-md">
-                  <div>
-                    <p className="text-sm font-medium">{file.mpan}</p>
-                    <p className="text-xs text-muted-foreground">{file.rowCount.toLocaleString()} of {file.expectedDays.toLocaleString()} days {"\u2022"} {file.filename}</p>
-                    {file.rowCount < file.expectedDays && (
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                        Missing {(file.expectedDays - file.rowCount).toLocaleString()} days ({((file.expectedDays - file.rowCount) / file.expectedDays * 100).toFixed(1)}% of date range)
-                      </p>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="sm" disabled>
-                    <Download className="h-4 w-4 mr-1" />CSV
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {reportGenerated && reportParams?.report === "profile-download" && profileDownloadData && !profileDownloadLoading && (
         <Card>
           <CardContent className="pt-6">

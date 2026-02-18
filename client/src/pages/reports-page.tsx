@@ -362,7 +362,7 @@ export default function ReportsPage() {
     const utilLabel = reportParams.utilityFilter && reportParams.utilityFilter !== "all"
       ? `${reportParams.utilityFilter.charAt(0).toUpperCase() + reportParams.utilityFilter.slice(1)} `
       : "";
-    const totalCols = 12 + months.length;
+    const totalCols = 13 + months.length;
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Sheet");
@@ -382,7 +382,8 @@ export default function ReportsPage() {
       return `${monthNames[parseInt(mo) - 1]} ${y.slice(2)}`;
     });
     const headerValues = [
-      "Site Name", "Code", "Reference Number", "Supplier", "MPAN (Core) 1", "MPAN (profile) 1",
+      "Site Name", "Utility", "Code", "Reference Number", "Supplier",
+      "MPAN / MPRN / SPID", "Profile / Sewerage",
       "Total kWh", "Profile %", "Invoice %", "Direct %", "No Data %", "Row Showing",
       ...monthHeaders,
     ];
@@ -445,13 +446,13 @@ export default function ReportsPage() {
         const isFirst = rIdx === 0;
         const rowData = isFirst
           ? [
-              meter.siteName, meter.code, meter.referenceNumber, meter.supplier,
+              meter.siteName, meter.utilityType, meter.code, meter.referenceNumber, meter.supplier,
               meter.mpanCore, meter.mpanProfile, meter.totalKwh,
               meter.profilePct, meter.invoicePct, meter.directPct, meter.noDataPct,
               sr.label, ...sr.vals,
             ]
           : [
-              null, null, null, null, null, null, null, null, null, null, null,
+              null, null, null, null, null, null, null, null, null, null, null, null,
               sr.label, ...sr.vals,
             ];
 
@@ -462,15 +463,15 @@ export default function ReportsPage() {
           cell.fill = style.fill;
           cell.font = style.font;
           cell.border = thinBorder;
-          if (colNumber >= 7 && colNumber <= 11) {
-            cell.numFmt = colNumber === 7 ? numFmt : pctFmt;
+          if (colNumber >= 8 && colNumber <= 12) {
+            cell.numFmt = colNumber === 8 ? numFmt : pctFmt;
             cell.alignment = { horizontal: "right" };
           }
-          if (colNumber === 12) {
+          if (colNumber === 13) {
             cell.font = { ...style.font, bold: true };
             cell.alignment = { horizontal: "left" };
           }
-          if (colNumber >= 13) {
+          if (colNumber >= 14) {
             cell.numFmt = sr.label === "No Data (%)" ? "0" : numFmt;
             cell.alignment = { horizontal: "right" };
           }
@@ -479,7 +480,7 @@ export default function ReportsPage() {
         if (isFirst) {
           row.getCell(1).font = { ...style.font, bold: true };
           row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            if (colNumber <= 6) {
+            if (colNumber <= 7) {
               cell.border = {
                 ...thinBorder,
                 top: { style: "medium", color: { argb: "FF4472C4" } },
@@ -493,17 +494,17 @@ export default function ReportsPage() {
     ws.addRow([]);
 
     const grandTotal = bodData.grandTotals.reduce((s, gt) => s + gt.total, 0);
-    const gtValues: (string | number | null)[] = Array(12).fill(null);
+    const gtValues: (string | number | null)[] = Array(13).fill(null);
     gtValues[0] = "Grand Total";
     const gtRow = ws.addRow([...gtValues, ...bodData.grandTotals.map(gt => gt.total), grandTotal]);
     const gtFill = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FF2B579A" } };
     const gtFont = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-    ws.mergeCells(gtRow.number, 1, gtRow.number, 12);
+    ws.mergeCells(gtRow.number, 1, gtRow.number, 13);
     gtRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
       cell.fill = gtFill;
       cell.font = gtFont;
       cell.border = { top: { style: "medium", color: { argb: "FF1F3864" } } };
-      if (colNumber >= 13) {
+      if (colNumber >= 14) {
         cell.numFmt = numFmt;
         cell.alignment = { horizontal: "right" };
       }
@@ -514,7 +515,7 @@ export default function ReportsPage() {
     gtRow.height = 22;
 
     ws.columns = [
-      { width: 32 }, { width: 16 }, { width: 16 }, { width: 14 }, { width: 18 }, { width: 16 },
+      { width: 32 }, { width: 12 }, { width: 16 }, { width: 16 }, { width: 14 }, { width: 18 }, { width: 16 },
       { width: 14 }, { width: 11 }, { width: 11 }, { width: 11 }, { width: 11 }, { width: 14 },
       ...months.map(() => ({ width: 14 })),
       ...(months.length > 0 ? [{ width: 16 }] : []),
@@ -898,11 +899,12 @@ export default function ReportsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="whitespace-nowrap text-xs px-2">Site Name</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2">Utility</TableHead>
                         <TableHead className="whitespace-nowrap text-xs px-2">Code</TableHead>
                         <TableHead className="whitespace-nowrap text-xs px-2">Ref</TableHead>
                         <TableHead className="whitespace-nowrap text-xs px-2">Supplier</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs px-2">MPAN Core</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs px-2">MPAN Profile</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2">MPAN / MPRN / SPID</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2">Profile / Sewerage</TableHead>
                         <TableHead className="whitespace-nowrap text-xs px-2 text-right">Total kWh</TableHead>
                         <TableHead className="whitespace-nowrap text-xs px-2 text-right">Profile %</TableHead>
                         <TableHead className="whitespace-nowrap text-xs px-2 text-right">Invoice %</TableHead>
@@ -933,6 +935,7 @@ export default function ReportsPage() {
                             {rIdx === 0 ? (
                               <>
                                 <TableCell className="whitespace-nowrap px-2 font-medium">{meter.siteName}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2">{meter.utilityType}</TableCell>
                                 <TableCell className="whitespace-nowrap px-2 font-mono">{meter.code}</TableCell>
                                 <TableCell className="whitespace-nowrap px-2 font-mono">{meter.referenceNumber}</TableCell>
                                 <TableCell className="whitespace-nowrap px-2">{meter.supplier}</TableCell>
@@ -946,7 +949,7 @@ export default function ReportsPage() {
                               </>
                             ) : (
                               <>
-                                <TableCell colSpan={11} />
+                                <TableCell colSpan={12} />
                               </>
                             )}
                             <TableCell className="whitespace-nowrap px-2 font-medium">{rowType}</TableCell>
@@ -973,7 +976,7 @@ export default function ReportsPage() {
                         ));
                       })}
                       <TableRow className="border-t-4 border-gray-400 dark:border-gray-500 bg-gray-200 dark:bg-gray-700 font-bold">
-                        <TableCell colSpan={12} className="px-2 text-right">Grand Total</TableCell>
+                        <TableCell colSpan={13} className="px-2 text-right">Grand Total</TableCell>
                         {bodData.grandTotals.map(gt => (
                           <TableCell key={gt.month} className="whitespace-nowrap px-2 text-right font-bold">{formatNumber(gt.total)}</TableCell>
                         ))}

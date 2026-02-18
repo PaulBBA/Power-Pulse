@@ -19,6 +19,8 @@ import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import * as XLSX from "xlsx";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 
 type ScopeLevel = "group" | "site" | "meter";
 
@@ -59,6 +61,7 @@ const REPORT_TYPES = [
   { id: "best-of-data", name: "Best of Data", description: "Monthly kWh breakdown by data source (Profile, Invoice, Direct) with configurable priority order. Shows where data comes from and what is missing." },
   { id: "site-details", name: "Site and Data Set Details", description: "Lists all sites and meters within the selected scope, including utility type, supplier, and meter references." },
   { id: "simple-totals", name: "Simple Totals", description: "Monthly kWh and cost totals by utility type with bar charts, for the selected scope and date range." },
+  { id: "profile-download", name: "Profile Download", description: "Download half-hourly profile data in Format 18 CSV. Creates a separate file per MPAN when scope is a group or site." },
 ];
 
 const PRIORITY_OPTIONS = [
@@ -292,6 +295,27 @@ export default function ReportsPage() {
     enabled: reportGenerated && reportParams?.report === "best-of-data",
   });
 
+  const { data: profileDownloadData, isLoading: profileDownloadLoading } = useQuery<{
+    files: { mpan: string; filename: string; csv: string; rowCount: number }[];
+  }>({
+    queryKey: ["/api/reports/profile-download", reportParams],
+    queryFn: async () => {
+      const p = reportParams!;
+      const params = new URLSearchParams({
+        level: p.scope.level,
+        dateFrom: p.dateFrom,
+        dateTo: p.dateTo,
+      });
+      if (p.scope.groupId) params.set("groupId", p.scope.groupId.toString());
+      if (p.scope.siteId) params.set("siteId", p.scope.siteId.toString());
+      if (p.scope.meterId) params.set("meterId", p.scope.meterId.toString());
+      const res = await fetch(`/api/reports/profile-download?${params}`);
+      if (!res.ok) throw new Error("Failed to load profile data");
+      return res.json();
+    },
+    enabled: reportGenerated && reportParams?.report === "profile-download",
+  });
+
   const handleGenerate = () => {
     if (!canGenerate) return;
     setReportParams({
@@ -307,7 +331,8 @@ export default function ReportsPage() {
 
   const isLoading = (reportParams?.report === "site-details" && siteDetailLoading) ||
     (reportParams?.report === "simple-totals" && simpleTotalsLoading) ||
-    (reportParams?.report === "best-of-data" && bodLoading);
+    (reportParams?.report === "best-of-data" && bodLoading) ||
+    (reportParams?.report === "profile-download" && profileDownloadLoading);
 
   const downloadSiteDetailsExcel = useCallback(() => {
     if (!siteDetailData?.rows?.length) return;
@@ -532,6 +557,25 @@ export default function ReportsPage() {
     a.click();
     URL.revokeObjectURL(url);
   }, [bodData, reportParams, scopeSummary]);
+
+  const downloadProfileCsv = useCallback(async (file: { mpan: string; filename: string; csv: string }) => {
+    const blob = new Blob([file.csv], { type: "text/csv" });
+    saveAs(blob, file.filename);
+  }, []);
+
+  const downloadAllProfiles = useCallback(async () => {
+    if (!profileDownloadData?.files?.length) return;
+    if (profileDownloadData.files.length === 1) {
+      downloadProfileCsv(profileDownloadData.files[0]);
+      return;
+    }
+    const zip = new JSZip();
+    for (const file of profileDownloadData.files) {
+      zip.file(file.filename, file.csv);
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    saveAs(blob, `Profile_Data_${scopeSummary.replace(/[^a-zA-Z0-9]/g, "_") || "Export"}.zip`);
+  }, [profileDownloadData, scopeSummary, downloadProfileCsv]);
 
   return (
     <Layout>
@@ -988,6 +1032,49 @@ export default function ReportsPage() {
             </Card>
           )}
         </div>
+      )}
+
+      {reportGenerated && reportParams?.report === "profile-download" && profileDownloadData && !profileDownloadLoading && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold" data-testid="text-report-title">Profile Download (Format 18)</h2>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-xs text-muted-foreground">
+                    {profileDownloadData.files.length} file{profileDownloadData.files.length !== 1 ? "s" : ""} available
+                    {" \u2022 "}
+                    {profileDownloadData.files.reduce((s, f) => s + f.rowCount, 0).toLocaleString()} total rows
+                  </span>
+                </div>
+              </div>
+              {profileDownloadData.files.length > 0 && (
+                <Button variant="outline" size="sm" onClick={downloadAllProfiles} data-testid="btn-download-all-profiles">
+                  <Download className="h-4 w-4 mr-1.5" />
+                  {profileDownloadData.files.length === 1 ? "Download CSV" : "Download All (ZIP)"}
+                </Button>
+              )}
+            </div>
+            <Separator className="mb-4" />
+            {profileDownloadData.files.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No profile data found for the selected scope and date range.</p>
+            ) : (
+              <div className="space-y-2">
+                {profileDownloadData.files.map((file, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 border rounded-md" data-testid={`profile-file-${idx}`}>
+                    <div>
+                      <p className="text-sm font-medium">{file.mpan}</p>
+                      <p className="text-xs text-muted-foreground">{file.rowCount.toLocaleString()} days of data \u2022 {file.filename}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => downloadProfileCsv(file)} data-testid={`btn-download-profile-${idx}`}>
+                      <Download className="h-4 w-4 mr-1" />CSV
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </Layout>
   );

@@ -116,6 +116,94 @@ export async function registerRoutes(
     }
   });
 
+  const FLAG_NUM_TO_LETTER: Record<number, string> = { 0: "N", 1: "A", 2: "E", 3: "S", 4: "C", 5: "F" };
+
+  app.get("/api/reports/profile-download", async (req, res) => {
+    try {
+      const { level, groupId, siteId, meterId, dateFrom, dateTo } = req.query;
+      if (!dateFrom || !dateTo) return res.status(400).json({ message: "dateFrom and dateTo required" });
+
+      const from = new Date(dateFrom as string);
+      const to = new Date(dateTo as string);
+
+      let meterIds: number[] = [];
+      if (level === "meter" && meterId) {
+        meterIds = [parseInt(meterId as string)];
+      } else if (level === "site" && siteId) {
+        const meters = await db.select({ id: dataSets.id }).from(dataSets).where(eq(dataSets.siteId, parseInt(siteId as string)));
+        meterIds = meters.map(m => m.id);
+      } else if (level === "group" && groupId) {
+        const siteLinks = await db.select({ siteId: siteGroups.siteId }).from(siteGroups).where(eq(siteGroups.groupId, parseInt(groupId as string)));
+        if (siteLinks.length > 0) {
+          const meters = await db.select({ id: dataSets.id }).from(dataSets).where(sql`${dataSets.siteId} IN (${sql.join(siteLinks.map(s => sql`${s.siteId}`), sql`, `)})`);
+          meterIds = meters.map(m => m.id);
+        }
+      }
+
+      if (meterIds.length === 0) return res.json({ files: [] });
+
+      const meterInfo = await db.select({
+        id: dataSets.id,
+        mpanCoreMprn: dataSets.mpanCoreMprn,
+        mpanProfile: dataSets.mpanProfile,
+        meterSerial1: dataSets.meterSerial1,
+        name: dataSets.name,
+      }).from(dataSets).where(sql`${dataSets.id} IN (${sql.join(meterIds.map(id => sql`${id}`), sql`, `)})`);
+
+      const profiles = await db.select().from(dataProfiles)
+        .where(sql`${dataProfiles.dataSetId} IN (${sql.join(meterIds.map(id => sql`${id}`), sql`, `)}) AND ${dataProfiles.date} >= ${from} AND ${dataProfiles.date} <= ${to}`)
+        .orderBy(dataProfiles.date);
+
+      const profilesByMeter = new Map<number, typeof profiles>();
+      for (const p of profiles) {
+        const arr = profilesByMeter.get(p.dataSetId) || [];
+        arr.push(p);
+        profilesByMeter.set(p.dataSetId, arr);
+      }
+
+      const files: { mpan: string; filename: string; csv: string; rowCount: number }[] = [];
+
+      for (const meter of meterInfo) {
+        const meterProfiles = profilesByMeter.get(meter.id);
+        if (!meterProfiles || meterProfiles.length === 0) continue;
+
+        const mpan = meter.mpanCoreMprn || meter.name || `meter_${meter.id}`;
+        const serial = meter.meterSerial1 || "";
+        const lines: string[] = [];
+
+        for (const p of meterProfiles) {
+          const d = new Date(p.date);
+          const dd = String(d.getUTCDate()).padStart(2, "0");
+          const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+          const yyyy = d.getUTCFullYear();
+          const dateStr = `${dd}/${mm}/${yyyy}`;
+
+          const parts: string[] = [mpan, serial, "Elec kWh", dateStr];
+          for (let i = 0; i < 48; i++) {
+            const val = (p as any)[INTERVAL_KEYS[i]];
+            const flag = (p as any)[FLAG_KEYS[i]];
+            parts.push(val != null ? String(val) : "");
+            parts.push(flag != null ? (FLAG_NUM_TO_LETTER[flag] ?? "") : "");
+          }
+          lines.push(parts.join(","));
+        }
+
+        const safeMpan = mpan.replace(/[^a-zA-Z0-9_-]/g, "_");
+        files.push({
+          mpan,
+          filename: `${safeMpan}.csv`,
+          csv: lines.join("\n"),
+          rowCount: lines.length,
+        });
+      }
+
+      res.json({ files });
+    } catch (error: any) {
+      console.error("Profile download error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/reports/site-details/:groupId", async (req, res) => {
     try {
       const groupId = parseInt(req.params.groupId);

@@ -56,9 +56,49 @@ interface UtilityTotals {
 }
 
 const REPORT_TYPES = [
+  { id: "best-of-data", name: "Best of Data", description: "Monthly kWh breakdown by data source (Profile, Invoice, Direct) with configurable priority order. Shows where data comes from and what is missing." },
   { id: "site-details", name: "Site and Data Set Details", description: "Lists all sites and meters within the selected scope, including utility type, supplier, and meter references." },
   { id: "simple-totals", name: "Simple Totals", description: "Monthly kWh and cost totals by utility type with bar charts, for the selected scope and date range." },
 ];
+
+const PRIORITY_OPTIONS = [
+  { id: "Invoice,Direct,Profile", label: "Invoice, Direct, Profile" },
+  { id: "Invoice,Profile,Direct", label: "Invoice, Profile, Direct" },
+  { id: "Direct,Invoice,Profile", label: "Direct, Invoice, Profile" },
+  { id: "Direct,Profile,Invoice", label: "Direct, Profile, Invoice" },
+  { id: "Profile,Invoice,Direct", label: "Profile, Invoice, Direct" },
+  { id: "Profile,Direct,Invoice", label: "Profile, Direct, Invoice" },
+];
+
+interface BodMeter {
+  meterId: number;
+  siteName: string;
+  code: string;
+  referenceNumber: string;
+  supplier: string;
+  mpanCore: string;
+  mpanProfile: string;
+  utilityType: string;
+  totalKwh: number;
+  profilePct: number;
+  invoicePct: number;
+  directPct: number;
+  noDataPct: number;
+  monthly: {
+    month: string;
+    profile: number;
+    invoice: number;
+    direct: number;
+    total: number;
+    noDataPct: number;
+  }[];
+}
+
+interface BodData {
+  meters: BodMeter[];
+  months: string[];
+  grandTotals: { month: string; total: number }[];
+}
 
 const UTILITY_COLORS: Record<string, string> = {
   "Electricity": "#3b82f6",
@@ -107,12 +147,16 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState(format(defaultStart, "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(defaultEnd, "yyyy-MM-dd"));
   const [selectedReport, setSelectedReport] = useState<string>("");
+  const [priorityOrder, setPriorityOrder] = useState<string>("Profile,Invoice,Direct");
+  const [bodUtilityFilter, setBodUtilityFilter] = useState<string>("all");
   const [reportGenerated, setReportGenerated] = useState(false);
   const [reportParams, setReportParams] = useState<{
     report: string;
     scope: ScopeSelection;
     dateFrom: string;
     dateTo: string;
+    priority?: string;
+    utilityFilter?: string;
   } | null>(null);
 
   const { data: hierarchy, isLoading: hierarchyLoading } = useQuery<{
@@ -227,6 +271,27 @@ export default function ReportsPage() {
     enabled: reportGenerated && reportParams?.report === "simple-totals",
   });
 
+  const { data: bodData, isLoading: bodLoading } = useQuery<BodData>({
+    queryKey: ["/api/reports/best-of-data", reportParams?.scope, reportParams?.dateFrom, reportParams?.dateTo, reportParams?.priority, reportParams?.utilityFilter],
+    queryFn: async () => {
+      const p = reportParams!;
+      const params = new URLSearchParams({
+        level: p.scope.level,
+        dateFrom: p.dateFrom,
+        dateTo: p.dateTo,
+        priority: p.priority || "Profile,Invoice,Direct",
+      });
+      if (p.scope.groupId) params.set("groupId", p.scope.groupId.toString());
+      if (p.scope.siteId) params.set("siteId", p.scope.siteId.toString());
+      if (p.scope.meterId) params.set("meterId", p.scope.meterId.toString());
+      if (p.utilityFilter && p.utilityFilter !== "all") params.set("utilityType", p.utilityFilter);
+      const res = await fetch(`/api/reports/best-of-data?${params}`);
+      if (!res.ok) throw new Error("Failed to load report");
+      return res.json();
+    },
+    enabled: reportGenerated && reportParams?.report === "best-of-data",
+  });
+
   const handleGenerate = () => {
     if (!canGenerate) return;
     setReportParams({
@@ -234,12 +299,15 @@ export default function ReportsPage() {
       scope: { ...scope },
       dateFrom,
       dateTo,
+      priority: priorityOrder,
+      utilityFilter: bodUtilityFilter,
     });
     setReportGenerated(true);
   };
 
   const isLoading = (reportParams?.report === "site-details" && siteDetailLoading) ||
-    (reportParams?.report === "simple-totals" && simpleTotalsLoading);
+    (reportParams?.report === "simple-totals" && simpleTotalsLoading) ||
+    (reportParams?.report === "best-of-data" && bodLoading);
 
   const downloadSiteDetailsExcel = useCallback(() => {
     if (!siteDetailData?.rows?.length) return;
@@ -282,6 +350,71 @@ export default function ReportsPage() {
 
     XLSX.writeFile(wb, `Simple_Totals_${scopeSummary.replace(/[^a-zA-Z0-9]/g, "_") || "Report"}.xlsx`);
   }, [simpleTotalsData, reportParams, scopeSummary]);
+
+  const downloadBodExcel = useCallback(() => {
+    if (!bodData?.meters?.length || !reportParams) return;
+    const months = bodData.months;
+    const fromDate = new Date(reportParams.dateFrom);
+    const toDate = new Date(reportParams.dateTo);
+    const fromStr = `${String(fromDate.getDate()).padStart(2, "0")}/${String(fromDate.getMonth() + 1).padStart(2, "0")}/${fromDate.getFullYear()}`;
+    const toStr = `${String(toDate.getDate()).padStart(2, "0")}/${String(toDate.getMonth() + 1).padStart(2, "0")}/${toDate.getFullYear()}`;
+
+    const headers = [
+      "Site Name", "Code", "Reference Number", "Supplier", "MPAN (Core) 1", "MPAN (profile) 1",
+      "Total kWh", "Profile %", "Invoice %", "Direct %", "No Data %", "Row Showing",
+      ...months.map(m => {
+        const [y, mo] = m.split("-");
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return `${monthNames[parseInt(mo) - 1]} ${y.slice(2)}`;
+      }),
+    ];
+
+    const utilLabel = reportParams.utilityFilter && reportParams.utilityFilter !== "all"
+      ? `${reportParams.utilityFilter.charAt(0).toUpperCase() + reportParams.utilityFilter.slice(1)} `
+      : "";
+    const wsData: any[][] = [
+      [`${utilLabel}Best of Data by Month with Breakdown for ${fromStr} to ${toStr}`],
+      [],
+      headers,
+    ];
+
+    for (const meter of bodData.meters) {
+      wsData.push([
+        meter.siteName, meter.code, meter.referenceNumber, meter.supplier,
+        meter.mpanCore, meter.mpanProfile, meter.totalKwh,
+        meter.profilePct, meter.invoicePct, meter.directPct, meter.noDataPct,
+        "Profile", ...meter.monthly.map(mm => mm.profile),
+      ]);
+      wsData.push([null, null, null, null, null, null, null, null, null, null, null,
+        "Invoice", ...meter.monthly.map(mm => mm.invoice),
+      ]);
+      wsData.push([null, null, null, null, null, null, null, null, null, null, null,
+        "Direct", ...meter.monthly.map(mm => mm.direct),
+      ]);
+      wsData.push([null, null, null, null, null, null, null, null, null, null, null,
+        "Total", ...meter.monthly.map(mm => mm.total),
+      ]);
+      wsData.push([null, null, null, null, null, null, null, null, null, null, null,
+        "No Data (%)", ...meter.monthly.map(mm => mm.noDataPct),
+      ]);
+    }
+
+    wsData.push([bodData.meters.length]);
+    const grandTotal = bodData.grandTotals.reduce((s, gt) => s + gt.total, 0);
+    wsData.push([null, null, null, null, null, null, null, null, null, null, null, null,
+      ...bodData.grandTotals.map(gt => gt.total), grandTotal,
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws["!cols"] = [
+      { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 14 },
+      { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
+      ...months.map(() => ({ wch: 14 })),
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet");
+    XLSX.writeFile(wb, `Best_of_Data_${scopeSummary.replace(/[^a-zA-Z0-9]/g, "_") || "Report"}.xlsx`);
+  }, [bodData, reportParams, scopeSummary]);
 
   return (
     <Layout>
@@ -401,6 +534,41 @@ export default function ReportsPage() {
                   <p className="text-xs text-muted-foreground mt-2">
                     {REPORT_TYPES.find(rt => rt.id === selectedReport)?.description}
                   </p>
+                )}
+                {selectedReport === "best-of-data" && (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1.5 block">Utility Type</Label>
+                      <Select value={bodUtilityFilter} onValueChange={(val) => { setBodUtilityFilter(val); setReportGenerated(false); }}>
+                        <SelectTrigger data-testid="select-bod-utility">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Utilities</SelectItem>
+                          <SelectItem value="electricity">Electricity</SelectItem>
+                          <SelectItem value="gas">Gas</SelectItem>
+                          <SelectItem value="water">Water</SelectItem>
+                          <SelectItem value="oil">Oil</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1.5 block">Processing Priority Order</Label>
+                      <Select value={priorityOrder} onValueChange={(val) => { setPriorityOrder(val); setReportGenerated(false); }}>
+                        <SelectTrigger data-testid="select-priority-order">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PRIORITY_OPTIONS.map(po => (
+                            <SelectItem key={po.id} value={po.id}>{po.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        First source with data for each day wins. For example, "Profile, Invoice, Direct" means profile data is preferred, then invoice, then direct readings.
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -579,6 +747,126 @@ export default function ReportsPage() {
                 </Card>
               );
             })
+          )}
+        </div>
+      )}
+      {reportGenerated && reportParams?.report === "best-of-data" && bodData && !bodLoading && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold" data-testid="text-report-title">
+                {reportParams.utilityFilter && reportParams.utilityFilter !== "all"
+                  ? `${reportParams.utilityFilter.charAt(0).toUpperCase() + reportParams.utilityFilter.slice(1)} `
+                  : ""}Best of Data Report
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Priority: {reportParams.priority?.split(",").join(" > ")} | {bodData.meters.length} meter{bodData.meters.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={downloadBodExcel} data-testid="btn-download-report">
+              <Download className="h-4 w-4 mr-1.5" />Download Excel
+            </Button>
+          </div>
+
+          {bodData.meters.length === 0 ? (
+            <Card>
+              <CardContent className="py-8">
+                <p className="text-sm text-muted-foreground text-center">No data found for the selected scope and date range.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="pt-4 pb-2 px-2">
+                <div className="overflow-x-auto">
+                  <Table data-testid="table-best-of-data" className="text-xs">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap text-xs px-2">Site Name</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2">Code</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2">Ref</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2">Supplier</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2">MPAN Core</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2">MPAN Profile</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 text-right">Total kWh</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 text-right">Profile %</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 text-right">Invoice %</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 text-right">Direct %</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2 text-right">No Data %</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs px-2">Source</TableHead>
+                        {bodData.months.map(m => (
+                          <TableHead key={m} className="whitespace-nowrap text-xs px-2 text-right">{formatMonth(m)}</TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bodData.meters.map((meter, mIdx) => {
+                        const rows = ["Profile", "Invoice", "Direct", "Total", "No Data (%)"];
+                        const rowColors: Record<string, string> = {
+                          "Profile": "bg-blue-50 dark:bg-blue-950/30",
+                          "Invoice": "bg-amber-50 dark:bg-amber-950/30",
+                          "Direct": "bg-green-50 dark:bg-green-950/30",
+                          "Total": "bg-gray-100 dark:bg-gray-800 font-semibold",
+                          "No Data (%)": "bg-red-50 dark:bg-red-950/20",
+                        };
+                        return rows.map((rowType, rIdx) => (
+                          <TableRow
+                            key={`${meter.meterId}-${rowType}`}
+                            className={`${rowColors[rowType] || ""} ${rIdx === 0 ? "border-t-2 border-gray-300 dark:border-gray-600" : ""}`}
+                            data-testid={`row-bod-${meter.meterId}-${rowType.toLowerCase().replace(/[^a-z]/g, "")}`}
+                          >
+                            {rIdx === 0 ? (
+                              <>
+                                <TableCell className="whitespace-nowrap px-2 font-medium">{meter.siteName}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2 font-mono">{meter.code}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2 font-mono">{meter.referenceNumber}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2">{meter.supplier}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2 font-mono">{meter.mpanCore}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2 font-mono">{meter.mpanProfile}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2 text-right font-semibold">{formatNumber(meter.totalKwh)}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2 text-right">{meter.profilePct.toFixed(1)}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2 text-right">{meter.invoicePct.toFixed(1)}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2 text-right">{meter.directPct.toFixed(1)}</TableCell>
+                                <TableCell className="whitespace-nowrap px-2 text-right">{meter.noDataPct.toFixed(1)}</TableCell>
+                              </>
+                            ) : (
+                              <>
+                                <TableCell colSpan={11} />
+                              </>
+                            )}
+                            <TableCell className="whitespace-nowrap px-2 font-medium">{rowType}</TableCell>
+                            {meter.monthly.map(mm => {
+                              let val: number;
+                              if (rowType === "Profile") val = mm.profile;
+                              else if (rowType === "Invoice") val = mm.invoice;
+                              else if (rowType === "Direct") val = mm.direct;
+                              else if (rowType === "Total") val = mm.total;
+                              else val = mm.noDataPct;
+
+                              const isPercent = rowType === "No Data (%)";
+                              const display = isPercent
+                                ? (val > 0 ? `${val}%` : "")
+                                : (val > 0 ? formatNumber(val) : "");
+
+                              return (
+                                <TableCell key={mm.month} className={`whitespace-nowrap px-2 text-right ${rowType === "Total" ? "font-semibold" : ""} ${isPercent && val > 0 ? "text-red-600 dark:text-red-400" : ""}`}>
+                                  {display}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ));
+                      })}
+                      <TableRow className="border-t-4 border-gray-400 dark:border-gray-500 bg-gray-200 dark:bg-gray-700 font-bold">
+                        <TableCell colSpan={12} className="px-2 text-right">Grand Total</TableCell>
+                        {bodData.grandTotals.map(gt => (
+                          <TableCell key={gt.month} className="whitespace-nowrap px-2 text-right font-bold">{formatNumber(gt.total)}</TableCell>
+                        ))}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       )}

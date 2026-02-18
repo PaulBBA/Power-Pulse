@@ -280,6 +280,255 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/reports/best-of-data", async (req, res) => {
+    try {
+      const { level, groupId, siteId, meterId, dateFrom, dateTo, priority } = req.query as Record<string, string>;
+
+      if (!level || !dateFrom || !dateTo || !priority) {
+        return res.status(400).json({ message: "level, dateFrom, dateTo, priority are required" });
+      }
+
+      const priorityOrder = priority.split(",").map(s => s.trim());
+
+      let meterIds: number[] = [];
+      if (level === "meter" && meterId) {
+        meterIds = [parseInt(meterId)];
+      } else if (level === "site" && siteId) {
+        const siteDataSets = await db.select({ id: dataSets.id }).from(dataSets).where(eq(dataSets.siteId, parseInt(siteId)));
+        meterIds = siteDataSets.map(ds => ds.id);
+      } else if (level === "group" && groupId) {
+        const sgRows = await db.select().from(siteGroups).where(eq(siteGroups.groupId, parseInt(groupId)));
+        const siteIdList = sgRows.map(sg => sg.siteId);
+        if (siteIdList.length > 0) {
+          const allDs = await db.select({ id: dataSets.id, siteId: dataSets.siteId }).from(dataSets);
+          meterIds = allDs.filter(ds => siteIdList.includes(ds.siteId)).map(ds => ds.id);
+        }
+      }
+
+      if (meterIds.length === 0) {
+        return res.json({ meters: [], months: [], grandTotals: [] });
+      }
+
+      const fromDate = new Date(dateFrom);
+      const toDate = new Date(dateTo);
+
+      const allMonths: string[] = [];
+      const cur = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+      while (cur <= toDate) {
+        allMonths.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}`);
+        cur.setMonth(cur.getMonth() + 1);
+      }
+
+      const allDays: Date[] = [];
+      const dayIter = new Date(fromDate);
+      while (dayIter <= toDate) {
+        allDays.push(new Date(dayIter));
+        dayIter.setDate(dayIter.getDate() + 1);
+      }
+      const totalDays = allDays.length;
+
+      const allMeters = await db.select().from(dataSets);
+      const allSitesList = await db.select().from(sites);
+      const allSuppliersList = await db.select().from(suppliers);
+      const allUtilitiesList = await db.select().from(utilities);
+      const supplierMap = new Map(allSuppliersList.map(s => [s.id, s.name]));
+      const utilityMap = new Map(allUtilitiesList.map(u => [u.id, u]));
+
+      const records = await db.select().from(dataRecords).where(
+        sql`${dataRecords.dataSetId} IN (${sql.raw(meterIds.join(","))})
+            AND ${dataRecords.date} >= ${new Date(fromDate.getFullYear() - 2, 0, 1)}
+            AND ${dataRecords.date} <= ${new Date(toDate.getFullYear() + 1, 11, 31)}
+            AND (${dataRecords.excludeFromReports} IS NULL OR ${dataRecords.excludeFromReports} = 0)`
+      );
+
+      const profiles = await db.select().from(dataProfiles).where(
+        sql`${dataProfiles.dataSetId} IN (${sql.raw(meterIds.join(","))})
+            AND ${dataProfiles.date} >= ${fromDate}
+            AND ${dataProfiles.date} <= ${toDate}`
+      );
+
+      const INTERVAL_COLS = [
+        "i0030","i0100","i0130","i0200","i0230","i0300","i0330","i0400",
+        "i0430","i0500","i0530","i0600","i0630","i0700","i0730","i0800",
+        "i0830","i0900","i0930","i1000","i1030","i1100","i1130","i1200",
+        "i1230","i1300","i1330","i1400","i1430","i1500","i1530","i1600",
+        "i1630","i1700","i1730","i1800","i1830","i1900","i1930","i2000",
+        "i2030","i2100","i2130","i2200","i2230","i2300","i2330","i2400"
+      ];
+
+      const profileByMeterDay = new Map<string, number>();
+      for (const p of profiles) {
+        if (!p.date) continue;
+        const dayKey = `${p.dataSetId}_${p.date.toISOString().slice(0, 10)}`;
+        let dayTotal = 0;
+        for (const col of INTERVAL_COLS) {
+          const val = (p as any)[col];
+          if (val != null && typeof val === "number") dayTotal += val;
+        }
+        profileByMeterDay.set(dayKey, (profileByMeterDay.get(dayKey) || 0) + dayTotal);
+      }
+
+      const invoiceDailyByMeter = new Map<number, Map<string, number>>();
+      const directDailyByMeter = new Map<number, Map<string, number>>();
+
+      for (const rec of records) {
+        if (!rec.date || rec.units == null) continue;
+        const isDirect = rec.direct === "D";
+        const targetMap = isDirect ? directDailyByMeter : invoiceDailyByMeter;
+
+        if (!targetMap.has(rec.dataSetId)) targetMap.set(rec.dataSetId, new Map());
+        const dailyMap = targetMap.get(rec.dataSetId)!;
+
+        const endDate = new Date(rec.date);
+        let startDate: Date;
+        if (rec.previousDate) {
+          startDate = new Date(rec.previousDate);
+          startDate.setDate(startDate.getDate() + 1);
+        } else {
+          startDate = new Date(endDate);
+        }
+
+        const periodMs = endDate.getTime() - startDate.getTime() + 86400000;
+        const periodDays = Math.max(1, Math.round(periodMs / 86400000));
+        const dailyRate = rec.units / periodDays;
+
+        const clampedStart = startDate < fromDate ? new Date(fromDate) : new Date(startDate);
+        const clampedEnd = endDate > toDate ? new Date(toDate) : new Date(endDate);
+        const iterDate = new Date(clampedStart);
+        while (iterDate <= clampedEnd) {
+          const dayStr = iterDate.toISOString().slice(0, 10);
+          dailyMap.set(dayStr, (dailyMap.get(dayStr) || 0) + dailyRate);
+          iterDate.setDate(iterDate.getDate() + 1);
+        }
+      }
+
+      const utilityFilter = req.query.utilityType as string | undefined;
+
+      const results = meterIds.map(meterId => {
+        const meter = allMeters.find(m => m.id === meterId);
+        if (!meter) return null;
+
+        const utility = utilityMap.get(meter.utilityTypeId);
+        const utilityName = utility?.name || "Unknown";
+        if (utilityFilter && utilityName.toLowerCase() !== utilityFilter.toLowerCase()) return null;
+
+        const site = allSitesList.find(s => s.id === meter.siteId);
+        const supplierName = meter.supplierId ? (supplierMap.get(meter.supplierId) || "") : "";
+
+        const monthlyProfile: Record<string, number> = {};
+        const monthlyInvoice: Record<string, number> = {};
+        const monthlyDirect: Record<string, number> = {};
+        const monthlyTotal: Record<string, number> = {};
+        let profileDays = 0, invoiceDays = 0, directDays = 0, noDataDays = 0;
+
+        for (const day of allDays) {
+          const dayStr = day.toISOString().slice(0, 10);
+          const monthKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}`;
+
+          const profileVal = profileByMeterDay.get(`${meterId}_${dayStr}`) || 0;
+          const invoiceVal = invoiceDailyByMeter.get(meterId)?.get(dayStr) || 0;
+          const directVal = directDailyByMeter.get(meterId)?.get(dayStr) || 0;
+
+          const sources: Record<string, number> = {
+            "Profile": profileVal,
+            "Invoice": invoiceVal,
+            "Direct": directVal,
+          };
+
+          let chosen: string | null = null;
+          for (const src of priorityOrder) {
+            if (sources[src] && sources[src] !== 0) {
+              chosen = src;
+              break;
+            }
+          }
+
+          if (!monthlyProfile[monthKey]) monthlyProfile[monthKey] = 0;
+          if (!monthlyInvoice[monthKey]) monthlyInvoice[monthKey] = 0;
+          if (!monthlyDirect[monthKey]) monthlyDirect[monthKey] = 0;
+          if (!monthlyTotal[monthKey]) monthlyTotal[monthKey] = 0;
+
+          if (chosen === "Profile") {
+            monthlyProfile[monthKey] += profileVal;
+            monthlyTotal[monthKey] += profileVal;
+            profileDays++;
+          } else if (chosen === "Invoice") {
+            monthlyInvoice[monthKey] += invoiceVal;
+            monthlyTotal[monthKey] += invoiceVal;
+            invoiceDays++;
+          } else if (chosen === "Direct") {
+            monthlyDirect[monthKey] += directVal;
+            monthlyTotal[monthKey] += directVal;
+            directDays++;
+          } else {
+            noDataDays++;
+          }
+        }
+
+        const totalKwh = Object.values(monthlyTotal).reduce((s, v) => s + v, 0);
+        const profilePct = totalDays > 0 ? (profileDays / totalDays) * 100 : 0;
+        const invoicePct = totalDays > 0 ? (invoiceDays / totalDays) * 100 : 0;
+        const directPct = totalDays > 0 ? (directDays / totalDays) * 100 : 0;
+        const noDataPct = totalDays > 0 ? (noDataDays / totalDays) * 100 : 0;
+
+        const monthly = allMonths.map(m => ({
+          month: m,
+          profile: Math.round((monthlyProfile[m] || 0) * 100) / 100,
+          invoice: Math.round((monthlyInvoice[m] || 0) * 100) / 100,
+          direct: Math.round((monthlyDirect[m] || 0) * 100) / 100,
+          total: Math.round((monthlyTotal[m] || 0) * 100) / 100,
+          noDataPct: (() => {
+            const daysInMonth = allDays.filter(d => {
+              const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+              return mk === m;
+            }).length;
+            const monthNoData = allDays.filter(d => {
+              const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+              if (mk !== m) return false;
+              const ds = d.toISOString().slice(0, 10);
+              const pv = profileByMeterDay.get(`${meterId}_${ds}`) || 0;
+              const iv = invoiceDailyByMeter.get(meterId)?.get(ds) || 0;
+              const dv = directDailyByMeter.get(meterId)?.get(ds) || 0;
+              return !pv && !iv && !dv;
+            }).length;
+            return daysInMonth > 0 ? Math.round((monthNoData / daysInMonth) * 100) : 0;
+          })(),
+        }));
+
+        return {
+          meterId,
+          siteName: site?.name || "",
+          code: meter.code || "",
+          referenceNumber: meter.code2 || "",
+          supplier: supplierName,
+          mpanCore: meter.mpanCoreMprn || "",
+          mpanProfile: meter.mpanProfile || "",
+          utilityType: utilityName,
+          totalKwh: Math.round(totalKwh * 100) / 100,
+          profilePct: Math.round(profilePct * 100) / 100,
+          invoicePct: Math.round(invoicePct * 100) / 100,
+          directPct: Math.round(directPct * 100) / 100,
+          noDataPct: Math.round(noDataPct * 100) / 100,
+          monthly,
+        };
+      }).filter(Boolean);
+
+      const grandTotals = allMonths.map(m => {
+        let total = 0;
+        for (const meter of results) {
+          const mm = (meter as any).monthly.find((x: any) => x.month === m);
+          if (mm) total += mm.total;
+        }
+        return { month: m, total: Math.round(total * 100) / 100 };
+      });
+
+      res.json({ meters: results, months: allMonths, grandTotals });
+    } catch (error: any) {
+      console.error("Error generating best of data report:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/utilities", async (_req, res) => {
     const utils = await storage.getUtilities();
     res.json(utils);

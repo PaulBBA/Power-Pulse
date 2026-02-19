@@ -161,16 +161,22 @@ export default function Dashboard() {
             <Card className="shadow-sm" data-testid="card-profile-chart">
               <CardHeader>
                 <CardTitle>Half-Hourly Usage – Past 4 Weeks</CardTitle>
-                <CardDescription>Total consumption per half hour across all meters</CardDescription>
+                <CardDescription>
+                  Total consumption per half hour across all meters
+                  {stats.dateTo && (
+                    <span className="ml-2 text-xs font-medium text-muted-foreground">
+                      — Last data received: {new Date(stats.dateTo + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                  )}
+                </CardDescription>
               </CardHeader>
               <CardContent className="pl-2">
-                <div className="h-[400px]">
+                <div className="h-[450px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={stats.halfHourlyData.map((d, idx) => ({
                       ...d,
-                      label: new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + d.time,
                       idx,
-                    }))} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    }))} margin={{ top: 10, right: 30, left: 0, bottom: 60 }}>
                       <defs>
                         <linearGradient id="colorHH" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
@@ -180,24 +186,16 @@ export default function Dashboard() {
                       <XAxis
                         dataKey="idx"
                         stroke="#888888"
-                        fontSize={10}
+                        fontSize={9}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(idx: number) => {
-                          const d = stats.halfHourlyData![idx];
-                          if (!d) return '';
-                          if (d.time === '00:30') {
-                            return new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                          }
-                          return '';
-                        }}
                         interval={0}
                         tick={({ x, y, payload }: any) => {
                           const d = stats.halfHourlyData![payload.value];
                           if (!d || d.time !== '00:30') return <g />;
                           return (
                             <g transform={`translate(${x},${y})`}>
-                              <text x={0} y={0} dy={12} textAnchor="middle" fill="#888888" fontSize={10}>
+                              <text x={0} y={0} dy={8} textAnchor="end" fill="#888888" fontSize={9} transform="rotate(-90)">
                                 {new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                               </text>
                             </g>

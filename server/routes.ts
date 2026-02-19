@@ -262,7 +262,11 @@ export async function registerRoutes(
           "20:30","21:00","21:30","22:00","22:30","23:00","23:30","24:00"
         ];
 
-        for (const [dateStr, slots] of dayMap) {
+        for (let d = 0; d < 28; d++) {
+          const dt = new Date(fourWeeksAgo);
+          dt.setDate(dt.getDate() + d);
+          const dateStr = dt.toISOString().split('T')[0];
+          const slots = dayMap.get(dateStr) || new Array(48).fill(0);
           for (let i = 0; i < 48; i++) {
             halfHourlyData.push({
               datetime: `${dateStr}T${timeLabels[i]}`,

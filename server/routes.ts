@@ -75,14 +75,27 @@ export async function registerRoutes(
       const user = req.user!;
       const isAdmin = user.role === "admin";
       const period = (req.query.period as string) || "last_month";
+      const groupIdParam = req.query.groupId ? parseInt(req.query.groupId as string) : null;
 
-      const dataSetSubquery = isAdmin
+      let baseSiteIds: number[] | null = isAdmin
         ? null
         : await (async () => {
             const siteIds = await storage.getSiteIdsForUser(user.id);
             if (siteIds.length === 0) return [];
             return siteIds;
           })();
+
+      if (groupIdParam) {
+        const sgRows = await db.select({ siteId: siteGroups.siteId }).from(siteGroups).where(eq(siteGroups.groupId, groupIdParam));
+        const groupSiteIds = sgRows.map(r => r.siteId);
+        if (baseSiteIds !== null) {
+          baseSiteIds = baseSiteIds.filter(id => groupSiteIds.includes(id));
+        } else {
+          baseSiteIds = groupSiteIds;
+        }
+      }
+
+      const dataSetSubquery = baseSiteIds;
 
       if (dataSetSubquery !== null && dataSetSubquery.length === 0) {
         return res.json({
@@ -277,18 +290,14 @@ export async function registerRoutes(
           }
         }
 
-        let mtdSiteCount = 0;
-        let mtdMeterCount = 0;
-        if (isAdmin) {
-          const [sc] = await db.select({ count: sql<number>`COUNT(*)` }).from(sites);
-          const [mc] = await db.select({ count: sql<number>`COUNT(*)` }).from(dataSets);
-          mtdSiteCount = sc.count;
-          mtdMeterCount = mc.count;
-        } else {
-          mtdSiteCount = dataSetSubquery!.length;
-          const userDataSets = await storage.getDataSetsForUser(user.id);
-          mtdMeterCount = userDataSets.length;
-        }
+        const [mtdSc, mtdMc] = await Promise.all([
+          dataSetSubquery
+            ? Promise.resolve({ count: dataSetSubquery.length })
+            : db.select({ count: sql<number>`COUNT(*)` }).from(sites).then(r => r[0]),
+          dataSetSubquery
+            ? db.select({ count: sql<number>`COUNT(*)` }).from(dataSets).where(inArray(dataSets.siteId, dataSetSubquery)).then(r => r[0])
+            : db.select({ count: sql<number>`COUNT(*)` }).from(dataSets).then(r => r[0]),
+        ]);
 
         return res.json({
           totalUnits,
@@ -298,23 +307,21 @@ export async function registerRoutes(
           dateFrom,
           dateTo,
           periodLabel,
-          siteCount: mtdSiteCount,
-          meterCount: mtdMeterCount,
+          siteCount: mtdSc.count,
+          meterCount: mtdMc.count,
         });
       }
 
-      let siteCount = 0;
-      let meterCount = 0;
-      if (isAdmin) {
-        const [sc] = await db.select({ count: sql<number>`COUNT(*)` }).from(sites);
-        const [mc] = await db.select({ count: sql<number>`COUNT(*)` }).from(dataSets);
-        siteCount = sc.count;
-        meterCount = mc.count;
-      } else {
-        siteCount = dataSetSubquery!.length;
-        const userDataSets = await storage.getDataSetsForUser(user.id);
-        meterCount = userDataSets.length;
-      }
+      const [scResult, mcResult] = await Promise.all([
+        dataSetSubquery
+          ? Promise.resolve({ count: dataSetSubquery.length })
+          : db.select({ count: sql<number>`COUNT(*)` }).from(sites).then(r => r[0]),
+        dataSetSubquery
+          ? db.select({ count: sql<number>`COUNT(*)` }).from(dataSets).where(inArray(dataSets.siteId, dataSetSubquery)).then(r => r[0])
+          : db.select({ count: sql<number>`COUNT(*)` }).from(dataSets).then(r => r[0]),
+      ]);
+      const siteCount = scResult.count;
+      const meterCount = mcResult.count;
 
       res.json({
         totalUnits,

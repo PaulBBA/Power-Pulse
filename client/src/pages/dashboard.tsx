@@ -14,7 +14,8 @@ import {
 } from "recharts";
 import { ArrowUpRight, ArrowDownRight, Zap, PoundSterling, Building2, Gauge, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Group } from "@shared/schema";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -48,11 +49,26 @@ const PERIOD_OPTIONS = [
 
 export default function Dashboard() {
   const [period, setPeriod] = useState("last_month");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
+  const [groupAutoApplied, setGroupAutoApplied] = useState(false);
+
+  const { data: groups } = useQuery<Group[]>({
+    queryKey: ["/api/groups"],
+  });
+
+  useEffect(() => {
+    if (groups && groups.length === 1 && !groupAutoApplied) {
+      setSelectedGroupId(groups[0].id.toString());
+      setGroupAutoApplied(true);
+    }
+  }, [groups, groupAutoApplied]);
 
   const { data: stats, isLoading } = useQuery<DashboardStats>({
-    queryKey: ["/api/dashboard/stats", period],
+    queryKey: ["/api/dashboard/stats", period, selectedGroupId],
     queryFn: async () => {
-      const res = await fetch(`/api/dashboard/stats?period=${period}`, { credentials: "include" });
+      const params = new URLSearchParams({ period });
+      if (selectedGroupId !== "all") params.set("groupId", selectedGroupId);
+      const res = await fetch(`/api/dashboard/stats?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load dashboard");
       return res.json();
     },
@@ -77,18 +93,33 @@ export default function Dashboard() {
             </p>
           )}
         </div>
-        <Select value={period} onValueChange={setPeriod} data-testid="select-period">
-          <SelectTrigger className="w-[240px]" data-testid="select-period-trigger">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PERIOD_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value} data-testid={`select-period-${opt.value}`}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+            <SelectTrigger className="w-[220px]" data-testid="select-group-filter">
+              <SelectValue placeholder="Filter by group" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px] overflow-y-auto">
+              <SelectItem value="all">All Groups</SelectItem>
+              {groups?.sort((a, b) => a.name.localeCompare(b.name)).map(g => (
+                <SelectItem key={g.id} value={g.id.toString()} data-testid={`option-group-${g.id}`}>
+                  {g.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={period} onValueChange={setPeriod} data-testid="select-period">
+            <SelectTrigger className="w-[240px]" data-testid="select-period-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value} data-testid={`select-period-${opt.value}`}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (

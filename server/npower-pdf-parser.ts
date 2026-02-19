@@ -131,7 +131,7 @@ export async function parseNpowerPDF(buffer: Buffer): Promise<NpowerInvoice> {
     throw new Error("Could not find 'Total charges excluding VAT' in the invoice. The PDF format may have changed.");
   }
 
-  const vatMatch = text.match(/Standard VAT\s+([\d.]+)%\s+£?([\d,]+\.\d{2})\s+£?([\d,]+\.\d{2})/);
+  const vatMatch = text.match(/(?:Standard|Reduced)\s+VAT\s+([\d.]+)%\s+£?([\d,]+\.\d{2})\s+£?([\d,]+\.\d{2})/);
   const vatRate = vatMatch ? parseFloat(vatMatch[1]) : 20;
   const vatAmount = vatMatch ? parseMoney(vatMatch[3]) : 0;
 
@@ -195,8 +195,14 @@ function parseMeterSection(text: string, mpan: string, invoicePeriodStart: Date 
     ? text.substring(chargesStart, sectionEnd)
     : "";
 
-  const meterSerialMatch = consumptionSection.match(/([A-Z]\d{2}[A-Z]\d{4,6})/);
-  const meterSerial = meterSerialMatch ? meterSerialMatch[1] : "";
+  let meterSerial = "";
+  const serialMatch1 = consumptionSection.match(/multiplier\s+Total\s*\(kWh\)\s*\n\s*([A-Za-z0-9]+)/);
+  if (serialMatch1) {
+    meterSerial = serialMatch1[1].trim();
+  } else {
+    const serialMatch2 = consumptionSection.match(/([A-Z]\d{2}[A-Z]\d{4,6})/);
+    if (serialMatch2) meterSerial = serialMatch2[1];
+  }
 
   let periodStart: Date | null = null;
   let periodEnd: Date | null = null;

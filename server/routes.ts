@@ -162,7 +162,11 @@ export async function registerRoutes(
         if (!lastBilledYear || !lastBilledMonth) {
           periodLabel = `No billed data for ${currentYear}`;
         } else {
-          const ytdYear = lastBilledYear;
+          const ytdStartYear = lastBilledMonth >= 1 ? lastBilledYear - 1 : lastBilledYear;
+          const ytdStartMonth = lastBilledMonth >= 1 ? lastBilledMonth + 1 : 1;
+          const startYr = ytdStartMonth > 12 ? ytdStartYear + 1 : ytdStartYear;
+          const startMo = ytdStartMonth > 12 ? 1 : ytdStartMonth;
+
           const monthly = await db.select({
             year: sql<number>`EXTRACT(YEAR FROM ${dataRecords.date})::int`,
             month: sql<number>`EXTRACT(MONTH FROM ${dataRecords.date})::int`,
@@ -171,11 +175,11 @@ export async function registerRoutes(
           }).from(dataRecords)
             .where(and(
               userFilter,
-              sql`EXTRACT(YEAR FROM ${dataRecords.date}) = ${currentYear}`,
+              sql`(EXTRACT(YEAR FROM ${dataRecords.date}), EXTRACT(MONTH FROM ${dataRecords.date})) >= (${startYr}, ${startMo})`,
               sql`(EXTRACT(YEAR FROM ${dataRecords.date}), EXTRACT(MONTH FROM ${dataRecords.date})) <= (${lastBilledYear}, ${lastBilledMonth})`
             ))
             .groupBy(sql`EXTRACT(YEAR FROM ${dataRecords.date})`, sql`EXTRACT(MONTH FROM ${dataRecords.date})`)
-            .orderBy(sql`EXTRACT(MONTH FROM ${dataRecords.date}) ASC`);
+            .orderBy(sql`EXTRACT(YEAR FROM ${dataRecords.date}) ASC`, sql`EXTRACT(MONTH FROM ${dataRecords.date}) ASC`);
 
           monthlyData = monthly;
           totalUnits = monthly.reduce((sum, m) => sum + m.totalUnits, 0);
@@ -186,9 +190,9 @@ export async function registerRoutes(
             const last = monthly[monthly.length - 1];
             dateFrom = `${first.year}-${String(first.month).padStart(2, '0')}`;
             dateTo = `${last.year}-${String(last.month).padStart(2, '0')}`;
-            periodLabel = `${MN[first.month - 1]} – ${MN[last.month - 1]} ${currentYear}`;
+            periodLabel = `${MN[first.month - 1]} ${first.year} – ${MN[last.month - 1]} ${last.year}`;
           } else {
-            periodLabel = `No billed data for ${currentYear} yet`;
+            periodLabel = `No billed data available`;
           }
         }
 

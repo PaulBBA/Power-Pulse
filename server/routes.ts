@@ -341,10 +341,9 @@ export async function registerRoutes(
 
   app.get("/api/groups", requireAuth, async (req, res) => {
     const user = req.user!;
-    const includeAll = req.query.all === "true";
-    if (user.role === "admin" || includeAll && user.role === "admin") {
-      const allGroups = await storage.getGroups();
-      res.json(allGroups);
+    if (user.role === "admin") {
+      const activeGroups = await storage.getGroupsWithSites();
+      res.json(activeGroups);
     } else {
       const userGroupsList = await storage.getGroupsForUser(user.id);
       res.json(userGroupsList);

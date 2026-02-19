@@ -24,6 +24,7 @@ export interface IStorage {
 
   // Groups
   getGroups(): Promise<Group[]>;
+  getGroupsWithSites(): Promise<Group[]>;
   createGroup(group: { name: string }): Promise<Group>;
   getGroupsHierarchy(): Promise<any>;
 
@@ -120,6 +121,13 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(groups);
   }
 
+  async getGroupsWithSites(): Promise<Group[]> {
+    const groupIdsWithSites = await db.selectDistinct({ groupId: siteGroups.groupId }).from(siteGroups);
+    const ids = groupIdsWithSites.map(r => r.groupId);
+    if (ids.length === 0) return [];
+    return await db.select().from(groups).where(inArray(groups.id, ids));
+  }
+
   async createGroup(group: { name: string }): Promise<Group> {
     const [newGroup] = await db.insert(groups).values(group).returning();
     return newGroup;
@@ -157,7 +165,7 @@ export class DatabaseStorage implements IStorage {
           meters: metersBySite.get(s.id) || [],
         }));
       return { ...g, sites: groupSites };
-    });
+    }).filter(g => g.sites.length > 0);
 
     const unassignedSites = allSites
       .filter(s => !assignedSiteIds.has(s.id))

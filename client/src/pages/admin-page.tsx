@@ -81,6 +81,7 @@ export default function AdminPage() {
       username: "",
       password: "",
       role: "viewer",
+      email: "",
     },
   });
 
@@ -89,6 +90,7 @@ export default function AdminPage() {
       username: "",
       role: "viewer",
       password: "",
+      email: "",
     },
   });
 
@@ -98,6 +100,7 @@ export default function AdminPage() {
         username: editingUser.username,
         role: editingUser.role,
         password: "",
+        email: editingUser.email || "",
       });
     }
   }, [editingUser]);
@@ -215,7 +218,7 @@ export default function AdminPage() {
 
   const handleEditUser = (data: any) => {
     if (!editingUser) return;
-    const updateData: any = { role: data.role, username: data.username };
+    const updateData: any = { role: data.role, username: data.username, email: data.email || null };
     if (data.password && data.password.trim()) {
       updateData.password = data.password;
     }
@@ -223,7 +226,8 @@ export default function AdminPage() {
   };
 
   const filteredUsers = usersData?.filter(user => 
-    user.username.toLowerCase().includes(search.toLowerCase())
+    user.username.toLowerCase().includes(search.toLowerCase()) ||
+    (user.email && user.email.toLowerCase().includes(search.toLowerCase()))
   ) || [];
 
   const filteredGroups = allGroups?.filter(g =>
@@ -267,6 +271,17 @@ export default function AdminPage() {
                         <FormItem>
                           <FormLabel>Username</FormLabel>
                           <FormControl><Input {...field} data-testid="input-username" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl><Input type="email" {...field} data-testid="input-email" placeholder="user@example.com" /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -359,6 +374,7 @@ export default function AdminPage() {
                               </div>
                               <div>
                                 <div className="font-medium">{user.username}</div>
+                                {user.email && <div className="text-xs text-muted-foreground">{user.email}</div>}
                               </div>
                             </div>
                           </TableCell>
@@ -518,6 +534,10 @@ export default function AdminPage() {
             <div className="space-y-2">
               <Label>Username</Label>
               <Input {...editForm.register("username")} data-testid="input-edit-username" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input type="email" {...editForm.register("email")} data-testid="input-edit-email" placeholder="user@example.com" />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>

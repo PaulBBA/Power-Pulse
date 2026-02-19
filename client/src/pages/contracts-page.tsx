@@ -783,7 +783,7 @@ export default function ContractsPage() {
               <SelectTrigger className="w-[220px]" data-testid="select-group-filter">
                 <SelectValue placeholder="Filter by group" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[300px] overflow-y-auto">
                 <SelectItem value="all">All Groups</SelectItem>
                 {groups?.sort((a, b) => a.name.localeCompare(b.name)).map(g => (
                   <SelectItem key={g.id} value={g.id.toString()} data-testid={`option-group-${g.id}`}>

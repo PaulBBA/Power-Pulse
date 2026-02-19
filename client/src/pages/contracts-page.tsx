@@ -23,7 +23,7 @@ import {
 import { ArrowUpDown, Plus, Loader2, FileSignature, Pencil, Eye } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Contract, DataSet, Site } from "@shared/schema";
+import { Contract, DataSet, Site, Group } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -326,6 +326,7 @@ function ContractViewDialog({ contract, open, onClose }: { contract: Contract | 
 export default function ContractsPage() {
   const [sortField, setSortField] = useState<SortField>("dateEnd");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
@@ -342,6 +343,14 @@ export default function ContractsPage() {
 
   const { data: sites } = useQuery<Site[]>({
     queryKey: ["/api/sites"],
+  });
+
+  const { data: groups } = useQuery<Group[]>({
+    queryKey: ["/api/groups"],
+  });
+
+  const { data: siteGroupMappings } = useQuery<{ id: number; siteId: number; groupId: number }[]>({
+    queryKey: ["/api/site-groups"],
   });
 
   const form = useForm({ defaultValues: defaultFormValues });
@@ -485,9 +494,22 @@ export default function ContractsPage() {
     }
   };
 
-  const sortedContracts = useMemo(() => {
+  const getGroupIdsForContract = (dataSetId: number): number[] => {
+    const ds = dataSets?.find(d => d.id === dataSetId);
+    if (!ds || !siteGroupMappings) return [];
+    return siteGroupMappings.filter(sg => sg.siteId === ds.siteId).map(sg => sg.groupId);
+  };
+
+  const filteredContracts = useMemo(() => {
     if (!contracts) return [];
-    return [...contracts].sort((a, b) => {
+    if (selectedGroupId === "all") return contracts;
+    const gid = parseInt(selectedGroupId);
+    return contracts.filter(c => getGroupIdsForContract(c.dataSetId).includes(gid));
+  }, [contracts, dataSets, siteGroupMappings, selectedGroupId]);
+
+  const sortedContracts = useMemo(() => {
+    if (!filteredContracts.length) return [];
+    return [...filteredContracts].sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
         case "dateStart": {
@@ -513,7 +535,7 @@ export default function ContractsPage() {
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [contracts, dataSets, sortField, sortDir]);
+  }, [filteredContracts, dataSets, sortField, sortDir]);
 
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return "—";
@@ -751,13 +773,26 @@ export default function ContractsPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileSignature className="h-4 w-4" />
-            All Contracts
-            {contracts && (
-              <span className="text-muted-foreground font-normal text-sm">({contracts.length})</span>
-            )}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileSignature className="h-4 w-4" />
+              {selectedGroupId === "all" ? "All Contracts" : `Contracts — ${groups?.find(g => g.id === parseInt(selectedGroupId))?.name || "Group"}`}
+              <span className="text-muted-foreground font-normal text-sm">({filteredContracts.length})</span>
+            </CardTitle>
+            <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+              <SelectTrigger className="w-[220px]" data-testid="select-group-filter">
+                <SelectValue placeholder="Filter by group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Groups</SelectItem>
+                {groups?.sort((a, b) => a.name.localeCompare(b.name)).map(g => (
+                  <SelectItem key={g.id} value={g.id.toString()} data-testid={`option-group-${g.id}`}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (

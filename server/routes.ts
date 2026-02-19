@@ -359,6 +359,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/site-groups", requireAuth, async (req, res) => {
+    try {
+      const rows = await db.select().from(siteGroups);
+      res.json(rows);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/groups", requireAdmin, async (req, res) => {
     try {
       const group = await storage.createGroup(req.body);

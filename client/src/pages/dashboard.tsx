@@ -21,7 +21,7 @@ function formatNumber(value: number): string {
 }
 
 function formatCurrency(value: number): string {
-  return `£${value.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `£${Math.round(value).toLocaleString("en-GB")}`;
 }
 
 interface DashboardStats {

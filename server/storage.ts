@@ -3,6 +3,7 @@ import {
   sites, type Site, 
   groups, type Group,
   siteGroups,
+  userGroups,
   dataSets, type DataSet,
   dataRecords, type DataRecord,
   contracts, type Contract, type InsertContract,
@@ -13,7 +14,7 @@ import {
   todoItems, type TodoItem, type InsertTodo
 } from "@shared/schema.js";
 import { db } from "./db.js";
-import { eq, inArray, notInArray, sql } from "drizzle-orm";
+import { eq, and, inArray, notInArray, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -76,6 +77,20 @@ export interface IStorage {
   createTodoItem(item: InsertTodo): Promise<TodoItem>;
   toggleTodoItem(id: number, isDone: boolean): Promise<TodoItem>;
   deleteTodoItem(id: number): Promise<void>;
+
+  // User Groups
+  getUserGroupIds(userId: number): Promise<number[]>;
+  setUserGroups(userId: number, groupIds: number[]): Promise<void>;
+  getAllUsers(): Promise<Omit<User, 'password'>[]>;
+  updateUser(id: number, data: { role?: string; username?: string; password?: string }): Promise<User>;
+  deleteUser(id: number): Promise<void>;
+
+  // Filtered access
+  getGroupsForUser(userId: number): Promise<Group[]>;
+  getSiteIdsForUser(userId: number): Promise<number[]>;
+  getSitesForUser(userId: number): Promise<Site[]>;
+  getDataSetsForUser(userId: number): Promise<DataSet[]>;
+  getGroupsHierarchyForUser(userId: number): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -298,6 +313,111 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTodoItem(id: number): Promise<void> {
     await db.delete(todoItems).where(eq(todoItems.id, id));
+  }
+
+  async getUserGroupIds(userId: number): Promise<number[]> {
+    const rows = await db.select({ groupId: userGroups.groupId })
+      .from(userGroups)
+      .where(eq(userGroups.userId, userId));
+    return rows.map(r => r.groupId);
+  }
+
+  async setUserGroups(userId: number, groupIds: number[]): Promise<void> {
+    await db.delete(userGroups).where(eq(userGroups.userId, userId));
+    if (groupIds.length > 0) {
+      await db.insert(userGroups).values(
+        groupIds.map(groupId => ({ userId, groupId }))
+      );
+    }
+  }
+
+  async getAllUsers(): Promise<Omit<User, 'password'>[]> {
+    const allUsers = await db.select({
+      id: users.id,
+      username: users.username,
+      role: users.role,
+    }).from(users);
+    return allUsers;
+  }
+
+  async updateUser(id: number, data: { role?: string; username?: string; password?: string }): Promise<User> {
+    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async getGroupsForUser(userId: number): Promise<Group[]> {
+    const groupIds = await this.getUserGroupIds(userId);
+    if (groupIds.length === 0) return [];
+    return await db.select().from(groups).where(inArray(groups.id, groupIds));
+  }
+
+  async getSiteIdsForUser(userId: number): Promise<number[]> {
+    const groupIds = await this.getUserGroupIds(userId);
+    if (groupIds.length === 0) return [];
+    const rows = await db.select({ siteId: siteGroups.siteId })
+      .from(siteGroups)
+      .where(inArray(siteGroups.groupId, groupIds));
+    return Array.from(new Set(rows.map(r => r.siteId)));
+  }
+
+  async getSitesForUser(userId: number): Promise<Site[]> {
+    const siteIds = await this.getSiteIdsForUser(userId);
+    if (siteIds.length === 0) return [];
+    return await db.select().from(sites).where(inArray(sites.id, siteIds));
+  }
+
+  async getDataSetsForUser(userId: number): Promise<DataSet[]> {
+    const siteIds = await this.getSiteIdsForUser(userId);
+    if (siteIds.length === 0) return [];
+    return await db.select().from(dataSets).where(inArray(dataSets.siteId, siteIds));
+  }
+
+  async getGroupsHierarchyForUser(userId: number): Promise<any> {
+    const groupIds = await this.getUserGroupIds(userId);
+    if (groupIds.length === 0) return { groups: [], unassigned: [] };
+
+    const userGroupsList = await db.select().from(groups).where(inArray(groups.id, groupIds));
+    const allSiteGroups = await db.select().from(siteGroups).where(inArray(siteGroups.groupId, groupIds));
+    const siteIds = Array.from(new Set(allSiteGroups.map(sg => sg.siteId)));
+    
+    if (siteIds.length === 0) {
+      return { groups: userGroupsList.map(g => ({ ...g, sites: [] })), unassigned: [] };
+    }
+
+    const userSites = await db.select().from(sites).where(inArray(sites.id, siteIds));
+    const userDataSets = await db.select().from(dataSets).where(inArray(dataSets.siteId, siteIds));
+    const allUtilities = await db.select().from(utilities);
+
+    const utilityMap = new Map(allUtilities.map(u => [u.id, u]));
+    const metersBySite = new Map<number, any[]>();
+    for (const ds of userDataSets) {
+      const list = metersBySite.get(ds.siteId) || [];
+      list.push({
+        ...ds,
+        utilityName: utilityMap.get(ds.utilityTypeId)?.name || "Unknown",
+        utilityCode: utilityMap.get(ds.utilityTypeId)?.code || "",
+      });
+      metersBySite.set(ds.siteId, list);
+    }
+
+    const groupsWithSites = userGroupsList.map(g => {
+      const groupSiteIds = allSiteGroups
+        .filter(sg => sg.groupId === g.id)
+        .map(sg => sg.siteId);
+      const groupSites = userSites
+        .filter(s => groupSiteIds.includes(s.id))
+        .map(s => ({
+          ...s,
+          meters: metersBySite.get(s.id) || [],
+        }));
+      return { ...g, sites: groupSites };
+    });
+
+    return { groups: groupsWithSites, unassigned: [] };
   }
 }
 

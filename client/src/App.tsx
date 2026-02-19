@@ -21,16 +21,16 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <Route path="/" component={Dashboard} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/groups" component={GroupsPage} />
-      <Route path="/sites" component={SitesPage} />
-      <Route path="/meters/:id" component={MeterDetailPage} />
-      <Route path="/meters" component={MetersPage} />
-      <Route path="/contracts" component={ContractsPage} />
-      <Route path="/reports" component={ReportsPage} />
-      <Route path="/import" component={ImportPage} />
-      <Route path="/admin" component={AdminPage} />
+      <ProtectedRoute path="/" component={Dashboard} />
+      <ProtectedRoute path="/dashboard" component={Dashboard} />
+      <ProtectedRoute path="/groups" component={GroupsPage} />
+      <ProtectedRoute path="/sites" component={SitesPage} />
+      <ProtectedRoute path="/meters/:id" component={MeterDetailPage} />
+      <ProtectedRoute path="/meters" component={MetersPage} />
+      <ProtectedRoute path="/contracts" component={ContractsPage} />
+      <ProtectedRoute path="/reports" component={ReportsPage} />
+      <ProtectedRoute path="/import" component={ImportPage} allowedRoles={["admin", "editor"]} />
+      <ProtectedRoute path="/admin" component={AdminPage} allowedRoles={["admin"]} />
       <Route component={NotFound} />
     </Switch>
   );

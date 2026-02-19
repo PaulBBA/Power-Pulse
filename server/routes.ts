@@ -2,13 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { db } from "./db.js";
-import { users, dataSets, dataRecords, dataProfiles, importLogs, sftpConfigs, sftpDownloadLogs, sites, groups, siteGroups, suppliers, utilities } from "@shared/schema.js";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { users, userGroups, dataSets, dataRecords, dataProfiles, importLogs, sftpConfigs, sftpDownloadLogs, sites, groups, siteGroups, suppliers, utilities } from "@shared/schema.js";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import multer from "multer";
 import SftpClient from "ssh2-sftp-client";
 import { parseMMFile, mmInvoiceToDataRecord } from "./mm-parser.js";
 import { parseCrownEDI, crownEDIToDataRecord } from "./crown-edi-parser.js";
 import { parseNpowerPDF, npowerInvoiceToDataRecord } from "./npower-pdf-parser.js";
+import { requireAuth, requireAdmin, requireEditorOrAdmin } from "./auth.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -69,22 +70,34 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  app.get("/api/groups", async (_req, res) => {
-    const groups = await storage.getGroups();
-    res.json(groups);
+  app.get("/api/groups", requireAuth, async (req, res) => {
+    const user = req.user!;
+    if (user.role === "admin") {
+      const allGroups = await storage.getGroups();
+      res.json(allGroups);
+    } else {
+      const userGroupsList = await storage.getGroupsForUser(user.id);
+      res.json(userGroupsList);
+    }
   });
 
-  app.get("/api/groups/hierarchy", async (_req, res) => {
+  app.get("/api/groups/hierarchy", requireAuth, async (req, res) => {
     try {
-      const hierarchy = await storage.getGroupsHierarchy();
-      res.json(hierarchy);
+      const user = req.user!;
+      if (user.role === "admin") {
+        const hierarchy = await storage.getGroupsHierarchy();
+        res.json(hierarchy);
+      } else {
+        const hierarchy = await storage.getGroupsHierarchyForUser(user.id);
+        res.json(hierarchy);
+      }
     } catch (error: any) {
       console.error("Error fetching hierarchy:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  app.post("/api/groups", async (req, res) => {
+  app.post("/api/groups", requireAdmin, async (req, res) => {
     try {
       const group = await storage.createGroup(req.body);
       res.status(201).json(group);
@@ -94,7 +107,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/site-groups", async (req, res) => {
+  app.post("/api/site-groups", requireAdmin, async (req, res) => {
     try {
       const { siteId, groupId } = req.body;
       await storage.assignSiteToGroup(siteId, groupId);
@@ -105,7 +118,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/site-groups", async (req, res) => {
+  app.delete("/api/site-groups", requireAdmin, async (req, res) => {
     try {
       const { siteId, groupId } = req.body;
       await storage.removeSiteFromGroup(siteId, groupId);
@@ -639,14 +652,27 @@ export async function registerRoutes(
     res.json(utils);
   });
 
-  app.get("/api/sites", async (_req, res) => {
-    const sites = await storage.getSites();
-    res.json(sites);
+  app.get("/api/sites", requireAuth, async (req, res) => {
+    const user = req.user!;
+    if (user.role === "admin") {
+      const allSites = await storage.getSites();
+      res.json(allSites);
+    } else {
+      const userSites = await storage.getSitesForUser(user.id);
+      res.json(userSites);
+    }
   });
 
-  app.patch("/api/sites/:id", async (req, res) => {
+  app.patch("/api/sites/:id", requireEditorOrAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const user = req.user!;
+      if (user.role !== "admin") {
+        const siteIds = await storage.getSiteIdsForUser(user.id);
+        if (!siteIds.includes(id)) {
+          return res.status(403).json({ message: "Access denied to this site" });
+        }
+      }
       const site = await storage.updateSite(id, req.body);
       res.json(site);
     } catch (error: any) {
@@ -655,7 +681,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/sites", async (req, res) => {
+  app.post("/api/sites", requireEditorOrAdmin, async (req, res) => {
     try {
       const site = await storage.createSite(req.body);
       res.status(200).json(site);
@@ -665,18 +691,16 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/users", async (_req, res) => {
+  app.get("/api/admin/users", requireAdmin, async (_req, res) => {
     try {
-      const allUsers = await db.select().from(users);
-      // Don't send passwords
-      const safeUsers = allUsers.map(({ password, ...user }) => user);
-      res.json(safeUsers);
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
 
-  app.post("/api/admin/users", async (req, res) => {
+  app.post("/api/admin/users", requireAdmin, async (req, res) => {
     try {
       const newUser = await storage.createUser(req.body);
       const { password, ...safeUser } = newUser;
@@ -687,9 +711,62 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/data-sets/:id", async (req, res) => {
+  app.patch("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const updated = await storage.updateUser(id, req.body);
+      const { password, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (req.user!.id === id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      await storage.deleteUser(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/admin/users/:id/groups", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const groupIds = await storage.getUserGroupIds(userId);
+      res.json(groupIds);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/admin/users/:id/groups", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { groupIds } = req.body;
+      await storage.setUserGroups(userId, groupIds);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/data-sets/:id", requireEditorOrAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user!;
+      if (user.role !== "admin") {
+        const siteIds = await storage.getSiteIdsForUser(user.id);
+        const ds = await storage.getDataSet(id);
+        if (!ds || !siteIds.includes(ds.siteId)) {
+          return res.status(403).json({ message: "Access denied to this meter" });
+        }
+      }
       const dataSet = await storage.updateDataSet(id, req.body);
       res.json(dataSet);
     } catch (error: any) {
@@ -698,7 +775,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/data-sets", async (req, res) => {
+  app.post("/api/data-sets", requireEditorOrAdmin, async (req, res) => {
     try {
       const dataSet = await storage.createDataSet(req.body);
       res.status(200).json(dataSet);
@@ -708,12 +785,18 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/data-sets", async (_req, res) => {
-    const dataSets = await storage.getDataSets();
-    res.json(dataSets);
+  app.get("/api/data-sets", requireAuth, async (req, res) => {
+    const user = req.user!;
+    if (user.role === "admin") {
+      const allDataSets = await storage.getDataSets();
+      res.json(allDataSets);
+    } else {
+      const userDataSets = await storage.getDataSetsForUser(user.id);
+      res.json(userDataSets);
+    }
   });
 
-  app.get("/api/data-sets/:id", async (req, res) => {
+  app.get("/api/data-sets/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const dataSet = await storage.getDataSet(id);

@@ -49,8 +49,11 @@ export function Layout({ children }: LayoutProps) {
     { icon: FileSignature, label: "Contracts", href: "/contracts" },
     { icon: BarChart3, label: "Analysis", href: "/analysis" },
     { icon: FileText, label: "Reports", href: "/reports" },
-    { icon: Upload, label: "Import Data", href: "/import" },
   ];
+
+  if (user?.role === "admin" || user?.role === "editor") {
+    navItems.push({ icon: Upload, label: "Import Data", href: "/import" });
+  }
 
   if (user?.role === "admin") {
     navItems.push({ icon: Settings, label: "Admin", href: "/admin" });

@@ -543,8 +543,20 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").default("user").notNull(),
+  role: text("role").default("viewer").notNull(),
 });
+
+export const userGroups = pgTable("user_groups", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  groupId: integer("group_id").references(() => groups.id, { onDelete: "cascade" }).notNull(),
+}, (table) => [
+  {
+    name: "user_groups_unique",
+    columns: [table.userId, table.groupId],
+    unique: true,
+  }
+]);
 
 // --- Schemas ---
 
@@ -578,3 +590,4 @@ export type ImportLog = typeof importLogs.$inferSelect;
 export type SftpConfig = typeof sftpConfigs.$inferSelect;
 export type InsertSftpConfig = z.infer<typeof insertSftpConfigSchema>;
 export type SftpDownloadLog = typeof sftpDownloadLogs.$inferSelect;
+export type UserGroup = typeof userGroups.$inferSelect;

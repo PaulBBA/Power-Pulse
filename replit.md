@@ -43,7 +43,19 @@ The core hierarchy consists of:
 8. **SFTP Configs** - SFTP connection configurations for automated profile data downloads from external data collectors
 9. **SFTP Download Logs** - Tracks files downloaded via SFTP with links to import logs
 
+10. **User Groups** - Junction table (user_groups) linking users to groups for role-based access control
+
 Supporting lookup tables include site status, utilities, suppliers, and charge types.
+
+### Authentication & Role-Based Access Control (RBAC)
+- **Authentication**: Passport.js with local strategy, session-based auth
+- **Three access levels**:
+  - **Viewer** (default): Read-only access to assigned groups, sites, and meters. Cannot access Admin or Import pages.
+  - **Editor**: Can edit sites and meters within assigned groups. Can import data. Cannot access Admin page.
+  - **Admin**: Full unrestricted access to all groups, sites, meters, and admin functions.
+- **Group-based filtering**: Non-admin users are assigned specific groups via the `user_groups` table. API routes filter data (groups, sites, meters, data sets) to only return items within the user's assigned groups.
+- **Middleware**: `requireAuth`, `requireAdmin`, `requireEditorOrAdmin` middleware functions protect API routes server-side.
+- **Frontend protection**: `ProtectedRoute` component with `allowedRoles` prop gates route access. Layout nav hides Admin/Import for unauthorized roles.
 
 Future considerations:
 - Parent-child hierarchy (parentId on sites, data_sets, groups) for sub-sites and sub-meters — to be added later

@@ -1,7 +1,7 @@
 import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { type Express } from "express";
+import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage.js";
 import { type User as SelectUser } from "@shared/schema.js";
 
@@ -18,7 +18,7 @@ export function setupAuth(app: Express) {
     saveUninitialized: false,
     cookie: {
       secure: app.get("env") === "production",
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   };
 
@@ -55,7 +55,8 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+    const { password, ...safeUser } = req.user!;
+    res.status(200).json(safeUser);
   });
 
   app.post("/api/logout", (req, res, next) => {
@@ -66,9 +67,35 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    // TEMPORARY BYPASS: Assume Admin
-    return res.json({ id: 999, username: "admin_bypass", role: "admin" });
-    // if (!req.isAuthenticated()) return res.sendStatus(401);
-    // res.json(req.user);
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { password, ...safeUser } = req.user!;
+    res.json(safeUser);
   });
+}
+
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  next();
+}
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  if (req.user!.role !== "admin") {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+  next();
+}
+
+export function requireEditorOrAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  if (req.user!.role !== "admin" && req.user!.role !== "editor") {
+    return res.status(403).json({ message: "Editor or admin access required" });
+  }
+  next();
 }

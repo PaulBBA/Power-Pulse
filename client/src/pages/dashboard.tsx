@@ -28,8 +28,17 @@ interface DashboardStats {
   totalUnits: number;
   totalCost: number;
   monthlyData: { year: number; month: number; totalUnits: number; totalCost: number }[];
+  dateFrom: string | null;
+  dateTo: string | null;
   siteCount: number;
   meterCount: number;
+}
+
+function formatPeriod(dateFrom: string | null, dateTo: string | null): string {
+  if (!dateFrom || !dateTo) return "";
+  const [fy, fm] = dateFrom.split("-").map(Number);
+  const [ty, tm] = dateTo.split("-").map(Number);
+  return `${MONTH_NAMES[fm - 1]} ${fy} – ${MONTH_NAMES[tm - 1]} ${ty}`;
 }
 
 export default function Dashboard() {
@@ -64,7 +73,12 @@ export default function Dashboard() {
     <Layout>
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight" data-testid="text-dashboard-title">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your energy consumption and performance metrics.</p>
+        <p className="text-muted-foreground">
+          Overview of your energy consumption and performance metrics.
+          {stats?.dateFrom && stats?.dateTo && (
+            <span className="ml-1 font-medium">({formatPeriod(stats.dateFrom, stats.dateTo)})</span>
+          )}
+        </p>
       </div>
 
       {isLoading ? (

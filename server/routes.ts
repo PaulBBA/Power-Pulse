@@ -92,11 +92,6 @@ export async function registerRoutes(
         );
       }
 
-      const [totals] = await db.select({
-        totalUnits: sql<number>`COALESCE(SUM(${dataRecords.units}), 0)`,
-        totalCost: sql<number>`COALESCE(SUM(${dataRecords.cost}), 0)`,
-      }).from(dataRecords).where(dataSetFilter);
-
       const monthly = await db.select({
         year: sql<number>`EXTRACT(YEAR FROM ${dataRecords.date})::int`,
         month: sql<number>`EXTRACT(MONTH FROM ${dataRecords.date})::int`,
@@ -107,6 +102,19 @@ export async function registerRoutes(
         .groupBy(sql`EXTRACT(YEAR FROM ${dataRecords.date})`, sql`EXTRACT(MONTH FROM ${dataRecords.date})`)
         .orderBy(sql`EXTRACT(YEAR FROM ${dataRecords.date}) DESC`, sql`EXTRACT(MONTH FROM ${dataRecords.date}) DESC`)
         .limit(24);
+
+      const chronological = monthly.reverse();
+      const totalUnits = chronological.reduce((sum, m) => sum + m.totalUnits, 0);
+      const totalCost = chronological.reduce((sum, m) => sum + m.totalCost, 0);
+
+      let dateFrom: string | null = null;
+      let dateTo: string | null = null;
+      if (chronological.length > 0) {
+        const first = chronological[0];
+        const last = chronological[chronological.length - 1];
+        dateFrom = `${first.year}-${String(first.month).padStart(2, '0')}`;
+        dateTo = `${last.year}-${String(last.month).padStart(2, '0')}`;
+      }
 
       let siteCount = 0;
       let meterCount = 0;
@@ -123,9 +131,11 @@ export async function registerRoutes(
       }
 
       res.json({
-        totalUnits: totals.totalUnits,
-        totalCost: totals.totalCost,
-        monthlyData: monthly.reverse(),
+        totalUnits,
+        totalCost,
+        monthlyData: chronological,
+        dateFrom,
+        dateTo,
         siteCount,
         meterCount,
       });

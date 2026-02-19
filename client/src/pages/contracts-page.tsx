@@ -815,8 +815,7 @@ export default function ContractsPage() {
                     <SortHeader field="utility" label="Utility" />
                     <SortHeader field="supplier" label="Supplier" />
                     <TableHead>Meter</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Site</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -833,8 +832,7 @@ export default function ContractsPage() {
                           <TableCell data-testid={`text-utility-${contract.id}`}>{getUtilityName(contract.dataSetId)}</TableCell>
                           <TableCell data-testid={`text-supplier-${contract.id}`}>{contract.supplier || "—"}</TableCell>
                           <TableCell data-testid={`text-meter-${contract.id}`}>{getMeterName(contract.dataSetId)}</TableCell>
-                          <TableCell data-testid={`text-ref-${contract.id}`}>{contract.referenceNumber || "—"}</TableCell>
-                          <TableCell data-testid={`text-type-${contract.id}`}>{contract.type || "—"}</TableCell>
+                          <TableCell data-testid={`text-site-${contract.id}`}>{getSiteName(contract.dataSetId) || "—"}</TableCell>
                         </TableRow>
                       </ContextMenuTrigger>
                       <ContextMenuContent>

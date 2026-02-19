@@ -12,7 +12,7 @@ import {
   Tooltip, 
   ResponsiveContainer
 } from "recharts";
-import { ArrowUpRight, ArrowDownRight, Zap, PoundSterling, Leaf, Building2, Gauge, Loader2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Zap, PoundSterling, Building2, Gauge, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -270,21 +270,6 @@ export default function Dashboard() {
               </Card>
             </div>
           )}
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="shadow-sm opacity-60" data-testid="card-carbon-footprint">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Carbon Footprint</CardTitle>
-                <Leaf className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg font-medium text-muted-foreground">Coming Soon</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Carbon calculations will be available in a future update.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
         </>
       )}
     </Layout>

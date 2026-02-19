@@ -197,45 +197,81 @@ export async function registerRoutes(
         }
 
       } else if (period === "mtd") {
+        const fourWeeksAgo = new Date(now);
+        fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+
         const [profileTotals] = await db.select({
           totalUnits: sql<number>`COALESCE(SUM(${dataProfiles.dayTotal}), 0)`,
-          minDate: sql<string>`MIN(${dataProfiles.date})::text`,
-          maxDate: sql<string>`MAX(${dataProfiles.date})::text`,
           dayCount: sql<number>`COUNT(DISTINCT ${dataProfiles.date}::date)`,
+          minDate: sql<string>`MIN(${dataProfiles.date})::date::text`,
+          maxDate: sql<string>`MAX(${dataProfiles.date})::date::text`,
         }).from(dataProfiles)
           .where(and(
             profileUserFilter,
-            sql`EXTRACT(YEAR FROM ${dataProfiles.date}) = ${currentYear}`,
-            sql`EXTRACT(MONTH FROM ${dataProfiles.date}) = ${currentMonth}`
+            sql`${dataProfiles.date}::date >= ${fourWeeksAgo.toISOString().split('T')[0]}::date`
           ));
 
         totalUnits = profileTotals.totalUnits;
         totalCost = 0;
 
-        dateFrom = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-        dateTo = dateFrom;
         const days = profileTotals.dayCount || 0;
-        periodLabel = `${MN[currentMonth - 1]} ${currentYear} (${days} days of profile data)`;
+        dateFrom = profileTotals.minDate || null;
+        dateTo = profileTotals.maxDate || null;
+        periodLabel = `Past 4 weeks (${days} days of profile data)`;
 
-        monthlyData = [{ year: currentYear, month: currentMonth, totalUnits, totalCost }];
+        monthlyData = [];
 
-        const dailyRows = await db.select({
-          date: sql<string>`${dataProfiles.date}::date::text`,
-          totalUnits: sql<number>`COALESCE(SUM(${dataProfiles.dayTotal}), 0)`,
-        }).from(dataProfiles)
+        const intervalKeys = [
+          "i0030","i0100","i0130","i0200","i0230","i0300","i0330","i0400",
+          "i0430","i0500","i0530","i0600","i0630","i0700","i0730","i0800",
+          "i0830","i0900","i0930","i1000","i1030","i1100","i1130","i1200",
+          "i1230","i1300","i1330","i1400","i1430","i1500","i1530","i1600",
+          "i1630","i1700","i1730","i1800","i1830","i1900","i1930","i2000",
+          "i2030","i2100","i2130","i2200","i2230","i2300","i2330","i2400"
+        ];
+
+        const profileRows = await db.select().from(dataProfiles)
           .where(and(
             profileUserFilter,
-            sql`EXTRACT(YEAR FROM ${dataProfiles.date}) = ${currentYear}`,
-            sql`EXTRACT(MONTH FROM ${dataProfiles.date}) = ${currentMonth}`
+            sql`${dataProfiles.date}::date >= ${fourWeeksAgo.toISOString().split('T')[0]}::date`
           ))
-          .groupBy(sql`${dataProfiles.date}::date`)
           .orderBy(sql`${dataProfiles.date}::date ASC`);
 
-        let cumulative = 0;
-        const dailyData = dailyRows.map(row => {
-          cumulative += row.totalUnits;
-          return { date: row.date, dailyUnits: Math.round(row.totalUnits), cumulativeUnits: Math.round(cumulative) };
-        });
+        const dayMap = new Map<string, number[]>();
+        for (const row of profileRows) {
+          const dateStr = new Date(row.date).toISOString().split('T')[0];
+          if (!dayMap.has(dateStr)) {
+            dayMap.set(dateStr, new Array(48).fill(0));
+          }
+          const slots = dayMap.get(dateStr)!;
+          for (let i = 0; i < 48; i++) {
+            const val = (row as any)[intervalKeys[i]];
+            if (val !== null && val !== undefined) {
+              slots[i] += val;
+            }
+          }
+        }
+
+        const halfHourlyData: { datetime: string; date: string; time: string; kWh: number }[] = [];
+        const timeLabels = [
+          "00:30","01:00","01:30","02:00","02:30","03:00","03:30","04:00",
+          "04:30","05:00","05:30","06:00","06:30","07:00","07:30","08:00",
+          "08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00",
+          "12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00",
+          "16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00",
+          "20:30","21:00","21:30","22:00","22:30","23:00","23:30","24:00"
+        ];
+
+        for (const [dateStr, slots] of dayMap) {
+          for (let i = 0; i < 48; i++) {
+            halfHourlyData.push({
+              datetime: `${dateStr}T${timeLabels[i]}`,
+              date: dateStr,
+              time: timeLabels[i],
+              kWh: Math.round(slots[i] * 100) / 100,
+            });
+          }
+        }
 
         let mtdSiteCount = 0;
         let mtdMeterCount = 0;
@@ -254,7 +290,7 @@ export async function registerRoutes(
           totalUnits,
           totalCost,
           monthlyData,
-          dailyData,
+          halfHourlyData,
           dateFrom,
           dateTo,
           periodLabel,

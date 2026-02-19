@@ -21,6 +21,7 @@ export interface NpowerMeterInvoice {
   tuos: number;
   bsuos: number;
   standingMetering: number;
+  standingChargeRate: number;
   cm: number;
   nccs: number;
   nrab: number;
@@ -274,6 +275,9 @@ function parseMeterSection(text: string, mpan: string, invoicePeriodStart: Date 
   const standingMatch = chargesSection.match(/Total standing and metering charge\s+£?([\d,]+\.\d{2})/);
   const standingMetering = standingMatch ? parseMoney(standingMatch[1]) : 0;
 
+  const standingRateMatch = chargesSection.match(/Standing Charge[\s\S]*?([\d.]+)\s*p\/day/);
+  const standingChargeRate = standingRateMatch ? parseFloat(standingRateMatch[1]) : 0;
+
   const cmMatch = chargesSection.match(/Total CM charge\s+£?([\d,]+\.\d{2})/);
   const cm = cmMatch ? parseMoney(cmMatch[1]) : 0;
 
@@ -341,6 +345,7 @@ function parseMeterSection(text: string, mpan: string, invoicePeriodStart: Date 
     tuos,
     bsuos,
     standingMetering,
+    standingChargeRate,
     cm,
     nccs,
     nrab,
@@ -497,7 +502,6 @@ export function npowerInvoiceToDataRecord(
 
   const miscCost = Math.round((
     meter.wapDayCost + meter.wapNightCost +
-    meter.standingMetering +
     meter.bsuos +
     meter.cm + meter.nccs + meter.nrab + meter.cfd
   ) * 100) / 100;
@@ -518,8 +522,8 @@ export function npowerInvoiceToDataRecord(
     units: meter.totalKwh,
     cost: costIncVat,
     batch: 0,
-    standingCharge: 0,
-    standingChargeRate: 0,
+    standingCharge: meter.standingMetering,
+    standingChargeRate: meter.standingChargeRate,
     otherCharge: 0,
     vat: vatForMeter,
     ccl: meter.cclAmount,

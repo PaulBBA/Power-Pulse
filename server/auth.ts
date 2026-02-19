@@ -1,9 +1,20 @@
 import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import bcrypt from "bcrypt";
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage.js";
 import { type User as SelectUser } from "@shared/schema.js";
+
+const SALT_ROUNDS = 10;
+
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS);
+}
+
+export async function comparePassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
+}
 
 declare global {
   namespace Express {
@@ -34,7 +45,11 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
-        if (!user || user.password !== password) {
+        if (!user) {
+          return done(null, false, { message: "Invalid username or password" });
+        }
+        const valid = await comparePassword(password, user.password);
+        if (!valid) {
           return done(null, false, { message: "Invalid username or password" });
         }
         return done(null, user);

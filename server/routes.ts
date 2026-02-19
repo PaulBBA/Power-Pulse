@@ -9,7 +9,7 @@ import SftpClient from "ssh2-sftp-client";
 import { parseMMFile, mmInvoiceToDataRecord } from "./mm-parser.js";
 import { parseCrownEDI, crownEDIToDataRecord } from "./crown-edi-parser.js";
 import { parseNpowerPDF, npowerInvoiceToDataRecord } from "./npower-pdf-parser.js";
-import { requireAuth, requireAdmin, requireEditorOrAdmin } from "./auth.js";
+import { requireAuth, requireAdmin, requireEditorOrAdmin, hashPassword } from "./auth.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -985,8 +985,10 @@ export async function registerRoutes(
 
   app.post("/api/admin/users", requireAdmin, async (req, res) => {
     try {
-      const newUser = await storage.createUser(req.body);
-      const { password, ...safeUser } = newUser;
+      const { password, ...rest } = req.body;
+      const hashedPassword = await hashPassword(password);
+      const newUser = await storage.createUser({ ...rest, password: hashedPassword });
+      const { password: _p, ...safeUser } = newUser;
       res.status(201).json(safeUser);
     } catch (error: any) {
       console.error("Error creating user:", error);
@@ -997,7 +999,11 @@ export async function registerRoutes(
   app.patch("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const updated = await storage.updateUser(id, req.body);
+      const data = { ...req.body };
+      if (data.password) {
+        data.password = await hashPassword(data.password);
+      }
+      const updated = await storage.updateUser(id, data);
       const { password, ...safeUser } = updated;
       res.json(safeUser);
     } catch (error: any) {

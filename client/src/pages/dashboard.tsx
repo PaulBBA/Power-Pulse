@@ -1,8 +1,9 @@
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  AreaChart, 
-  Area, 
+  BarChart,
+  Bar,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -11,6 +12,7 @@ import {
 } from "recharts";
 import { ArrowUpRight, ArrowDownRight, Zap, PoundSterling, Leaf, Building2, Gauge, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -30,22 +32,24 @@ interface DashboardStats {
   monthlyData: { year: number; month: number; totalUnits: number; totalCost: number }[];
   dateFrom: string | null;
   dateTo: string | null;
+  periodLabel: string;
   siteCount: number;
   meterCount: number;
 }
 
-function formatPeriod(dateFrom: string | null, dateTo: string | null): string {
-  if (!dateFrom || !dateTo) return "";
-  const [fy, fm] = dateFrom.split("-").map(Number);
-  const [ty, tm] = dateTo.split("-").map(Number);
-  return `${MONTH_NAMES[fm - 1]} ${fy} – ${MONTH_NAMES[tm - 1]} ${ty}`;
-}
+const PERIOD_OPTIONS = [
+  { value: "last_month", label: "Last Month Billed" },
+  { value: "ytd", label: "Year to Date" },
+  { value: "mtd", label: "Month to Date (Profile Data)" },
+];
 
 export default function Dashboard() {
+  const [period, setPeriod] = useState("last_month");
+
   const { data: stats, isLoading } = useQuery<DashboardStats>({
-    queryKey: ["/api/dashboard/stats"],
+    queryKey: ["/api/dashboard/stats", period],
     queryFn: async () => {
-      const res = await fetch("/api/dashboard/stats", { credentials: "include" });
+      const res = await fetch(`/api/dashboard/stats?period=${period}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load dashboard");
       return res.json();
     },
@@ -57,28 +61,31 @@ export default function Dashboard() {
     cost: Math.round(m.totalCost),
   })) || [];
 
-  const latestMonth = stats?.monthlyData?.[stats.monthlyData.length - 1];
-  const previousMonth = stats?.monthlyData?.[stats.monthlyData.length - 2];
-
-  let unitsChange: number | null = null;
-  let costChange: number | null = null;
-  if (latestMonth && previousMonth && previousMonth.totalUnits > 0) {
-    unitsChange = ((latestMonth.totalUnits - previousMonth.totalUnits) / previousMonth.totalUnits) * 100;
-  }
-  if (latestMonth && previousMonth && previousMonth.totalCost > 0) {
-    costChange = ((latestMonth.totalCost - previousMonth.totalCost) / previousMonth.totalCost) * 100;
-  }
+  const isMtd = period === "mtd";
 
   return (
     <Layout>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight" data-testid="text-dashboard-title">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of your energy consumption and performance metrics.
-          {stats?.dateFrom && stats?.dateTo && (
-            <span className="ml-1 font-medium">({formatPeriod(stats.dateFrom, stats.dateTo)})</span>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-dashboard-title">Dashboard</h1>
+          {stats?.periodLabel && (
+            <p className="text-muted-foreground" data-testid="text-period-label">
+              {stats.periodLabel}
+            </p>
           )}
-        </p>
+        </div>
+        <Select value={period} onValueChange={setPeriod} data-testid="select-period">
+          <SelectTrigger className="w-[240px]" data-testid="select-period-trigger">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PERIOD_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value} data-testid={`select-period-${opt.value}`}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
@@ -90,43 +97,33 @@ export default function Dashboard() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="shadow-sm hover:shadow-md transition-shadow" data-testid="card-total-consumption">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Consumption</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  {isMtd ? "Consumption (Profile)" : "Total Consumption"}
+                </CardTitle>
                 <Zap className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-total-units">
                   {formatNumber(stats?.totalUnits || 0)} kWh
                 </div>
-                {unitsChange !== null && (
-                  <p className="text-xs text-muted-foreground flex items-center mt-1">
-                    <span className={`flex items-center mr-1 ${unitsChange <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {unitsChange <= 0 ? <ArrowDownRight className="h-3 w-3 mr-0.5" /> : <ArrowUpRight className="h-3 w-3 mr-0.5" />}
-                      {unitsChange >= 0 ? '+' : ''}{unitsChange.toFixed(1)}%
-                    </span>
-                    vs previous month
-                  </p>
-                )}
               </CardContent>
             </Card>
 
             <Card className="shadow-sm hover:shadow-md transition-shadow" data-testid="card-total-cost">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  {isMtd ? "Cost" : "Total Cost"}
+                </CardTitle>
                 <PoundSterling className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-total-cost">
-                  {formatCurrency(stats?.totalCost || 0)}
+                  {isMtd ? (
+                    <span className="text-lg text-muted-foreground">Not yet invoiced</span>
+                  ) : (
+                    formatCurrency(stats?.totalCost || 0)
+                  )}
                 </div>
-                {costChange !== null && (
-                  <p className="text-xs text-muted-foreground flex items-center mt-1">
-                    <span className={`flex items-center mr-1 ${costChange <= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {costChange <= 0 ? <ArrowDownRight className="h-3 w-3 mr-0.5" /> : <ArrowUpRight className="h-3 w-3 mr-0.5" />}
-                      {costChange >= 0 ? '+' : ''}{costChange.toFixed(1)}%
-                    </span>
-                    vs previous month
-                  </p>
-                )}
               </CardContent>
             </Card>
 
@@ -157,25 +154,17 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4 shadow-sm" data-testid="card-usage-chart">
-              <CardHeader>
-                <CardTitle>Energy Usage Overview</CardTitle>
-                <CardDescription>
-                  Monthly consumption across all your meters (last 24 months).
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <div className="h-[300px]">
-                  {chartData.length > 0 ? (
+          {chartData.length > 1 && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="shadow-sm" data-testid="card-usage-chart">
+                <CardHeader>
+                  <CardTitle>Consumption by Month</CardTitle>
+                  <CardDescription>kWh usage per month</CardDescription>
+                </CardHeader>
+                <CardContent className="pl-2">
+                  <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorKwh" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
+                      <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={60} />
                         <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => formatNumber(value)} />
                         <Tooltip 
@@ -183,55 +172,39 @@ export default function Dashboard() {
                           formatter={(value: number) => [`${value.toLocaleString()} kWh`, 'Consumption']}
                         />
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                        <Area type="monotone" dataKey="kwh" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorKwh)" />
-                      </AreaChart>
+                        <Bar dataKey="kwh" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
                     </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      No usage data available
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
 
-            <Card className="col-span-3 shadow-sm" data-testid="card-cost-chart">
-              <CardHeader>
-                <CardTitle>Monthly Cost Trend</CardTitle>
-                <CardDescription>
-                  Cost analysis across your meters (last 24 months).
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <div className="h-[300px]">
-                  {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={60} />
-                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `£${formatNumber(value)}`} />
-                        <Tooltip 
-                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          formatter={(value: number) => [formatCurrency(value), 'Cost']}
-                        />
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                        <Area type="monotone" dataKey="cost" stroke="hsl(var(--chart-2))" strokeWidth={3} fillOpacity={1} fill="url(#colorCost)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      No cost data available
+              {!isMtd && (
+                <Card className="shadow-sm" data-testid="card-cost-chart">
+                  <CardHeader>
+                    <CardTitle>Cost by Month</CardTitle>
+                    <CardDescription>Invoiced cost per month</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pl-2">
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={60} />
+                          <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `£${formatNumber(value)}`} />
+                          <Tooltip 
+                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            formatter={(value: number) => [formatCurrency(value), 'Cost']}
+                          />
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                          <Bar dataKey="cost" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card className="shadow-sm opacity-60" data-testid="card-carbon-footprint">

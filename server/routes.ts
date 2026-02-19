@@ -74,46 +74,147 @@ export async function registerRoutes(
     try {
       const user = req.user!;
       const isAdmin = user.role === "admin";
+      const period = (req.query.period as string) || "last_month";
 
-      let dataSetFilter = sql`1=1`;
-      if (!isAdmin) {
-        const siteIds = await storage.getSiteIdsForUser(user.id);
-        if (siteIds.length === 0) {
-          return res.json({
-            totalUnits: 0,
-            totalCost: 0,
-            monthlyData: [],
-            siteCount: 0,
-            meterCount: 0,
-          });
-        }
-        dataSetFilter = inArray(dataRecords.dataSetId,
-          db.select({ id: dataSets.id }).from(dataSets).where(inArray(dataSets.siteId, siteIds))
-        );
+      const dataSetSubquery = isAdmin
+        ? null
+        : await (async () => {
+            const siteIds = await storage.getSiteIdsForUser(user.id);
+            if (siteIds.length === 0) return [];
+            return siteIds;
+          })();
+
+      if (dataSetSubquery !== null && dataSetSubquery.length === 0) {
+        return res.json({
+          totalUnits: 0,
+          totalCost: 0,
+          monthlyData: [],
+          dateFrom: null,
+          dateTo: null,
+          periodLabel: "",
+          siteCount: 0,
+          meterCount: 0,
+        });
       }
 
-      const monthly = await db.select({
+      const userFilter = dataSetSubquery
+        ? inArray(dataRecords.dataSetId,
+            db.select({ id: dataSets.id }).from(dataSets).where(inArray(dataSets.siteId, dataSetSubquery))
+          )
+        : sql`1=1`;
+
+      const profileUserFilter = dataSetSubquery
+        ? inArray(dataProfiles.dataSetId,
+            db.select({ id: dataSets.id }).from(dataSets).where(inArray(dataSets.siteId, dataSetSubquery))
+          )
+        : sql`1=1`;
+
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+      const [lastBilled] = await db.select({
         year: sql<number>`EXTRACT(YEAR FROM ${dataRecords.date})::int`,
         month: sql<number>`EXTRACT(MONTH FROM ${dataRecords.date})::int`,
-        totalUnits: sql<number>`COALESCE(SUM(${dataRecords.units}), 0)`,
-        totalCost: sql<number>`COALESCE(SUM(${dataRecords.cost}), 0)`,
       }).from(dataRecords)
-        .where(dataSetFilter)
+        .where(and(
+          userFilter,
+          sql`(EXTRACT(YEAR FROM ${dataRecords.date}), EXTRACT(MONTH FROM ${dataRecords.date})) < (${currentYear}, ${currentMonth})`
+        ))
         .groupBy(sql`EXTRACT(YEAR FROM ${dataRecords.date})`, sql`EXTRACT(MONTH FROM ${dataRecords.date})`)
         .orderBy(sql`EXTRACT(YEAR FROM ${dataRecords.date}) DESC`, sql`EXTRACT(MONTH FROM ${dataRecords.date}) DESC`)
-        .limit(24);
+        .limit(1);
 
-      const chronological = monthly.reverse();
-      const totalUnits = chronological.reduce((sum, m) => sum + m.totalUnits, 0);
-      const totalCost = chronological.reduce((sum, m) => sum + m.totalCost, 0);
+      const lastBilledYear = lastBilled?.year;
+      const lastBilledMonth = lastBilled?.month;
 
+      let totalUnits = 0;
+      let totalCost = 0;
       let dateFrom: string | null = null;
       let dateTo: string | null = null;
-      if (chronological.length > 0) {
-        const first = chronological[0];
-        const last = chronological[chronological.length - 1];
-        dateFrom = `${first.year}-${String(first.month).padStart(2, '0')}`;
-        dateTo = `${last.year}-${String(last.month).padStart(2, '0')}`;
+      let periodLabel = "";
+      let monthlyData: { year: number; month: number; totalUnits: number; totalCost: number }[] = [];
+
+      if (period === "last_month") {
+        if (!lastBilledYear || !lastBilledMonth) {
+          periodLabel = "No billed data available";
+        } else {
+          const [totals] = await db.select({
+            totalUnits: sql<number>`COALESCE(SUM(${dataRecords.units}), 0)`,
+            totalCost: sql<number>`COALESCE(SUM(${dataRecords.cost}), 0)`,
+          }).from(dataRecords)
+            .where(and(
+              userFilter,
+              sql`EXTRACT(YEAR FROM ${dataRecords.date}) = ${lastBilledYear}`,
+              sql`EXTRACT(MONTH FROM ${dataRecords.date}) = ${lastBilledMonth}`
+            ));
+
+          totalUnits = totals.totalUnits;
+          totalCost = totals.totalCost;
+          dateFrom = `${lastBilledYear}-${String(lastBilledMonth).padStart(2, '0')}`;
+          dateTo = dateFrom;
+          periodLabel = `${MN[lastBilledMonth - 1]} ${lastBilledYear}`;
+          monthlyData = [{ year: lastBilledYear, month: lastBilledMonth, totalUnits, totalCost }];
+        }
+
+      } else if (period === "ytd") {
+        if (!lastBilledYear || !lastBilledMonth) {
+          periodLabel = `No billed data for ${currentYear}`;
+        } else {
+          const ytdYear = lastBilledYear;
+          const monthly = await db.select({
+            year: sql<number>`EXTRACT(YEAR FROM ${dataRecords.date})::int`,
+            month: sql<number>`EXTRACT(MONTH FROM ${dataRecords.date})::int`,
+            totalUnits: sql<number>`COALESCE(SUM(${dataRecords.units}), 0)`,
+            totalCost: sql<number>`COALESCE(SUM(${dataRecords.cost}), 0)`,
+          }).from(dataRecords)
+            .where(and(
+              userFilter,
+              sql`EXTRACT(YEAR FROM ${dataRecords.date}) = ${currentYear}`,
+              sql`(EXTRACT(YEAR FROM ${dataRecords.date}), EXTRACT(MONTH FROM ${dataRecords.date})) <= (${lastBilledYear}, ${lastBilledMonth})`
+            ))
+            .groupBy(sql`EXTRACT(YEAR FROM ${dataRecords.date})`, sql`EXTRACT(MONTH FROM ${dataRecords.date})`)
+            .orderBy(sql`EXTRACT(MONTH FROM ${dataRecords.date}) ASC`);
+
+          monthlyData = monthly;
+          totalUnits = monthly.reduce((sum, m) => sum + m.totalUnits, 0);
+          totalCost = monthly.reduce((sum, m) => sum + m.totalCost, 0);
+
+          if (monthly.length > 0) {
+            const first = monthly[0];
+            const last = monthly[monthly.length - 1];
+            dateFrom = `${first.year}-${String(first.month).padStart(2, '0')}`;
+            dateTo = `${last.year}-${String(last.month).padStart(2, '0')}`;
+            periodLabel = `${MN[first.month - 1]} – ${MN[last.month - 1]} ${currentYear}`;
+          } else {
+            periodLabel = `No billed data for ${currentYear} yet`;
+          }
+        }
+
+      } else if (period === "mtd") {
+        const [profileTotals] = await db.select({
+          totalUnits: sql<number>`COALESCE(SUM(${dataProfiles.dayTotal}), 0)`,
+          minDate: sql<string>`MIN(${dataProfiles.date})::text`,
+          maxDate: sql<string>`MAX(${dataProfiles.date})::text`,
+          dayCount: sql<number>`COUNT(DISTINCT ${dataProfiles.date}::date)`,
+        }).from(dataProfiles)
+          .where(and(
+            profileUserFilter,
+            sql`EXTRACT(YEAR FROM ${dataProfiles.date}) = ${currentYear}`,
+            sql`EXTRACT(MONTH FROM ${dataProfiles.date}) = ${currentMonth}`
+          ));
+
+        totalUnits = profileTotals.totalUnits;
+        totalCost = 0;
+
+        const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        dateFrom = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        dateTo = dateFrom;
+        const days = profileTotals.dayCount || 0;
+        periodLabel = `${MONTH_NAMES[currentMonth - 1]} ${currentYear} (${days} days of profile data)`;
+
+        monthlyData = [{ year: currentYear, month: currentMonth, totalUnits, totalCost }];
       }
 
       let siteCount = 0;
@@ -124,8 +225,7 @@ export async function registerRoutes(
         siteCount = sc.count;
         meterCount = mc.count;
       } else {
-        const siteIds = await storage.getSiteIdsForUser(user.id);
-        siteCount = siteIds.length;
+        siteCount = dataSetSubquery!.length;
         const userDataSets = await storage.getDataSetsForUser(user.id);
         meterCount = userDataSets.length;
       }
@@ -133,9 +233,10 @@ export async function registerRoutes(
       res.json({
         totalUnits,
         totalCost,
-        monthlyData: chronological,
+        monthlyData,
         dateFrom,
         dateTo,
+        periodLabel,
         siteCount,
         meterCount,
       });

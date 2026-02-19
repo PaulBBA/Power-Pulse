@@ -212,13 +212,55 @@ export async function registerRoutes(
         totalUnits = profileTotals.totalUnits;
         totalCost = 0;
 
-        const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
         dateFrom = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
         dateTo = dateFrom;
         const days = profileTotals.dayCount || 0;
-        periodLabel = `${MONTH_NAMES[currentMonth - 1]} ${currentYear} (${days} days of profile data)`;
+        periodLabel = `${MN[currentMonth - 1]} ${currentYear} (${days} days of profile data)`;
 
         monthlyData = [{ year: currentYear, month: currentMonth, totalUnits, totalCost }];
+
+        const dailyRows = await db.select({
+          date: sql<string>`${dataProfiles.date}::date::text`,
+          totalUnits: sql<number>`COALESCE(SUM(${dataProfiles.dayTotal}), 0)`,
+        }).from(dataProfiles)
+          .where(and(
+            profileUserFilter,
+            sql`EXTRACT(YEAR FROM ${dataProfiles.date}) = ${currentYear}`,
+            sql`EXTRACT(MONTH FROM ${dataProfiles.date}) = ${currentMonth}`
+          ))
+          .groupBy(sql`${dataProfiles.date}::date`)
+          .orderBy(sql`${dataProfiles.date}::date ASC`);
+
+        let cumulative = 0;
+        const dailyData = dailyRows.map(row => {
+          cumulative += row.totalUnits;
+          return { date: row.date, dailyUnits: Math.round(row.totalUnits), cumulativeUnits: Math.round(cumulative) };
+        });
+
+        let mtdSiteCount = 0;
+        let mtdMeterCount = 0;
+        if (isAdmin) {
+          const [sc] = await db.select({ count: sql<number>`COUNT(*)` }).from(sites);
+          const [mc] = await db.select({ count: sql<number>`COUNT(*)` }).from(dataSets);
+          mtdSiteCount = sc.count;
+          mtdMeterCount = mc.count;
+        } else {
+          mtdSiteCount = dataSetSubquery!.length;
+          const userDataSets = await storage.getDataSetsForUser(user.id);
+          mtdMeterCount = userDataSets.length;
+        }
+
+        return res.json({
+          totalUnits,
+          totalCost,
+          monthlyData,
+          dailyData,
+          dateFrom,
+          dateTo,
+          periodLabel,
+          siteCount: mtdSiteCount,
+          meterCount: mtdMeterCount,
+        });
       }
 
       let siteCount = 0;

@@ -4,6 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   BarChart,
   Bar,
+  AreaChart,
+  Area,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -30,6 +32,7 @@ interface DashboardStats {
   totalUnits: number;
   totalCost: number;
   monthlyData: { year: number; month: number; totalUnits: number; totalCost: number }[];
+  dailyData?: { date: string; dailyUnits: number; cumulativeUnits: number }[];
   dateFrom: string | null;
   dateTo: string | null;
   periodLabel: string;
@@ -154,7 +157,44 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {chartData.length > 1 && (
+          {isMtd && stats?.dailyData && stats.dailyData.length > 0 && (
+            <Card className="shadow-sm" data-testid="card-cumulative-chart">
+              <CardHeader>
+                <CardTitle>Cumulative Consumption – Month to Date</CardTitle>
+                <CardDescription>Daily profile data building up through the month</CardDescription>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={stats.dailyData.map(d => ({
+                      ...d,
+                      label: new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+                    }))} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorCumulative" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="label" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => formatNumber(value)} />
+                      <Tooltip
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        formatter={(value: number, name: string) => [
+                          `${value.toLocaleString()} kWh`,
+                          name === 'cumulativeUnits' ? 'Cumulative' : 'Daily'
+                        ]}
+                      />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <Area type="monotone" dataKey="cumulativeUnits" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorCumulative)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!isMtd && chartData.length > 1 && (
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="shadow-sm" data-testid="card-usage-chart">
                 <CardHeader>
@@ -179,30 +219,28 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {!isMtd && (
-                <Card className="shadow-sm" data-testid="card-cost-chart">
-                  <CardHeader>
-                    <CardTitle>Cost by Month</CardTitle>
-                    <CardDescription>Invoiced cost per month</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pl-2">
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                          <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={60} />
-                          <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `£${formatNumber(value)}`} />
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                            formatter={(value: number) => [formatCurrency(value), 'Cost']}
-                          />
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                          <Bar dataKey="cost" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <Card className="shadow-sm" data-testid="card-cost-chart">
+                <CardHeader>
+                  <CardTitle>Cost by Month</CardTitle>
+                  <CardDescription>Invoiced cost per month</CardDescription>
+                </CardHeader>
+                <CardContent className="pl-2">
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={60} />
+                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `£${formatNumber(value)}`} />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          formatter={(value: number) => [formatCurrency(value), 'Cost']}
+                        />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <Bar dataKey="cost" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 

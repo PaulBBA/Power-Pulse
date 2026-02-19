@@ -70,6 +70,71 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const isAdmin = user.role === "admin";
+
+      let dataSetFilter = sql`1=1`;
+      if (!isAdmin) {
+        const siteIds = await storage.getSiteIdsForUser(user.id);
+        if (siteIds.length === 0) {
+          return res.json({
+            totalUnits: 0,
+            totalCost: 0,
+            monthlyData: [],
+            siteCount: 0,
+            meterCount: 0,
+          });
+        }
+        dataSetFilter = inArray(dataRecords.dataSetId,
+          db.select({ id: dataSets.id }).from(dataSets).where(inArray(dataSets.siteId, siteIds))
+        );
+      }
+
+      const [totals] = await db.select({
+        totalUnits: sql<number>`COALESCE(SUM(${dataRecords.units}), 0)`,
+        totalCost: sql<number>`COALESCE(SUM(${dataRecords.cost}), 0)`,
+      }).from(dataRecords).where(dataSetFilter);
+
+      const monthly = await db.select({
+        year: sql<number>`EXTRACT(YEAR FROM ${dataRecords.date})::int`,
+        month: sql<number>`EXTRACT(MONTH FROM ${dataRecords.date})::int`,
+        totalUnits: sql<number>`COALESCE(SUM(${dataRecords.units}), 0)`,
+        totalCost: sql<number>`COALESCE(SUM(${dataRecords.cost}), 0)`,
+      }).from(dataRecords)
+        .where(dataSetFilter)
+        .groupBy(sql`EXTRACT(YEAR FROM ${dataRecords.date})`, sql`EXTRACT(MONTH FROM ${dataRecords.date})`)
+        .orderBy(sql`EXTRACT(YEAR FROM ${dataRecords.date}) DESC`, sql`EXTRACT(MONTH FROM ${dataRecords.date}) DESC`)
+        .limit(24);
+
+      let siteCount = 0;
+      let meterCount = 0;
+      if (isAdmin) {
+        const [sc] = await db.select({ count: sql<number>`COUNT(*)` }).from(sites);
+        const [mc] = await db.select({ count: sql<number>`COUNT(*)` }).from(dataSets);
+        siteCount = sc.count;
+        meterCount = mc.count;
+      } else {
+        const siteIds = await storage.getSiteIdsForUser(user.id);
+        siteCount = siteIds.length;
+        const userDataSets = await storage.getDataSetsForUser(user.id);
+        meterCount = userDataSets.length;
+      }
+
+      res.json({
+        totalUnits: totals.totalUnits,
+        totalCost: totals.totalCost,
+        monthlyData: monthly.reverse(),
+        siteCount,
+        meterCount,
+      });
+    } catch (error: any) {
+      console.error("Dashboard stats error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/groups", requireAuth, async (req, res) => {
     const user = req.user!;
     if (user.role === "admin") {

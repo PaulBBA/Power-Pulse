@@ -155,8 +155,9 @@ export function Layout({ children }: LayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9 border border-border">
-                    <AvatarImage src="/placeholder-user.jpg" alt="User" />
-                    <AvatarFallback className="bg-primary/10 text-primary">JD</AvatarFallback>
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {user?.username ? user.username.split(/[\s._-]+/).map(w => w[0]).join('').toUpperCase().slice(0, 2) || user.username.slice(0, 2).toUpperCase() : '?'}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>

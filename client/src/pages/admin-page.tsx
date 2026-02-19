@@ -68,7 +68,7 @@ export default function AdminPage() {
   });
 
   const { data: allGroups } = useQuery<Group[]>({
-    queryKey: ["/api/groups"],
+    queryKey: ["/api/groups/all"],
   });
 
   const { data: todoItems, isLoading: todosLoading } = useQuery<TodoItem[]>({

@@ -341,13 +341,19 @@ export async function registerRoutes(
 
   app.get("/api/groups", requireAuth, async (req, res) => {
     const user = req.user!;
-    if (user.role === "admin") {
+    const includeAll = req.query.all === "true";
+    if (user.role === "admin" || includeAll && user.role === "admin") {
       const allGroups = await storage.getGroups();
       res.json(allGroups);
     } else {
       const userGroupsList = await storage.getGroupsForUser(user.id);
       res.json(userGroupsList);
     }
+  });
+
+  app.get("/api/groups/all", requireAdmin, async (_req, res) => {
+    const allGroups = await storage.getGroups();
+    res.json(allGroups);
   });
 
   app.get("/api/groups/hierarchy", requireAuth, async (req, res) => {

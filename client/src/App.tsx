@@ -16,6 +16,7 @@ import GroupsPage from "@/pages/groups-page";
 import ContractsPage from "@/pages/contracts-page";
 import MeterDetailPage from "@/pages/meter-detail-page";
 import ReportsPage from "@/pages/reports-page";
+import AnalysisPage from "@/pages/analysis-page";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
       <ProtectedRoute path="/meters/:id" component={MeterDetailPage} />
       <ProtectedRoute path="/meters" component={MetersPage} />
       <ProtectedRoute path="/contracts" component={ContractsPage} />
+      <ProtectedRoute path="/analysis" component={AnalysisPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/import" component={ImportPage} allowedRoles={["admin", "editor"]} />
       <ProtectedRoute path="/admin" component={AdminPage} allowedRoles={["admin"]} />

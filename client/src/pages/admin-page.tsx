@@ -228,7 +228,7 @@ export default function AdminPage() {
 
   const filteredGroups = allGroups?.filter(g =>
     g.name.toLowerCase().includes(groupSearch.toLowerCase())
-  ) || [];
+  ).sort((a, b) => a.name.localeCompare(b.name)) || [];
 
   const pendingTodos = todoItems?.filter(t => !t.isDone) || [];
   const doneTodos = todoItems?.filter(t => t.isDone) || [];

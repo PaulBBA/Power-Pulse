@@ -47,6 +47,8 @@ The core hierarchy consists of:
 
 Supporting lookup tables include site status, utilities, suppliers, and charge types.
 
+**Degree Day Groups (excluded)**: Groups with IDs 70-87 (regional areas like Thames Valley, Southern, etc.) and 353-370 (weather stations like Plymouth, Aberdeen, Heathrow, etc.) are legacy degree day area references stored in the groups table. These are excluded from all group listings, dropdowns, and hierarchy views via `DEGREE_DAY_GROUP_IDS` in `server/storage.ts`. They remain in the database for degree day lookups via the `degree_day_area` field on sites.
+
 ### Authentication & Role-Based Access Control (RBAC)
 - **Authentication**: Passport.js with local strategy, session-based auth
 - **Three access levels**:

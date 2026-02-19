@@ -14,7 +14,12 @@ import {
   todoItems, type TodoItem, type InsertTodo
 } from "@shared/schema.js";
 import { db } from "./db.js";
-import { eq, and, inArray, notInArray, sql } from "drizzle-orm";
+import { eq, and, inArray, notInArray, sql, not, between } from "drizzle-orm";
+
+const DEGREE_DAY_GROUP_IDS = [
+  70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87,
+  353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370,
+];
 
 export interface IStorage {
   // Users
@@ -122,10 +127,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGroupsWithSites(): Promise<Group[]> {
-    const groupIdsWithSites = await db.selectDistinct({ groupId: siteGroups.groupId }).from(siteGroups);
-    const ids = groupIdsWithSites.map(r => r.groupId);
-    if (ids.length === 0) return [];
-    return await db.select().from(groups).where(inArray(groups.id, ids));
+    return await db.select().from(groups).where(notInArray(groups.id, DEGREE_DAY_GROUP_IDS));
   }
 
   async createGroup(group: { name: string }): Promise<Group> {
@@ -154,18 +156,20 @@ export class DatabaseStorage implements IStorage {
 
     const assignedSiteIds = new Set(allSiteGroups.map(sg => sg.siteId));
 
-    const groupsWithSites = allGroups.map(g => {
-      const groupSiteIds = allSiteGroups
-        .filter(sg => sg.groupId === g.id)
-        .map(sg => sg.siteId);
-      const groupSites = allSites
-        .filter(s => groupSiteIds.includes(s.id))
-        .map(s => ({
-          ...s,
-          meters: metersBySite.get(s.id) || [],
-        }));
-      return { ...g, sites: groupSites };
-    }).filter(g => g.sites.length > 0);
+    const groupsWithSites = allGroups
+      .filter(g => !DEGREE_DAY_GROUP_IDS.includes(g.id))
+      .map(g => {
+        const groupSiteIds = allSiteGroups
+          .filter(sg => sg.groupId === g.id)
+          .map(sg => sg.siteId);
+        const groupSites = allSites
+          .filter(s => groupSiteIds.includes(s.id))
+          .map(s => ({
+            ...s,
+            meters: metersBySite.get(s.id) || [],
+          }));
+        return { ...g, sites: groupSites };
+      });
 
     const unassignedSites = allSites
       .filter(s => !assignedSiteIds.has(s.id))
@@ -359,8 +363,9 @@ export class DatabaseStorage implements IStorage {
 
   async getGroupsForUser(userId: number): Promise<Group[]> {
     const groupIds = await this.getUserGroupIds(userId);
-    if (groupIds.length === 0) return [];
-    return await db.select().from(groups).where(inArray(groups.id, groupIds));
+    const filtered = groupIds.filter(id => !DEGREE_DAY_GROUP_IDS.includes(id));
+    if (filtered.length === 0) return [];
+    return await db.select().from(groups).where(inArray(groups.id, filtered));
   }
 
   async getSiteIdsForUser(userId: number): Promise<number[]> {

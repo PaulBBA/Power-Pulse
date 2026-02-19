@@ -195,18 +195,26 @@ function parseMeterSection(text: string, mpan: string, invoicePeriodStart: Date 
     ? text.substring(chargesStart, sectionEnd)
     : "";
 
-  const meterSerialMatch = consumptionSection.match(/([A-Z]\d{2}[A-Z]\d{4,5})/);
+  const meterSerialMatch = consumptionSection.match(/([A-Z]\d{2}[A-Z]\d{4,6})/);
   const meterSerial = meterSerialMatch ? meterSerialMatch[1] : "";
 
   let periodStart: Date | null = null;
   let periodEnd: Date | null = null;
-  const meterReadingPattern = /[A-Z]\d{2}[A-Z]\d{4,5}\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})/g;
+  const meterReadingPattern = /[A-Z]\d{2}[A-Z]\d{4,6}\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})/g;
   let readingMatch;
   while ((readingMatch = meterReadingPattern.exec(consumptionSection)) !== null) {
     const startDate = parseUkDate(readingMatch[1]);
     const endDate = parseUkDate(readingMatch[2]);
     if (startDate && (!periodStart || startDate < periodStart)) periodStart = startDate;
     if (endDate && (!periodEnd || endDate > periodEnd)) periodEnd = endDate;
+  }
+  if (!periodStart || !periodEnd) {
+    const allDates = [...consumptionSection.matchAll(/(\d{2}\/\d{2}\/\d{4})/g)].map(m => parseUkDate(m[1])).filter(Boolean) as Date[];
+    if (allDates.length >= 2) {
+      allDates.sort((a, b) => a.getTime() - b.getTime());
+      if (!periodStart) periodStart = allDates[0];
+      if (!periodEnd) periodEnd = allDates[allDates.length - 1];
+    }
   }
   if (!periodStart && invoicePeriodStart) periodStart = invoicePeriodStart;
   if (!periodEnd && invoicePeriodEnd) periodEnd = invoicePeriodEnd;
@@ -216,9 +224,11 @@ function parseMeterSection(text: string, mpan: string, invoicePeriodStart: Date 
   let wapDayCost = 0, wapNightCost = 0, wapDayRate = 0, wapNightRate = 0;
   let totalConsumption = 0;
 
-  const totalKwhMatch = consumptionSection.match(/Total energy[\s\S]*?@ meter \(kWh\)[\s\S]*?([\d,]+\.\d{3})/);
-  if (!totalKwhMatch) {
-    const kwhLines = consumptionSection.match(/([A-Z]\d{2}[A-Z]\d{4,5})\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}\/\d{2}\/\d{4}\s+([\d,]+\.\d{3})\s+([\d,]+\.\d{3})\s+([\d,]+\.\d{3})/g);
+  const totalKwhMatch = consumptionSection.match(/Total energy[\s\S]*?@ meter[\s\S]*?([\d,]+\.\d{3})\s*kWh/);
+  if (totalKwhMatch) {
+    totalKwh = parseNumber(totalKwhMatch[1]);
+  } else {
+    const kwhLines = consumptionSection.match(/([A-Z]\d{2}[A-Z]\d{4,6})\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}\/\d{2}\/\d{4}\s+([\d,]+\.\d{3})\s+([\d,]+\.\d{3})\s+([\d,]+\.\d{3})/g);
     if (kwhLines) {
       for (const line of kwhLines) {
         const parts = line.match(/([\d,]+\.\d{3})\s+([\d,]+\.\d{3})\s+([\d,]+\.\d{3})/);
@@ -356,10 +366,6 @@ function extractConsumptionCharges(section: string) {
 
   const consumptionBlock = section.substring(0, consumptionEnd);
 
-  const meterDayPattern = /Electricity consumption @[\s\S]*?Day[\s\S]*?(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+([\d,]+\.\d{3})\s*kWh\s+([\d.]+)\s*p\/kWh\s+STD\s+£([\d,]+\.\d{2})/g;
-  const meterNightPattern = /Night\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+([\d,]+\.\d{3})\s*kWh\s+([\d.]+)\s*p\/kWh\s+STD\s+£([\d,]+\.\d{2})/g;
-
-  let m;
   const wapStart = consumptionBlock.indexOf("Multi Purchase Charge");
   const meterBlock = wapStart > 0 ? consumptionBlock.substring(0, wapStart) : consumptionBlock;
   const wapBlock = wapStart > 0 ? consumptionBlock.substring(wapStart) : "";
@@ -388,6 +394,20 @@ function extractConsumptionCharges(section: string) {
     }
   }
 
+  if (dayKwh === 0 && nightKwh === 0) {
+    const allTimesEntries = meterBlock.match(/ALL TIMES\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}\/\d{2}\/\d{4}\s+([\d,]+\.\d{3})\s*kWh[\s\S]*?([\d.]+)\s*p\/kWh[\s\S]*?£([\d,]+\.\d{2})/g);
+    if (allTimesEntries) {
+      for (const entry of allTimesEntries) {
+        const parts = entry.match(/([\d,]+\.\d{3})\s*kWh[\s\S]*?([\d.]+)\s*p\/kWh[\s\S]*?£([\d,]+\.\d{2})/);
+        if (parts) {
+          dayKwh += parseNumber(parts[1]);
+          dayRate = parseFloat(parts[2]);
+          dayCost += parseMoney(parts[3]);
+        }
+      }
+    }
+  }
+
   if (wapBlock) {
     const wapDayEntries = wapBlock.match(/Day\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}\/\d{2}\/\d{4}\s+([\d,]+\.\d{3})\s*kWh[\s\S]*?([\d.]+)\s*p\/kWh[\s\S]*?£([\d,]+\.\d{2})/g);
     if (wapDayEntries) {
@@ -407,6 +427,19 @@ function extractConsumptionCharges(section: string) {
         if (parts) {
           wapNightRate = parseFloat(parts[2]);
           wapNightCost += parseMoney(parts[3]);
+        }
+      }
+    }
+
+    if (wapDayCost === 0 && wapNightCost === 0) {
+      const wapAllTimesEntries = wapBlock.match(/ALL TIMES\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}\/\d{2}\/\d{4}\s+([\d,]+\.\d{3})\s*kWh[\s\S]*?([\d.]+)\s*p\/kWh[\s\S]*?£([\d,]+\.\d{2})/g);
+      if (wapAllTimesEntries) {
+        for (const entry of wapAllTimesEntries) {
+          const parts = entry.match(/([\d,]+\.\d{3})\s*kWh[\s\S]*?([\d.]+)\s*p\/kWh[\s\S]*?£([\d,]+\.\d{2})/);
+          if (parts) {
+            wapDayRate = parseFloat(parts[2]);
+            wapDayCost += parseMoney(parts[3]);
+          }
         }
       }
     }

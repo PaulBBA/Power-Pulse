@@ -141,6 +141,14 @@ export default function ImportPage() {
   const [crownDragOver, setCrownDragOver] = useState(false);
   const crownFileInputRef = useRef<HTMLInputElement>(null);
 
+  const [crownProfileFile, setCrownProfileFile] = useState<File | null>(null);
+  const [crownProfilePreview, setCrownProfilePreview] = useState<PreviewData | null>(null);
+  const [crownProfilePreviewing, setCrownProfilePreviewing] = useState(false);
+  const [crownProfileImporting, setCrownProfileImporting] = useState(false);
+  const [crownProfileResult, setCrownProfileResult] = useState<ImportResult | null>(null);
+  const [crownProfileDragOver, setCrownProfileDragOver] = useState(false);
+  const crownProfileFileInputRef = useRef<HTMLInputElement>(null);
+
   const [npowerFile, setNpowerFile] = useState<File | null>(null);
   const [npowerPreview, setNpowerPreview] = useState<any>(null);
   const [npowerPreviewing, setNpowerPreviewing] = useState(false);
@@ -388,6 +396,82 @@ export default function ImportPage() {
     setCrownPreview(null);
     setCrownResult(null);
     if (crownFileInputRef.current) crownFileInputRef.current.value = "";
+  };
+
+  const handleCrownProfileFileSelect = useCallback(async (file: File) => {
+    setCrownProfileFile(file);
+    setCrownProfilePreview(null);
+    setCrownProfileResult(null);
+    setCrownProfilePreviewing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/import/crown-profile/preview", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Preview failed");
+      }
+
+      const data = await res.json();
+      setCrownProfilePreview(data);
+    } catch (err: any) {
+      alert("Error previewing Crown HH file: " + err.message);
+      setCrownProfileFile(null);
+    } finally {
+      setCrownProfilePreviewing(false);
+    }
+  }, []);
+
+  const handleCrownProfileDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setCrownProfileDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith(".xlsx") || file.name.endsWith(".xls"))) {
+      handleCrownProfileFileSelect(file);
+    }
+  }, [handleCrownProfileFileSelect]);
+
+  const handleCrownProfileImport = async () => {
+    if (!crownProfileFile) return;
+    setCrownProfileImporting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", crownProfileFile);
+
+      const res = await fetch("/api/import/crown-profile/execute", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Import failed");
+      }
+
+      const data = await res.json();
+      setCrownProfileResult(data);
+      refetchLogs();
+    } catch (err: any) {
+      alert("Crown HH import error: " + err.message);
+    } finally {
+      setCrownProfileImporting(false);
+    }
+  };
+
+  const resetCrownProfileForm = () => {
+    setCrownProfileFile(null);
+    setCrownProfilePreview(null);
+    setCrownProfileResult(null);
+    if (crownProfileFileInputRef.current) crownProfileFileInputRef.current.value = "";
   };
 
   const handleNpowerFileSelect = useCallback(async (file: File) => {
@@ -1114,6 +1198,241 @@ export default function ImportPage() {
                   )}
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="h-5 w-5 text-orange-500" />
+                    Crown Gas HH Profile
+                  </CardTitle>
+                  <CardDescription>
+                    Upload Crown Gas XLSX files containing half-hourly gas profile data (MPRN, Meter Serial, Date, 48 x kWh values).
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!crownProfileResult ? (
+                    <>
+                      <input
+                        ref={crownProfileFileInputRef}
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        data-testid="input-crown-profile-file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleCrownProfileFileSelect(file);
+                        }}
+                      />
+
+                      <div
+                        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                          crownProfileDragOver ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                        }`}
+                        onClick={() => crownProfileFileInputRef.current?.click()}
+                        onDragOver={(e) => { e.preventDefault(); setCrownProfileDragOver(true); }}
+                        onDragLeave={() => setCrownProfileDragOver(false)}
+                        onDrop={handleCrownProfileDrop}
+                        data-testid="dropzone-crown-profile"
+                      >
+                        {crownProfilePreviewing ? (
+                          <div className="flex flex-col items-center gap-3">
+                            <Loader2 className="h-10 w-10 text-orange-500 animate-spin" />
+                            <p className="text-sm text-muted-foreground">Analysing Crown HH file...</p>
+                          </div>
+                        ) : crownProfileFile && crownProfilePreview ? (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <FileText className="h-8 w-8 text-orange-500" />
+                              <div className="text-left">
+                                <p className="font-medium">{crownProfilePreview.filename}</p>
+                                <p className="text-sm text-muted-foreground">{crownProfilePreview.format} &middot; {crownProfilePreview.totalRows} rows</p>
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); resetCrownProfileForm(); }} data-testid="button-clear-crown-profile">
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <CloudUpload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                            <h3 className="text-lg font-medium mb-1">Drag Crown Gas XLSX file here</h3>
+                            <p className="text-sm text-muted-foreground mb-3">or click to browse. Supports .xlsx files</p>
+                            <Button variant="secondary" data-testid="button-select-crown-profile">Select File</Button>
+                          </>
+                        )}
+                      </div>
+
+                      {crownProfilePreview && (
+                        <div className="mt-6 space-y-4">
+                          <Separator />
+
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="text-center p-3 bg-muted/50 rounded-lg">
+                              <p className="text-2xl font-bold" data-testid="text-crown-profile-total-rows">{crownProfilePreview.totalRows}</p>
+                              <p className="text-xs text-muted-foreground">Total Rows</p>
+                            </div>
+                            <div className="text-center p-3 bg-muted/50 rounded-lg">
+                              <p className="text-2xl font-bold text-green-600" data-testid="text-crown-profile-matched">{crownProfilePreview.metersMatched}</p>
+                              <p className="text-xs text-muted-foreground">Meters Matched</p>
+                            </div>
+                            <div className="text-center p-3 bg-muted/50 rounded-lg">
+                              <p className="text-2xl font-bold text-orange-500" data-testid="text-crown-profile-unmatched">{crownProfilePreview.unmatchedMpans.length}</p>
+                              <p className="text-xs text-muted-foreground">Unmatched MPRNs</p>
+                            </div>
+                          </div>
+
+                          {crownProfilePreview.meters.length > 0 && (
+                            <div>
+                              <h4 className="font-medium mb-2">Matched Meters</h4>
+                              <div className="border rounded-md overflow-hidden">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-muted/50">
+                                    <tr>
+                                      <th className="text-left p-2 font-medium">MPRN / Meter</th>
+                                      <th className="text-left p-2 font-medium">Rows</th>
+                                      <th className="text-left p-2 font-medium">Date Range</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {crownProfilePreview.meters.map((m) => (
+                                      <tr key={m.id} className="border-t" data-testid={`row-crown-profile-meter-${m.id}`}>
+                                        <td className="p-2">
+                                          <span className="font-mono text-xs">{m.mpan || m.meterSerial}</span>
+                                        </td>
+                                        <td className="p-2">{m.rowCount}</td>
+                                        <td className="p-2 text-xs">{m.dateRange.min} to {m.dateRange.max}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+
+                          {crownProfilePreview.unmatchedMpans.length > 0 && (
+                            <div>
+                              <h4 className="font-medium mb-2 text-orange-600">Unmatched MPRNs</h4>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                These MPRNs were not found in the system. Their rows will be skipped during import.
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {crownProfilePreview.unmatchedMpans.map((mprn: string) => (
+                                  <Badge key={mprn} variant="outline" className="font-mono text-xs" data-testid={`badge-unmatched-crown-${mprn}`}>
+                                    {mprn}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {crownProfilePreview.sampleRows.length > 0 && (
+                            <div>
+                              <h4 className="font-medium mb-2">Sample Data (first 5 rows)</h4>
+                              <div className="border rounded-md overflow-x-auto">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-muted/50">
+                                    <tr>
+                                      <th className="text-left p-2 font-medium">MPRN</th>
+                                      <th className="text-left p-2 font-medium">Meter Serial</th>
+                                      <th className="text-left p-2 font-medium">Date</th>
+                                      <th className="text-right p-2 font-medium">Day Total (kWh)</th>
+                                      <th className="text-left p-2 font-medium">Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {crownProfilePreview.sampleRows.map((row: any, idx: number) => (
+                                      <tr key={idx} className="border-t">
+                                        <td className="p-2 font-mono text-xs">{row.mprn}</td>
+                                        <td className="p-2 font-mono text-xs">{row.meterSerial}</td>
+                                        <td className="p-2">{row.date}</td>
+                                        <td className="p-2 text-right">{row.dayTotal.toLocaleString()}</td>
+                                        <td className="p-2">
+                                          {row.matched ? (
+                                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Matched</Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="text-orange-600 text-xs">Unmatched</Badge>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex gap-3 pt-2">
+                            <Button
+                              onClick={handleCrownProfileImport}
+                              disabled={crownProfileImporting || crownProfilePreview.metersMatched === 0}
+                              className="flex-1"
+                              data-testid="button-crown-profile-import"
+                            >
+                              {crownProfileImporting ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Importing...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="mr-2 h-4 w-4" />
+                                  Import {crownProfilePreview.totalRows} Rows
+                                </>
+                              )}
+                            </Button>
+                            <Button variant="outline" onClick={resetCrownProfileForm} disabled={crownProfileImporting} data-testid="button-crown-profile-cancel">
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-6">
+                      {crownProfileResult.status === "completed" ? (
+                        <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                      ) : (
+                        <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-3" />
+                      )}
+
+                      <h3 className="text-lg font-medium mb-1" data-testid="text-crown-profile-status">
+                        {crownProfileResult.status === "completed" ? "Import Complete" : "Import Completed with Errors"}
+                      </h3>
+
+                      <div className="grid grid-cols-3 gap-4 mt-4 mb-4">
+                        <div className="text-center p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                          <p className="text-xl font-bold text-green-600" data-testid="text-crown-profile-imported">{crownProfileResult.imported}</p>
+                          <p className="text-xs text-muted-foreground">Imported</p>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <p className="text-xl font-bold" data-testid="text-crown-profile-skipped">{crownProfileResult.skipped}</p>
+                          <p className="text-xs text-muted-foreground">Skipped</p>
+                        </div>
+                        <div className="text-center p-3 bg-red-50 dark:bg-red-950 rounded-lg">
+                          <p className="text-xl font-bold text-red-600" data-testid="text-crown-profile-errors">{crownProfileResult.errors}</p>
+                          <p className="text-xs text-muted-foreground">Errors</p>
+                        </div>
+                      </div>
+
+                      {crownProfileResult.errorDetails && crownProfileResult.errorDetails.length > 0 && (
+                        <div className="mt-4 text-left">
+                          <h4 className="font-medium text-sm mb-2 text-red-600">Error Details</h4>
+                          <div className="bg-red-50 dark:bg-red-950 p-3 rounded-md text-sm space-y-1">
+                            {crownProfileResult.errorDetails.map((err, i) => (
+                              <p key={i} className="text-red-700 dark:text-red-300 font-mono text-xs">{err}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <Button onClick={resetCrownProfileForm} className="mt-4" data-testid="button-crown-profile-another">
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload Another File
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
             <div>
@@ -1130,12 +1449,12 @@ export default function ImportPage() {
                       </div>
                       <p className="text-xs text-muted-foreground">MPAN, Meter ID, Elec kWh, Date, 48 x (kWh Value, Flag)</p>
                     </div>
-                    <div className="p-3 border rounded-md opacity-50">
+                    <div className="p-3 border rounded-md">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium text-sm">Gas HH Profile</p>
-                        <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+                        <p className="font-medium text-sm">Crown Gas HH Profile</p>
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Active</Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground">MPRN-based gas half-hourly data</p>
+                      <p className="text-xs text-muted-foreground">MPRN, Meter Serial, Date, 48 x kWh values (XLSX)</p>
                     </div>
                   </div>
                 </CardContent>

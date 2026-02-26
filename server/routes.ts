@@ -10,6 +10,7 @@ import { parseMMFile, mmInvoiceToDataRecord } from "./mm-parser.js";
 import { parseCrownEDI, crownEDIToDataRecord } from "./crown-edi-parser.js";
 import { parseNpowerPDF, npowerInvoiceToDataRecord } from "./npower-pdf-parser.js";
 import { requireAuth, requireAdmin, requireEditorOrAdmin, hashPassword } from "./auth.js";
+import XLSX from "xlsx";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -64,6 +65,56 @@ function parseFormat18Row(fields: string[]) {
   }
 
   return { mpan, meterSerial, dataType, date, intervals, flags, dayTotal };
+}
+
+const CROWN_HH_COLUMNS = [
+  "00_00","00_30","01_00","01_30","02_00","02_30","03_00","03_30",
+  "04_00","04_30","05_00","05_30","06_00","06_30","07_00","07_30",
+  "08_00","08_30","09_00","09_30","10_00","10_30","11_00","11_30",
+  "12_00","12_30","13_00","13_30","14_00","14_30","15_00","15_30",
+  "16_00","16_30","17_00","17_30","18_00","18_30","19_00","19_30",
+  "20_00","20_30","21_00","21_30","22_00","22_30","23_00","23_30"
+];
+
+function parseCrownHHRow(row: Record<string, any>) {
+  const mprn = String(row["MPRN"] ?? "").trim();
+  const meterSerial = String(row["Meter Serial Number"] ?? "").trim();
+  const rawDate = row["Date"];
+
+  let date: Date | null = null;
+  if (rawDate) {
+    if (rawDate instanceof Date) {
+      date = new Date(Date.UTC(rawDate.getFullYear(), rawDate.getMonth(), rawDate.getDate()));
+    } else if (typeof rawDate === "number") {
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+      const msPerDay = 24 * 60 * 60 * 1000;
+      date = new Date(excelEpoch.getTime() + rawDate * msPerDay);
+    } else {
+      const dateStr = String(rawDate).trim();
+      const parts = dateStr.split("/");
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          date = new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00.000Z`);
+        } else {
+          date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00.000Z`);
+        }
+      }
+    }
+  }
+  if (date && isNaN(date.getTime())) date = null;
+
+  const intervals: Record<string, number | null> = {};
+  let dayTotal = 0;
+
+  for (let i = 0; i < 48; i++) {
+    const colName = CROWN_HH_COLUMNS[i];
+    const val = row[colName];
+    const numVal = val !== undefined && val !== null && val !== "" ? parseFloat(String(val)) : null;
+    intervals[INTERVAL_KEYS[i]] = numVal;
+    if (numVal !== null && !isNaN(numVal)) dayTotal += numVal;
+  }
+
+  return { mprn, meterSerial, date, intervals, dayTotal };
 }
 
 export async function registerRoutes(
@@ -1556,6 +1607,199 @@ export async function registerRoutes(
       });
     } catch (error: any) {
       console.error("Import error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- Crown Gas HH Profile Import ---
+
+  app.post("/api/import/crown-profile/preview", requireEditorOrAdmin, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) return res.status(400).json({ message: "No sheets found in file" });
+
+      const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+      if (rows.length === 0) return res.status(400).json({ message: "File is empty" });
+
+      const firstRow = rows[0];
+      if (!("MPRN" in firstRow) || !("Date" in firstRow)) {
+        return res.status(400).json({ message: "Invalid Crown HH format: missing MPRN or Date columns" });
+      }
+
+      const allMeters = await db.select({
+        id: dataSets.id,
+        mpan: dataSets.mpanCoreMprn,
+        meterSerial: dataSets.meterSerial1,
+        siteId: dataSets.siteId,
+        name: dataSets.name
+      }).from(dataSets);
+
+      const mprnMap = new Map<string, typeof allMeters[0]>();
+      const serialMap = new Map<string, typeof allMeters[0]>();
+      for (const m of allMeters) {
+        if (m.mpan) mprnMap.set(m.mpan.trim(), m);
+        if (m.meterSerial) serialMap.set(m.meterSerial.trim(), m);
+      }
+
+      const metersFound = new Map<string, { meter: typeof allMeters[0]; rowCount: number; dateRange: { min: string; max: string } }>();
+      const unmatchedMprns = new Set<string>();
+      let totalRows = 0;
+      const sampleRows: any[] = [];
+
+      for (const row of rows) {
+        const parsed = parseCrownHHRow(row);
+        if (!parsed.date || !parsed.mprn) continue;
+        totalRows++;
+
+        const meter = mprnMap.get(parsed.mprn) || serialMap.get(parsed.meterSerial);
+
+        if (meter) {
+          const key = `${meter.id}`;
+          const existing = metersFound.get(key);
+          const dateStr = parsed.date.toISOString().split("T")[0];
+          if (existing) {
+            existing.rowCount++;
+            if (dateStr < existing.dateRange.min) existing.dateRange.min = dateStr;
+            if (dateStr > existing.dateRange.max) existing.dateRange.max = dateStr;
+          } else {
+            metersFound.set(key, { meter, rowCount: 1, dateRange: { min: dateStr, max: dateStr } });
+          }
+        } else {
+          unmatchedMprns.add(parsed.mprn);
+        }
+
+        if (sampleRows.length < 5) {
+          sampleRows.push({
+            mprn: parsed.mprn,
+            meterSerial: parsed.meterSerial,
+            date: parsed.date.toISOString().split("T")[0],
+            dayTotal: Math.round(parsed.dayTotal * 100) / 100,
+            matched: !!meter,
+            meterId: meter?.id || null
+          });
+        }
+      }
+
+      res.json({
+        filename: req.file.originalname,
+        format: "Crown Gas HH Profile",
+        totalRows,
+        metersMatched: metersFound.size,
+        meters: Array.from(metersFound.values()).map(m => ({
+          id: m.meter.id,
+          mpan: m.meter.mpan,
+          meterSerial: m.meter.meterSerial,
+          siteId: m.meter.siteId,
+          rowCount: m.rowCount,
+          dateRange: m.dateRange
+        })),
+        unmatchedMprns: Array.from(unmatchedMprns),
+        sampleRows
+      });
+    } catch (error: any) {
+      console.error("Crown HH preview error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/import/crown-profile/execute", requireEditorOrAdmin, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) return res.status(400).json({ message: "No sheets found in file" });
+
+      const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+      const allMeters = await db.select({
+        id: dataSets.id,
+        mpan: dataSets.mpanCoreMprn,
+        meterSerial: dataSets.meterSerial1
+      }).from(dataSets);
+
+      const mprnMap = new Map<string, number>();
+      const serialMap = new Map<string, number>();
+      for (const m of allMeters) {
+        if (m.mpan) mprnMap.set(m.mpan.trim(), m.id);
+        if (m.meterSerial) serialMap.set(m.meterSerial.trim(), m.id);
+      }
+
+      const [logEntry] = await db.insert(importLogs).values({
+        filename: req.file.originalname,
+        format: "Crown Gas HH Profile",
+        status: "processing",
+        totalRows: rows.length,
+      }).returning();
+
+      let imported = 0;
+      let skipped = 0;
+      let errors = 0;
+      const errorDetails: string[] = [];
+
+      for (const row of rows) {
+        const parsed = parseCrownHHRow(row);
+        if (!parsed.date || !parsed.mprn) { skipped++; continue; }
+
+        const dataSetId = mprnMap.get(parsed.mprn) ?? serialMap.get(parsed.meterSerial);
+        if (!dataSetId) { skipped++; continue; }
+
+        try {
+          const dateStr = parsed.date.toISOString().split("T")[0];
+          const existing = await db.select({ id: dataProfiles.id })
+            .from(dataProfiles)
+            .where(and(
+              eq(dataProfiles.dataSetId, dataSetId),
+              sql`DATE(${dataProfiles.date}) = ${dateStr}`
+            ))
+            .limit(1);
+
+          const profileData = {
+            dataSetId,
+            date: parsed.date,
+            type: 0,
+            dayTotal: Math.round(parsed.dayTotal * 100) / 100,
+            ...parsed.intervals
+          } as any;
+
+          if (existing.length > 0) {
+            await db.update(dataProfiles)
+              .set(profileData)
+              .where(eq(dataProfiles.id, existing[0].id));
+          } else {
+            await db.insert(dataProfiles).values(profileData);
+          }
+          imported++;
+        } catch (err: any) {
+          errors++;
+          if (errorDetails.length < 10) {
+            errorDetails.push(`Row ${parsed.mprn} ${parsed.date.toISOString().split("T")[0]}: ${err.message}`);
+          }
+        }
+      }
+
+      await db.update(importLogs).set({
+        status: errors > 0 ? "completed_with_errors" : "completed",
+        importedRows: imported,
+        skippedRows: skipped,
+        errorRows: errors,
+        errorDetails: errorDetails.length > 0 ? errorDetails.join("\n") : null,
+        completedAt: new Date()
+      }).where(eq(importLogs.id, logEntry.id));
+
+      res.json({
+        id: logEntry.id,
+        status: errors > 0 ? "completed_with_errors" : "completed",
+        imported,
+        skipped,
+        errors,
+        errorDetails: errorDetails.length > 0 ? errorDetails : undefined
+      });
+    } catch (error: any) {
+      console.error("Crown HH import error:", error);
       res.status(500).json({ message: error.message });
     }
   });

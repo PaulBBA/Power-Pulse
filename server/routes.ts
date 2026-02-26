@@ -10,7 +10,6 @@ import { parseMMFile, mmInvoiceToDataRecord } from "./mm-parser.js";
 import { parseCrownEDI, crownEDIToDataRecord } from "./crown-edi-parser.js";
 import { parseNpowerPDF, npowerInvoiceToDataRecord } from "./npower-pdf-parser.js";
 import { requireAuth, requireAdmin, requireEditorOrAdmin, hashPassword } from "./auth.js";
-import XLSX from "xlsx";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -1617,6 +1616,7 @@ export async function registerRoutes(
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
+      const XLSX = await import("xlsx");
       const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
       if (!sheetName) return res.status(400).json({ message: "No sheets found in file" });
@@ -1709,6 +1709,7 @@ export async function registerRoutes(
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
+      const XLSX = await import("xlsx");
       const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
       if (!sheetName) return res.status(400).json({ message: "No sheets found in file" });

@@ -4,6 +4,7 @@ import { serveStatic } from "./static.js";
 import { createServer } from "http";
 import { setupAuth } from "./auth.js";
 
+
 const app = express();
 const httpServer = createServer(app);
 

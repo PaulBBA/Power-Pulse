@@ -1157,6 +1157,36 @@ export async function registerRoutes(
     res.json(records);
   });
 
+  app.post("/api/data-sets/:id/readings", requireEditorOrAdmin, async (req, res) => {
+    try {
+      const dataSetId = parseInt(req.params.id);
+      const { date, previousDate, m1Present, m1Previous, m1Units, m1Factor, utilityType, note } = req.body;
+
+      if (!date || !utilityType) {
+        return res.status(400).json({ message: "Date and utility type are required" });
+      }
+
+      const [record] = await db.insert(dataRecords).values({
+        dataSetId,
+        utilityType,
+        date: new Date(date),
+        previousDate: previousDate ? new Date(previousDate) : null,
+        direct: "D",
+        m1Present: m1Present != null ? parseFloat(m1Present) : null,
+        m1Previous: m1Previous != null ? parseFloat(m1Previous) : null,
+        m1Units: m1Units != null ? parseFloat(m1Units) : null,
+        m1Factor: m1Factor != null ? parseFloat(m1Factor) : null,
+        note: note || null,
+        lastUpdate: new Date(),
+      }).returning();
+
+      res.json(record);
+    } catch (error: any) {
+      console.error("Error creating reading:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/data-sets/:id/profiles", async (req, res) => {
     try {
       const dataSetId = parseInt(req.params.id);

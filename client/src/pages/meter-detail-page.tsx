@@ -3,14 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
-  ArrowLeft, Zap, Flame, Droplets, Package, Loader2,
+  ArrowLeft, Zap, Flame, Droplets, Package, Loader2, Plus,
   FileText, Gauge, BarChart3, Clock, Building2, ArrowUp, ArrowDown, ArrowUpDown
 } from "lucide-react";
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import { format } from "date-fns";
 import { ProfileChart } from "@/components/profile-chart";
@@ -521,18 +523,29 @@ function MetersTab({ meterId, meter }: { meterId: number; meter: any }) {
   );
 }
 
-function ReadingsTab({ meterId }: { meterId: number }) {
+function ReadingsTab({ meterId, utilityCode }: { meterId: number; utilityCode: string }) {
+  const queryClient = useQueryClient();
   const { data: records, isLoading } = useQuery<any[]>({
     queryKey: [`/api/data-sets/${meterId}/records`],
   });
 
-  // Only show actual direct meter readings (direct = 'D'), not invoice records
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [readingForm, setReadingForm] = useState({
+    date: "",
+    previousDate: "",
+    m1Previous: "",
+    m1Present: "",
+    m1Units: "",
+    m1Factor: "",
+    note: "",
+  });
+
   const withReadings = useMemo(() => {
     if (!records) return [];
     return records.filter((r: any) => r.direct === "D");
   }, [records]);
 
-  // Sort by date, newest first
   const sortedReadings = useMemo(() => {
     return [...withReadings].sort((a, b) => {
       const dateA = a.date ? new Date(a.date).getTime() : 0;
@@ -542,32 +555,228 @@ function ReadingsTab({ meterId }: { meterId: number }) {
     });
   }, [withReadings]);
 
+  const handlePresentChange = (val: string) => {
+    const present = parseFloat(val);
+    const previous = parseFloat(readingForm.m1Previous);
+    const factor = parseFloat(readingForm.m1Factor) || 1;
+    let units = "";
+    if (!isNaN(present) && !isNaN(previous)) {
+      units = String(Math.round((present - previous) * factor * 100) / 100);
+    }
+    setReadingForm(f => ({ ...f, m1Present: val, m1Units: units }));
+  };
+
+  const handlePreviousChange = (val: string) => {
+    const previous = parseFloat(val);
+    const present = parseFloat(readingForm.m1Present);
+    const factor = parseFloat(readingForm.m1Factor) || 1;
+    let units = "";
+    if (!isNaN(present) && !isNaN(previous)) {
+      units = String(Math.round((present - previous) * factor * 100) / 100);
+    }
+    setReadingForm(f => ({ ...f, m1Previous: val, m1Units: units }));
+  };
+
+  const handleFactorChange = (val: string) => {
+    const factor = parseFloat(val) || 1;
+    const present = parseFloat(readingForm.m1Present);
+    const previous = parseFloat(readingForm.m1Previous);
+    let units = readingForm.m1Units;
+    if (!isNaN(present) && !isNaN(previous)) {
+      units = String(Math.round((present - previous) * factor * 100) / 100);
+    }
+    setReadingForm(f => ({ ...f, m1Factor: val, m1Units: units }));
+  };
+
+  const openAddDialog = () => {
+    const lastReading = sortedReadings[0];
+    setReadingForm({
+      date: new Date().toISOString().split("T")[0],
+      previousDate: lastReading?.date ? new Date(lastReading.date).toISOString().split("T")[0] : "",
+      m1Previous: lastReading?.m1Present != null ? String(lastReading.m1Present) : "",
+      m1Present: "",
+      m1Units: "",
+      m1Factor: utilityCode === "G" ? "1.02264" : "1",
+      note: "",
+    });
+    setShowAddDialog(true);
+  };
+
+  const handleSaveReading = async () => {
+    if (!readingForm.date) {
+      alert("Date is required");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/data-sets/${meterId}/readings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          date: readingForm.date,
+          previousDate: readingForm.previousDate || null,
+          m1Present: readingForm.m1Present || null,
+          m1Previous: readingForm.m1Previous || null,
+          m1Units: readingForm.m1Units || null,
+          m1Factor: readingForm.m1Factor || null,
+          utilityType: utilityCode,
+          note: readingForm.note || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to save reading");
+      }
+      setShowAddDialog(false);
+      queryClient.invalidateQueries({ queryKey: [`/api/data-sets/${meterId}/records`] });
+    } catch (err: any) {
+      alert("Error saving reading: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (isLoading) return <LoadingState />;
-  if (!records || records.length === 0) return <EmptyState message="No direct reading data found for this meter." />;
-  if (withReadings.length === 0) return <EmptyState message="No meter readings recorded. Only invoice data available." />;
 
   return (
-    <div className="border rounded-md overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="text-left p-2 font-medium">Date</th>
-            <th className="text-right p-2 font-medium">Previous Reading</th>
-            <th className="text-right p-2 font-medium">Present Reading</th>
-            <th className="text-right p-2 font-medium">Units Used</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedReadings.map((r: any) => (
-            <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-reading-${r.id}`}>
-              <td className="p-2">{formatDate(r.date)}</td>
-              <td className="p-2 text-right">{r.m1Previous != null ? Number(r.m1Previous).toLocaleString() : "-"}</td>
-              <td className="p-2 text-right">{r.m1Present != null ? Number(r.m1Present).toLocaleString() : "-"}</td>
-              <td className="p-2 text-right">{r.m1Units != null ? Number(r.m1Units).toLocaleString() : "-"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-muted-foreground">
+          {withReadings.length > 0 ? `${withReadings.length} reading(s) recorded` : "No meter readings recorded yet."}
+        </p>
+        <Button size="sm" onClick={openAddDialog} data-testid="button-add-reading">
+          <Plus className="h-4 w-4 mr-1" />
+          Add Reading
+        </Button>
+      </div>
+
+      {withReadings.length > 0 && (
+        <div className="border rounded-md overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-2 font-medium">Date</th>
+                <th className="text-left p-2 font-medium">Previous Date</th>
+                <th className="text-right p-2 font-medium">Previous Reading</th>
+                <th className="text-right p-2 font-medium">Present Reading</th>
+                <th className="text-right p-2 font-medium">Units Used</th>
+                <th className="text-left p-2 font-medium">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedReadings.map((r: any) => (
+                <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-reading-${r.id}`}>
+                  <td className="p-2">{formatDate(r.date)}</td>
+                  <td className="p-2">{formatDate(r.previousDate)}</td>
+                  <td className="p-2 text-right">{r.m1Previous != null ? Number(r.m1Previous).toLocaleString() : "-"}</td>
+                  <td className="p-2 text-right">{r.m1Present != null ? Number(r.m1Present).toLocaleString() : "-"}</td>
+                  <td className="p-2 text-right">{r.m1Units != null ? Number(r.m1Units).toLocaleString() : "-"}</td>
+                  <td className="p-2 text-xs text-muted-foreground">{r.note || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Meter Reading</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="reading-date">Reading Date</Label>
+                <Input
+                  id="reading-date"
+                  type="date"
+                  value={readingForm.date}
+                  onChange={(e) => setReadingForm(f => ({ ...f, date: e.target.value }))}
+                  data-testid="input-reading-date"
+                />
+              </div>
+              <div>
+                <Label htmlFor="reading-prev-date">Previous Date</Label>
+                <Input
+                  id="reading-prev-date"
+                  type="date"
+                  value={readingForm.previousDate}
+                  onChange={(e) => setReadingForm(f => ({ ...f, previousDate: e.target.value }))}
+                  data-testid="input-reading-prev-date"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="reading-previous">Previous Reading</Label>
+                <Input
+                  id="reading-previous"
+                  type="number"
+                  step="any"
+                  value={readingForm.m1Previous}
+                  onChange={(e) => handlePreviousChange(e.target.value)}
+                  data-testid="input-reading-previous"
+                />
+              </div>
+              <div>
+                <Label htmlFor="reading-present">Present Reading</Label>
+                <Input
+                  id="reading-present"
+                  type="number"
+                  step="any"
+                  value={readingForm.m1Present}
+                  onChange={(e) => handlePresentChange(e.target.value)}
+                  data-testid="input-reading-present"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="reading-factor">Multiplication Factor</Label>
+                <Input
+                  id="reading-factor"
+                  type="number"
+                  step="any"
+                  value={readingForm.m1Factor}
+                  onChange={(e) => handleFactorChange(e.target.value)}
+                  data-testid="input-reading-factor"
+                />
+              </div>
+              <div>
+                <Label htmlFor="reading-units">Units Used</Label>
+                <Input
+                  id="reading-units"
+                  type="number"
+                  step="any"
+                  value={readingForm.m1Units}
+                  onChange={(e) => setReadingForm(f => ({ ...f, m1Units: e.target.value }))}
+                  data-testid="input-reading-units"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="reading-note">Note</Label>
+              <Input
+                id="reading-note"
+                value={readingForm.note}
+                onChange={(e) => setReadingForm(f => ({ ...f, note: e.target.value }))}
+                placeholder="Optional note"
+                data-testid="input-reading-note"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)} data-testid="button-reading-cancel">
+              Cancel
+            </Button>
+            <Button onClick={handleSaveReading} disabled={saving || !readingForm.date} data-testid="button-reading-save">
+              {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : "Save Reading"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -708,7 +917,7 @@ export default function MeterDetailPage() {
               <MetersTab meterId={meterId} meter={meter} />
             </TabsContent>
             <TabsContent value="readings" className="mt-0">
-              <ReadingsTab meterId={meterId} />
+              <ReadingsTab meterId={meterId} utilityCode={meter.utility?.code || ""} />
             </TabsContent>
             <TabsContent value="profiles" className="mt-0">
               <ProfilesTab meterId={meterId} />

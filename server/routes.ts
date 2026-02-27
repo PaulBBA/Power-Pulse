@@ -1645,7 +1645,7 @@ export async function registerRoutes(
       }
 
       const metersFound = new Map<string, { meter: typeof allMeters[0]; rowCount: number; dateRange: { min: string; max: string } }>();
-      const unmatchedMprns = new Set<string>();
+      const unmatchedMpans = new Set<string>();
       let totalRows = 0;
       const sampleRows: any[] = [];
 
@@ -1668,7 +1668,7 @@ export async function registerRoutes(
             metersFound.set(key, { meter, rowCount: 1, dateRange: { min: dateStr, max: dateStr } });
           }
         } else {
-          unmatchedMprns.add(parsed.mprn);
+          unmatchedMpans.add(parsed.mprn);
         }
 
         if (sampleRows.length < 5) {
@@ -1696,7 +1696,7 @@ export async function registerRoutes(
           rowCount: m.rowCount,
           dateRange: m.dateRange
         })),
-        unmatchedMprns: Array.from(unmatchedMprns),
+        unmatchedMpans: Array.from(unmatchedMpans),
         sampleRows
       });
     } catch (error: any) {

@@ -1276,7 +1276,7 @@ export default function ImportPage() {
                               <p className="text-xs text-muted-foreground">Meters Matched</p>
                             </div>
                             <div className="text-center p-3 bg-muted/50 rounded-lg">
-                              <p className="text-2xl font-bold text-orange-500" data-testid="text-crown-profile-unmatched">{crownProfilePreview.unmatchedMpans.length}</p>
+                              <p className="text-2xl font-bold text-orange-500" data-testid="text-crown-profile-unmatched">{(crownProfilePreview.unmatchedMpans || []).length}</p>
                               <p className="text-xs text-muted-foreground">Unmatched MPRNs</p>
                             </div>
                           </div>
@@ -1309,14 +1309,14 @@ export default function ImportPage() {
                             </div>
                           )}
 
-                          {crownProfilePreview.unmatchedMpans.length > 0 && (
+                          {(crownProfilePreview.unmatchedMpans || []).length > 0 && (
                             <div>
                               <h4 className="font-medium mb-2 text-orange-600">Unmatched MPRNs</h4>
                               <p className="text-sm text-muted-foreground mb-2">
                                 These MPRNs were not found in the system. Their rows will be skipped during import.
                               </p>
                               <div className="flex flex-wrap gap-2">
-                                {crownProfilePreview.unmatchedMpans.map((mprn: string) => (
+                                {(crownProfilePreview.unmatchedMpans || []).map((mprn: string) => (
                                   <Badge key={mprn} variant="outline" className="font-mono text-xs" data-testid={`badge-unmatched-crown-${mprn}`}>
                                     {mprn}
                                   </Badge>

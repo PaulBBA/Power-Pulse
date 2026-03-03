@@ -76,9 +76,74 @@ const CROWN_HH_COLUMNS = [
   "20_00","20_30","21_00","21_30","22_00","22_30","23_00","23_30"
 ];
 
+const CROWN_HH_CSV_COLUMNS = [
+  "12:00 AM","12:30 AM","1:00 AM","1:30 AM","2:00 AM","2:30 AM","3:00 AM","3:30 AM",
+  "4:00 AM","4:30 AM","5:00 AM","5:30 AM","6:00 AM","6:30 AM","7:00 AM","7:30 AM",
+  "8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM",
+  "12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM",
+  "4:00 PM","4:30 PM","5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM","7:30 PM",
+  "8:00 PM","8:30 PM","9:00 PM","9:30 PM","10:00 PM","10:30 PM","11:00 PM","11:30 PM"
+];
+
+function isCsvFile(filename: string, buffer: Buffer): boolean {
+  if (filename.toLowerCase().endsWith(".csv")) return true;
+  const start = buffer.slice(0, 200).toString("utf-8");
+  return start.includes('"MPRN"') && start.includes('"Meter_Serial_Number"');
+}
+
+function parseCsvBuffer(buffer: Buffer): Record<string, any>[] {
+  const text = buffer.toString("utf-8");
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length < 2) return [];
+
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (i + 1 < line.length && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          result.push(current.trim());
+          current = "";
+        } else {
+          current += ch;
+        }
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const headers = parseCSVLine(lines[0]);
+  const rows: Record<string, any>[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i]);
+    const row: Record<string, any> = {};
+    for (let j = 0; j < headers.length; j++) {
+      row[headers[j]] = values[j] ?? "";
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
 function parseCrownHHRow(row: Record<string, any>) {
   const mprn = String(row["MPRN"] ?? "").trim();
-  const meterSerial = String(row["Meter Serial Number"] ?? "").trim();
+  const meterSerial = String(row["Meter Serial Number"] ?? row["Meter_Serial_Number"] ?? "").trim();
   const rawDate = row["Date"];
 
   let date: Date | null = null;
@@ -106,8 +171,11 @@ function parseCrownHHRow(row: Record<string, any>) {
   const intervals: Record<string, number | null> = {};
   let dayTotal = 0;
 
+  const useCSVColumns = CROWN_HH_CSV_COLUMNS[0] in row;
+  const columns = useCSVColumns ? CROWN_HH_CSV_COLUMNS : CROWN_HH_COLUMNS;
+
   for (let i = 0; i < 48; i++) {
-    const colName = CROWN_HH_COLUMNS[i];
+    const colName = columns[i];
     const val = row[colName];
     const numVal = val !== undefined && val !== null && val !== "" ? parseFloat(String(val)) : null;
     intervals[INTERVAL_KEYS[i]] = numVal;
@@ -1647,11 +1715,15 @@ export async function registerRoutes(
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-      const sheetName = workbook.SheetNames[0];
-      if (!sheetName) return res.status(400).json({ message: "No sheets found in file" });
-
-      const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+      let rows: Record<string, any>[];
+      if (isCsvFile(req.file.originalname, req.file.buffer)) {
+        rows = parseCsvBuffer(req.file.buffer);
+      } else {
+        const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) return res.status(400).json({ message: "No sheets found in file" });
+        rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+      }
       if (rows.length === 0) return res.status(400).json({ message: "File is empty" });
 
       const firstRow = rows[0];
@@ -1739,11 +1811,15 @@ export async function registerRoutes(
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-      const sheetName = workbook.SheetNames[0];
-      if (!sheetName) return res.status(400).json({ message: "No sheets found in file" });
-
-      const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+      let rows: Record<string, any>[];
+      if (isCsvFile(req.file.originalname, req.file.buffer)) {
+        rows = parseCsvBuffer(req.file.buffer);
+      } else {
+        const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) return res.status(400).json({ message: "No sheets found in file" });
+        rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+      }
 
       const allMeters = await db.select({
         id: dataSets.id,

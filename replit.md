@@ -38,7 +38,7 @@ The core hierarchy consists of:
 4. **Contracts** - Supply contracts linked to meters (dataSetId), with rates, kWh splits, reactive power, VAT, and flags from old EMSQL Contracts table
 5. **Contract Charges** - Additional charge lines linked to contracts, with charge type, rate, and tolerance fields
 6. **Data Records** - Unified table for all utility billing records (electricity/gas/water) with 100+ fields covering meter readings, costs, splits, reactive power, DUOS/TUOS, and utility-specific charges
-7. **Data Profiles** - Half-hourly interval data (48 intervals per day) for electricity and gas meters, with day totals and type flags. Supports Format 18 CSV (electricity, via Stark SFTP or manual upload) and Crown Gas HH XLSX (gas, manual upload)
+7. **Data Profiles** - Half-hourly interval data (48 intervals per day) for electricity and gas meters, with day totals and type flags. Supports Format 18 CSV (electricity, via Stark SFTP or manual upload) and Crown Gas HH XLSX or CSV (gas, manual upload)
 
 8. **SFTP Configs** - SFTP connection configurations for automated profile data downloads from external data collectors
 9. **SFTP Download Logs** - Tracks files downloaded via SFTP with links to import logs

@@ -433,7 +433,7 @@ export default function ImportPage() {
     e.preventDefault();
     setCrownProfileDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file && (file.name.endsWith(".xlsx") || file.name.endsWith(".xls"))) {
+    if (file && (file.name.endsWith(".xlsx") || file.name.endsWith(".xls") || file.name.endsWith(".csv"))) {
       handleCrownProfileFileSelect(file);
     }
   }, [handleCrownProfileFileSelect]);
@@ -1206,7 +1206,7 @@ export default function ImportPage() {
                     Crown Gas HH Profile
                   </CardTitle>
                   <CardDescription>
-                    Upload Crown Gas XLSX files containing half-hourly gas profile data (MPRN, Meter Serial, Date, 48 x kWh values).
+                    Upload Crown Gas XLSX or CSV files containing half-hourly gas profile data (MPRN, Meter Serial, Date, 48 x kWh values).
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1215,7 +1215,7 @@ export default function ImportPage() {
                       <input
                         ref={crownProfileFileInputRef}
                         type="file"
-                        accept=".xlsx,.xls"
+                        accept=".xlsx,.xls,.csv"
                         className="hidden"
                         data-testid="input-crown-profile-file"
                         onChange={(e) => {
@@ -1255,8 +1255,8 @@ export default function ImportPage() {
                         ) : (
                           <>
                             <CloudUpload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                            <h3 className="text-lg font-medium mb-1">Drag Crown Gas XLSX file here</h3>
-                            <p className="text-sm text-muted-foreground mb-3">or click to browse. Supports .xlsx files</p>
+                            <h3 className="text-lg font-medium mb-1">Drag Crown Gas file here</h3>
+                            <p className="text-sm text-muted-foreground mb-3">or click to browse. Supports .xlsx and .csv files</p>
                             <Button variant="secondary" data-testid="button-select-crown-profile">Select File</Button>
                           </>
                         )}

@@ -231,7 +231,7 @@ export default function Dashboard() {
                       <span className="text-muted-foreground">Electricity</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
-                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#f97316' }} />
+                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#14b8a6' }} />
                       <span className="text-muted-foreground">Gas</span>
                     </div>
                   </div>
@@ -250,8 +250,8 @@ export default function Dashboard() {
                           <stop offset="95%" stopColor="#eab308" stopOpacity={0.05}/>
                         </linearGradient>
                         <linearGradient id="colorGas" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="#f97316" stopOpacity={0.05}/>
+                          <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.05}/>
                         </linearGradient>
                       </defs>
                       <XAxis
@@ -291,7 +291,7 @@ export default function Dashboard() {
                         <Area type="monotone" dataKey="elecKWh" stackId="1" stroke="#eab308" strokeWidth={1} fillOpacity={1} fill="url(#colorElec)" dot={false} />
                       )}
                       {hasGas && (
-                        <Area type="monotone" dataKey="gasKWh" stackId="1" stroke="#f97316" strokeWidth={1} fillOpacity={1} fill="url(#colorGas)" dot={false} />
+                        <Area type="monotone" dataKey="gasKWh" stackId="1" stroke="#14b8a6" strokeWidth={1} fillOpacity={1} fill="url(#colorGas)" dot={false} />
                       )}
                     </AreaChart>
                   </ResponsiveContainer>

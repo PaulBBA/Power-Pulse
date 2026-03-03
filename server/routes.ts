@@ -332,16 +332,34 @@ export async function registerRoutes(
         const fourWeeksAgo = new Date(now);
         fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
 
-        const [profileTotals] = await db.select({
+        const profileTotalsRows = await db.select({
           totalUnits: sql<number>`COALESCE(SUM(${dataProfiles.dayTotal}), 0)`,
           dayCount: sql<number>`COUNT(DISTINCT ${dataProfiles.date}::date)`,
           minDate: sql<string>`MIN(${dataProfiles.date})::date::text`,
           maxDate: sql<string>`MAX(${dataProfiles.date})::date::text`,
+          utilityName: sql<string>`COALESCE(${utilities.name}, 'Unknown')`,
         }).from(dataProfiles)
+          .innerJoin(dataSets, eq(dataProfiles.dataSetId, dataSets.id))
+          .innerJoin(utilities, eq(dataSets.utilityTypeId, utilities.id))
           .where(and(
             profileUserFilter,
             sql`${dataProfiles.date}::date >= ${fourWeeksAgo.toISOString().split('T')[0]}::date`
-          ));
+          ))
+          .groupBy(utilities.name);
+
+        const profileTotals = profileTotalsRows.length > 0 ? {
+          totalUnits: profileTotalsRows.reduce((s, r) => s + r.totalUnits, 0),
+          dayCount: Math.max(...profileTotalsRows.map(r => r.dayCount)),
+          minDate: profileTotalsRows.reduce((m, r) => r.minDate && (!m || r.minDate < m) ? r.minDate : m, null as string | null),
+          maxDate: profileTotalsRows.reduce((m, r) => r.maxDate && (!m || r.maxDate > m) ? r.maxDate : m, null as string | null),
+        } : { totalUnits: 0, dayCount: 0, minDate: null, maxDate: null };
+
+        const electricityTotal = profileTotalsRows
+          .filter(r => (r.utilityName || '').toLowerCase().startsWith('elec'))
+          .reduce((s, r) => s + r.totalUnits, 0);
+        const gasTotal = profileTotalsRows
+          .filter(r => (r.utilityName || '').toLowerCase() === 'gas')
+          .reduce((s, r) => s + r.totalUnits, 0);
 
         totalUnits = profileTotals.totalUnits;
         totalCost = 0;
@@ -362,20 +380,43 @@ export async function registerRoutes(
           "i2030","i2100","i2130","i2200","i2230","i2300","i2330","i2400"
         ];
 
-        const profileRows = await db.select().from(dataProfiles)
+        const profileRows = await db.select({
+          date: dataProfiles.date,
+          utilityName: sql<string>`COALESCE(${utilities.name}, 'Unknown')`,
+          i0030: dataProfiles.i0030, i0100: dataProfiles.i0100, i0130: dataProfiles.i0130, i0200: dataProfiles.i0200,
+          i0230: dataProfiles.i0230, i0300: dataProfiles.i0300, i0330: dataProfiles.i0330, i0400: dataProfiles.i0400,
+          i0430: dataProfiles.i0430, i0500: dataProfiles.i0500, i0530: dataProfiles.i0530, i0600: dataProfiles.i0600,
+          i0630: dataProfiles.i0630, i0700: dataProfiles.i0700, i0730: dataProfiles.i0730, i0800: dataProfiles.i0800,
+          i0830: dataProfiles.i0830, i0900: dataProfiles.i0900, i0930: dataProfiles.i0930, i1000: dataProfiles.i1000,
+          i1030: dataProfiles.i1030, i1100: dataProfiles.i1100, i1130: dataProfiles.i1130, i1200: dataProfiles.i1200,
+          i1230: dataProfiles.i1230, i1300: dataProfiles.i1300, i1330: dataProfiles.i1330, i1400: dataProfiles.i1400,
+          i1430: dataProfiles.i1430, i1500: dataProfiles.i1500, i1530: dataProfiles.i1530, i1600: dataProfiles.i1600,
+          i1630: dataProfiles.i1630, i1700: dataProfiles.i1700, i1730: dataProfiles.i1730, i1800: dataProfiles.i1800,
+          i1830: dataProfiles.i1830, i1900: dataProfiles.i1900, i1930: dataProfiles.i1930, i2000: dataProfiles.i2000,
+          i2030: dataProfiles.i2030, i2100: dataProfiles.i2100, i2130: dataProfiles.i2130, i2200: dataProfiles.i2200,
+          i2230: dataProfiles.i2230, i2300: dataProfiles.i2300, i2330: dataProfiles.i2330, i2400: dataProfiles.i2400,
+        }).from(dataProfiles)
+          .innerJoin(dataSets, eq(dataProfiles.dataSetId, dataSets.id))
+          .innerJoin(utilities, eq(dataSets.utilityTypeId, utilities.id))
           .where(and(
             profileUserFilter,
             sql`${dataProfiles.date}::date >= ${fourWeeksAgo.toISOString().split('T')[0]}::date`
           ))
           .orderBy(sql`${dataProfiles.date}::date ASC`);
 
-        const dayMap = new Map<string, number[]>();
+        const dayMapElec = new Map<string, number[]>();
+        const dayMapGas = new Map<string, number[]>();
         for (const row of profileRows) {
           const dateStr = new Date(row.date).toISOString().split('T')[0];
-          if (!dayMap.has(dateStr)) {
-            dayMap.set(dateStr, new Array(48).fill(0));
+          const uName = (row.utilityName || '').toLowerCase();
+          const isElec = uName.startsWith('elec');
+          const isGas = uName === 'gas';
+          if (!isElec && !isGas) continue;
+          const targetMap = isGas ? dayMapGas : dayMapElec;
+          if (!targetMap.has(dateStr)) {
+            targetMap.set(dateStr, new Array(48).fill(0));
           }
-          const slots = dayMap.get(dateStr)!;
+          const slots = targetMap.get(dateStr)!;
           for (let i = 0; i < 48; i++) {
             const val = (row as any)[intervalKeys[i]];
             if (val !== null && val !== undefined) {
@@ -384,7 +425,7 @@ export async function registerRoutes(
           }
         }
 
-        const halfHourlyData: { datetime: string; date: string; time: string; kWh: number }[] = [];
+        const halfHourlyData: { datetime: string; date: string; time: string; kWh: number; elecKWh: number; gasKWh: number }[] = [];
         const timeLabels = [
           "00:30","01:00","01:30","02:00","02:30","03:00","03:30","04:00",
           "04:30","05:00","05:30","06:00","06:30","07:00","07:30","08:00",
@@ -398,13 +439,18 @@ export async function registerRoutes(
           const dt = new Date(fourWeeksAgo);
           dt.setDate(dt.getDate() + d);
           const dateStr = dt.toISOString().split('T')[0];
-          const slots = dayMap.get(dateStr) || new Array(48).fill(0);
+          const elecSlots = dayMapElec.get(dateStr) || new Array(48).fill(0);
+          const gasSlots = dayMapGas.get(dateStr) || new Array(48).fill(0);
           for (let i = 0; i < 48; i++) {
+            const elecVal = Math.round(elecSlots[i] * 100) / 100;
+            const gasVal = Math.round(gasSlots[i] * 100) / 100;
             halfHourlyData.push({
               datetime: `${dateStr}T${timeLabels[i]}`,
               date: dateStr,
               time: timeLabels[i],
-              kWh: Math.round(slots[i] * 100) / 100,
+              kWh: Math.round((elecVal + gasVal) * 100) / 100,
+              elecKWh: elecVal,
+              gasKWh: gasVal,
             });
           }
         }
@@ -423,6 +469,8 @@ export async function registerRoutes(
           totalCost,
           monthlyData,
           halfHourlyData,
+          electricityTotal: Math.round(electricityTotal * 100) / 100,
+          gasTotal: Math.round(gasTotal * 100) / 100,
           dateFrom,
           dateTo,
           periodLabel,

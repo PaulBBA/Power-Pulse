@@ -12,7 +12,7 @@ import {
   Tooltip, 
   ResponsiveContainer
 } from "recharts";
-import { ArrowUpRight, ArrowDownRight, Zap, PoundSterling, Building2, Gauge, Loader2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Zap, Flame, PoundSterling, Building2, Gauge, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Group } from "@shared/schema";
@@ -33,7 +33,9 @@ interface DashboardStats {
   totalUnits: number;
   totalCost: number;
   monthlyData: { year: number; month: number; totalUnits: number; totalCost: number }[];
-  halfHourlyData?: { datetime: string; date: string; time: string; kWh: number }[];
+  halfHourlyData?: { datetime: string; date: string; time: string; kWh: number; elecKWh: number; gasKWh: number }[];
+  electricityTotal?: number;
+  gasTotal?: number;
   dateFrom: string | null;
   dateTo: string | null;
   periodLabel: string;
@@ -140,6 +142,22 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold" data-testid="text-total-units">
                   {formatNumber(stats?.totalUnits || 0)} kWh
                 </div>
+                {isMtd && ((stats?.electricityTotal || 0) > 0 || (stats?.gasTotal || 0) > 0) && (
+                  <div className="flex flex-col gap-1 mt-2">
+                    {(stats?.electricityTotal || 0) > 0 && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="text-elec-total">
+                        <Zap className="h-3 w-3 text-yellow-500" />
+                        <span>Electricity: {formatNumber(stats!.electricityTotal!)} kWh</span>
+                      </div>
+                    )}
+                    {(stats?.gasTotal || 0) > 0 && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="text-gas-total">
+                        <Flame className="h-3 w-3 text-orange-500" />
+                        <span>Gas: {formatNumber(stats!.gasTotal!)} kWh</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -188,18 +206,36 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {isMtd && stats?.halfHourlyData && stats.halfHourlyData.length > 0 && (
+          {isMtd && stats?.halfHourlyData && stats.halfHourlyData.length > 0 && (() => {
+            const hasElec = (stats.electricityTotal || 0) > 0;
+            const hasGas = (stats.gasTotal || 0) > 0;
+            const hasBoth = hasElec && hasGas;
+            return (
             <Card className="shadow-sm" data-testid="card-profile-chart">
               <CardHeader>
                 <CardTitle>Half-Hourly Usage – Past 4 Weeks</CardTitle>
                 <CardDescription>
-                  Total consumption per half hour across all meters
+                  <span>
+                    {hasBoth ? "Electricity and gas consumption" : hasGas ? "Gas consumption" : "Electricity consumption"} per half hour across all meters
+                  </span>
                   {stats.dateTo && (
                     <span className="ml-2 text-xs font-medium text-muted-foreground">
                       — Last data received: {new Date(stats.dateTo + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                   )}
                 </CardDescription>
+                {hasBoth && (
+                  <div className="flex items-center gap-4 mt-1">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#eab308' }} />
+                      <span className="text-muted-foreground">Electricity</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#f97316' }} />
+                      <span className="text-muted-foreground">Gas</span>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="pl-2">
                 <div className="h-[450px]">
@@ -209,9 +245,13 @@ export default function Dashboard() {
                       idx,
                     }))} margin={{ top: 10, right: 30, left: 0, bottom: 60 }}>
                       <defs>
-                        <linearGradient id="colorHH" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.05}/>
+                        <linearGradient id="colorElec" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#eab308" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#eab308" stopOpacity={0.05}/>
+                        </linearGradient>
+                        <linearGradient id="colorGas" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#f97316" stopOpacity={0.05}/>
                         </linearGradient>
                       </defs>
                       <XAxis
@@ -241,16 +281,25 @@ export default function Dashboard() {
                           if (!d) return '';
                           return `${new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} ${d.time}`;
                         }}
-                        formatter={(value: number) => [`${value} kWh`, 'Usage']}
+                        formatter={(value: number, name: string) => {
+                          const label = name === 'elecKWh' ? 'Electricity' : name === 'gasKWh' ? 'Gas' : 'Usage';
+                          return [`${value} kWh`, label];
+                        }}
                       />
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                      <Area type="monotone" dataKey="kWh" stroke="hsl(var(--primary))" strokeWidth={1} fillOpacity={1} fill="url(#colorHH)" dot={false} />
+                      {hasElec && (
+                        <Area type="monotone" dataKey="elecKWh" stackId="1" stroke="#eab308" strokeWidth={1} fillOpacity={1} fill="url(#colorElec)" dot={false} />
+                      )}
+                      {hasGas && (
+                        <Area type="monotone" dataKey="gasKWh" stackId="1" stroke="#f97316" strokeWidth={1} fillOpacity={1} fill="url(#colorGas)" dot={false} />
+                      )}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
-          )}
+            );
+          })()}
 
           {!isMtd && chartData.length > 1 && (
             <div className="grid gap-4 md:grid-cols-2">

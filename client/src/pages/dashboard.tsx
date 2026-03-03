@@ -288,10 +288,10 @@ export default function Dashboard() {
                       />
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                       {hasElec && (
-                        <Area type="monotone" dataKey="elecKWh" stackId="1" stroke="#eab308" strokeWidth={1} fillOpacity={1} fill="url(#colorElec)" dot={false} />
+                        <Area type="monotone" dataKey="elecKWh" stroke="#eab308" strokeWidth={1} fillOpacity={1} fill="url(#colorElec)" dot={false} />
                       )}
                       {hasGas && (
-                        <Area type="monotone" dataKey="gasKWh" stackId="1" stroke="#14b8a6" strokeWidth={1} fillOpacity={1} fill="url(#colorGas)" dot={false} />
+                        <Area type="monotone" dataKey="gasKWh" stroke="#14b8a6" strokeWidth={1} fillOpacity={1} fill="url(#colorGas)" dot={false} />
                       )}
                     </AreaChart>
                   </ResponsiveContainer>
